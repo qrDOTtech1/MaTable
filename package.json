@@ -6,7 +6,7 @@
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "dev": "concurrently -n api,web -c blue,green \"npm -w @atable/api run dev\" \"npm -w @atable/web run dev\"",
-    "build": "npm -w @atable/db run generate && npm -w @atable/api run build && npm -w @atable/web run build",
+    "build": "npm -w @atable/db run generate && npm -w @atable/db run build && npm -w @atable/api run build && npm -w @atable/web run build",
     "start:api": "npm -w @atable/api run start",
     "start:web": "npm -w @atable/web run start",
     "db:generate": "npm -w @atable/db run generate",
