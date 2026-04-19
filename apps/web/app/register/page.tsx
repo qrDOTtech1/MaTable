@@ -20,11 +20,11 @@ export default function RegisterPage() {
       await api(`/api/pro/register`, {
         method: "POST",
         body: JSON.stringify({ email, password, restaurantName }),
+        pro: false,
       });
       router.push("/login");
     } catch (e: any) {
-      const msg = e.message || "Erreur lors de l'inscription";
-      setErr(msg.includes("409") ? "Email déjà utilisé" : msg);
+      setErr(e.message?.includes("409") ? "Email déjà utilisé." : "Erreur — réessaie.");
     } finally {
       setLoading(false);
     }
@@ -35,7 +35,6 @@ export default function RegisterPage() {
       <form onSubmit={onSubmit} className="card w-full max-w-sm space-y-4">
         <h1 className="text-2xl font-bold text-brand">A table !</h1>
         <p className="text-sm text-slate-500">Créer votre compte restaurateur</p>
-
         <input
           className="w-full border rounded-lg px-3 py-2"
           type="text"
@@ -62,16 +61,12 @@ export default function RegisterPage() {
           required
         />
         {err && <div className="text-sm text-red-600">{err}</div>}
-
         <button className="btn-primary w-full" disabled={loading}>
           {loading ? "…" : "S'inscrire"}
         </button>
-
         <p className="text-sm text-slate-600 text-center">
           Déjà inscrit ?{" "}
-          <Link href="/login" className="text-brand font-medium">
-            Se connecter
-          </Link>
+          <Link href="/login" className="text-brand font-medium">Se connecter</Link>
         </p>
       </form>
     </main>

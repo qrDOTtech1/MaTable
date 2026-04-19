@@ -2,12 +2,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api } from "@/lib/api";
+import { api, setProToken } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("demo@atable.fr");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -16,12 +16,14 @@ export default function LoginPage() {
     setLoading(true);
     setErr(null);
     try {
-      await api(`/api/pro/login`, {
+      const res = await api<{ token: string }>(`/api/pro/login`, {
         method: "POST",
         body: JSON.stringify({ email, password }),
+        pro: false,
       });
+      setProToken(res.token);
       router.push("/dashboard");
-    } catch (e: any) {
+    } catch {
       setErr("Identifiants invalides.");
     } finally {
       setLoading(false);
@@ -39,6 +41,7 @@ export default function LoginPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
+          required
         />
         <input
           className="w-full border rounded-lg px-3 py-2"
@@ -46,17 +49,15 @@ export default function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Mot de passe"
+          required
         />
         {err && <div className="text-sm text-red-600">{err}</div>}
         <button className="btn-primary w-full" disabled={loading}>
           {loading ? "…" : "Se connecter"}
         </button>
-
         <p className="text-sm text-slate-600 text-center">
           Pas encore inscrit ?{" "}
-          <Link href="/register" className="text-brand font-medium">
-            Créer un compte
-          </Link>
+          <Link href="/register" className="text-brand font-medium">Créer un compte</Link>
         </p>
       </form>
     </main>
