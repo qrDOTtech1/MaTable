@@ -1,0 +1,24 @@
+{
+  "name": "atable",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A table ! — SaaS de commande par QR code en salle",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm -w @atable/api run dev\" \"npm -w @atable/web run dev\"",
+    "build": "npm -w @atable/db run generate && npm -w @atable/api run build && npm -w @atable/web run build",
+    "start:api": "npm -w @atable/api run start",
+    "start:web": "npm -w @atable/web run start",
+    "db:generate": "npm -w @atable/db run generate",
+    "db:migrate": "npm -w @atable/db run migrate",
+    "db:deploy": "npm -w @atable/db run deploy",
+    "db:seed": "npm -w @atable/db run seed"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
