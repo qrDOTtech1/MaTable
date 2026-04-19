@@ -8,6 +8,9 @@ COPY apps/web/package.json apps/web/
 RUN npm install --include=dev --no-audit --no-fund
 
 FROM deps AS build
+# Déclare l'ARG pour que Docker accepte la variable au build
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 COPY . .
 RUN npm --workspace @atable/web run build
 
@@ -19,8 +22,5 @@ COPY --from=build /app/apps/web/public ./apps/web/public
 COPY --from=build /app/apps/web/next.config.js ./apps/web/next.config.js
 COPY --from=build /app/apps/web/package.json ./apps/web/package.json
 COPY --from=build /app/package.json ./package.json
-
-ENV PORT=3000
-EXPOSE 3000
 
 CMD ["npm", "--workspace", "@atable/web", "run", "start"]
