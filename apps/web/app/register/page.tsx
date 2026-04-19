@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api } from "@/lib/api";
+import { api, API_URL } from "@/lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -22,9 +22,14 @@ export default function RegisterPage() {
         body: JSON.stringify({ email, password, restaurantName }),
         pro: false,
       });
-      router.push("/login");
+      router.push("/login?registered=1");
     } catch (e: any) {
-      setErr(e.message?.includes("409") ? "Email déjà utilisé." : "Erreur — réessaie.");
+      const msg = String(e?.message ?? e);
+      console.error("[register] error:", msg, "| API_URL:", API_URL);
+      if (msg.includes("409")) setErr("Email déjà utilisé.");
+      else if (msg.includes("Failed to fetch") || msg.includes("fetch"))
+        setErr(`Impossible de contacter le serveur (${API_URL}). Vérifie la config.`);
+      else setErr(`Erreur: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -60,10 +65,13 @@ export default function RegisterPage() {
           minLength={6}
           required
         />
-        {err && <div className="text-sm text-red-600">{err}</div>}
+        {err && (
+          <div className="text-sm text-red-600 bg-red-50 p-2 rounded break-all">{err}</div>
+        )}
         <button className="btn-primary w-full" disabled={loading}>
           {loading ? "…" : "S'inscrire"}
         </button>
+        <p className="text-xs text-slate-400 text-center">API: {API_URL}</p>
         <p className="text-sm text-slate-600 text-center">
           Déjà inscrit ?{" "}
           <Link href="/login" className="text-brand font-medium">Se connecter</Link>
