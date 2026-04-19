@@ -1,18 +1,13 @@
 {
-  "name": "atable",
+  "name": "@atable/web",
   "private": true,
   "version": "0.1.0",
-  "description": "A table ! — SaaS de commande par QR code en salle",
-  "workspaces": ["apps/*", "packages/*"],
+  "description": "A table ! — Dashboard restaurateur + page client commande par QR",
+  "workspaces": ["apps/web"],
   "scripts": {
-    "dev": "concurrently -n api,web -c blue,green \"npm -w @atable/api run dev\" \"npm -w @atable/web run dev\"",
-    "build": "npm -w @atable/db run generate && npm -w @atable/db run build && npm -w @atable/api run build && npm -w @atable/web run build",
-    "start:api": "npm -w @atable/api run start",
-    "start:web": "npm -w @atable/web run start",
-    "db:generate": "npm -w @atable/db run generate",
-    "db:migrate": "npm -w @atable/db run migrate",
-    "db:deploy": "npm -w @atable/db run deploy",
-    "db:seed": "npm -w @atable/db run seed"
+    "dev": "npm --workspace @atable/web run dev",
+    "build": "npm --workspace @atable/web run build",
+    "start": "npm --workspace @atable/web run start"
   },
   "devDependencies": {
     "concurrently": "^9.0.1",
