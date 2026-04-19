@@ -1,6 +1,6 @@
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
 WORKDIR /app
-ENV NODE_ENV=production
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 FROM base AS deps
 COPY package.json package-lock.json* ./
@@ -11,7 +11,7 @@ RUN npm install --include=dev --no-audit --no-fund
 
 FROM deps AS build
 COPY . .
-RUN npx --workspace @atable/db prisma generate
+RUN npm --workspace @atable/db exec prisma generate
 RUN npm run build
 
 FROM base AS runner
@@ -26,5 +26,5 @@ COPY --from=build /app/apps/api/package.json ./apps/api/package.json
 COPY --from=build /app/packages/db ./packages/db
 COPY --from=build /app/package.json ./package.json
 
-# Default: API. Override CMD per Railway service for web.
+# Default: API. Override start command per Railway service.
 CMD ["node", "apps/api/dist/server.js"]
