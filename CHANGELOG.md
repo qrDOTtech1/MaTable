@@ -5,6 +5,15 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [Unreleased]
+
+### Modifié
+- **Paiement** : le bouton client paie maintenant l'**addition de la session** (toutes les commandes non payées) au lieu de payer uniquement la dernière commande.
+
+### Ajouté
+- **Addition** : choix du mode de paiement côté client (Carte / Caisse / Espèces) + demande d'addition.
+- **Tables (dashboard)** : affichage "Addition demandée" et bouton "Encaisser" pour clôturer une session payée hors Stripe.
+
 ## [1.0.0] — 2026-04-19
 
 ### Première version publique — MVP complet

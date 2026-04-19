@@ -17,6 +17,13 @@ type TableInfo = {
   menu: MenuItem[];
 };
 
+type MyOrder = {
+  id: string;
+  status: "PENDING" | "COOKING" | "SERVED" | "PAID" | "CANCELLED";
+  totalCents: number;
+  createdAt: string;
+};
+
 const tokenKey = (tableId: string) => `atable_session_${tableId}`;
 const cartKey  = (tableId: string) => `atable_cart_${tableId}`;
 
@@ -33,15 +40,40 @@ export default function OrderPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<string | null>(null);
+  const [myOrders, setMyOrders] = useState<MyOrder[]>([]);
+  const [billRequestedMode, setBillRequestedMode] = useState<"CARD" | "CASH" | "COUNTER" | null>(null);
 
   useEffect(() => {
-    api<TableInfo>(`/api/tables/${tableUuid}`)
+    api<TableInfo>(`/api/tables/${tableUuid}`, { pro: false })
       .then(setInfo)
       .catch(() => setError("Table introuvable."));
   }, [tableUuid]);
 
   useEffect(() => {
     if (paid) localStorage.removeItem(tokenKey(tableUuid));
+  }, [paid, tableUuid]);
+
+  async function loadMyOrders(token: string) {
+    const r = await api<{ orders: MyOrder[] }>(`/api/orders/mine`, {
+      token,
+      // Session token is not a pro token.
+      pro: false,
+    });
+    setMyOrders(r.orders);
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (paid) {
+      setMyOrders([]);
+      setBillRequestedMode(null);
+      return;
+    }
+    const token = localStorage.getItem(tokenKey(tableUuid));
+    if (!token) return;
+    loadMyOrders(token).catch(() => {
+      localStorage.removeItem(tokenKey(tableUuid));
+    });
   }, [paid, tableUuid]);
 
   const total = useMemo(() => {
@@ -66,6 +98,7 @@ export default function OrderPage() {
     if (cached) return cached;
     const res = await api<{ token: string }>(`/api/session`, {
       method: "POST",
+      pro: false,
       body: JSON.stringify({ tableId: tableUuid }),
     });
     localStorage.setItem(tokenKey(tableUuid), res.token);
@@ -84,11 +117,13 @@ export default function OrderPage() {
       const res = await api<{ orderId: string }>(`/api/orders`, {
         method: "POST",
         token,
+        pro: false,
         body: JSON.stringify({ items }),
       });
       setLastOrderId(res.orderId);
       setCart({});
       localStorage.removeItem(cartKey(tableUuid));
+      await loadMyOrders(token);
     } catch (e: any) {
       if (String(e.message).startsWith("401")) {
         localStorage.removeItem(tokenKey(tableUuid));
@@ -101,15 +136,26 @@ export default function OrderPage() {
     }
   }
 
-  async function payNow() {
-    if (!lastOrderId) return;
+  async function requestBill(mode: "CARD" | "CASH" | "COUNTER") {
+    const token = await ensureToken();
+    await api(`/api/bill/request`, {
+      method: "POST",
+      token,
+      pro: false,
+      body: JSON.stringify({ mode }),
+    });
+    setBillRequestedMode(mode);
+  }
+
+  async function payBill() {
     const token = localStorage.getItem(tokenKey(tableUuid));
     if (!token) return;
     try {
+      // Session-level checkout: pays everything not yet paid for the table.
       const res = await api<{ url: string }>(`/api/stripe/checkout`, {
         method: "POST",
         token,
-        body: JSON.stringify({ orderId: lastOrderId }),
+        body: JSON.stringify({}),
       });
       window.location.href = res.url;
     } catch (e: any) {
@@ -119,6 +165,9 @@ export default function OrderPage() {
 
   if (error) return <main className="p-8 text-center">{error}</main>;
   if (!info) return <main className="p-8 text-center">Chargement…</main>;
+
+  const unpaidOrders = myOrders.filter((o) => o.status !== "PAID" && o.status !== "CANCELLED");
+  const unpaidTotal = unpaidOrders.reduce((s, o) => s + o.totalCents, 0);
 
   const byCat = info.menu.reduce<Record<string, MenuItem[]>>((acc, m) => {
     const k = m.category || "Autres";
@@ -142,9 +191,45 @@ export default function OrderPage() {
       {lastOrderId && !paid && (
         <div className="card bg-amber-50 border-amber-200 mb-4">
           <p className="font-medium">Commande envoyée en cuisine.</p>
-          <button className="btn-primary mt-3 w-full" onClick={payNow}>
-            Payer maintenant
-          </button>
+        </div>
+      )}
+
+      {!paid && unpaidOrders.length > 0 && (
+        <div className="card mb-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="font-semibold">Addition</div>
+              <div className="text-sm text-slate-500">
+                Total dû : <span className="font-medium">{(unpaidTotal / 100).toFixed(2)} €</span>
+              </div>
+            </div>
+            {billRequestedMode && (
+              <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800">
+                Demandée ({billRequestedMode})
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+            <button
+              className="btn-primary"
+              onClick={async () => {
+                // Make it visible to the resto, then redirect to Stripe.
+                try {
+                  await requestBill("CARD");
+                } catch {}
+                await payBill();
+              }}
+            >
+              Carte
+            </button>
+            <button className="btn-ghost" onClick={() => requestBill("COUNTER")}>
+              Caisse
+            </button>
+            <button className="btn-ghost" onClick={() => requestBill("CASH")}>
+              Espèces
+            </button>
+          </div>
         </div>
       )}
 
