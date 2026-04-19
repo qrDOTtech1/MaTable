@@ -2,7 +2,7 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": { "builder": "DOCKERFILE", "dockerfilePath": "Dockerfile" },
   "deploy": {
-    "startCommand": "npx --workspace @atable/db prisma migrate deploy && node apps/api/dist/server.js",
+    "startCommand": "npm run deploy --workspace=@atable/db && npm run seed --workspace=@atable/db && node apps/api/dist/server.js",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }
