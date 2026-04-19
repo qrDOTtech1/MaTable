@@ -4,7 +4,15 @@
 
 html, body { height: 100%; }
 body { @apply bg-slate-50 text-slate-900; }
-.btn { @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition; }
-.btn-primary { @apply btn bg-brand text-white hover:bg-brand-dark; }
-.btn-ghost { @apply btn bg-white border border-slate-200 hover:bg-slate-100; }
-.card { @apply bg-white rounded-xl shadow-sm border border-slate-200 p-4; }
+
+.btn { @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold transition-all duration-150; }
+.btn-primary { @apply btn bg-brand text-white hover:bg-brand-dark shadow-md hover:shadow-lg hover:-translate-y-0.5; }
+.btn-ghost  { @apply btn bg-white border border-slate-200 hover:bg-slate-50 text-slate-700; }
+.btn-lg     { @apply px-8 py-4 text-lg rounded-2xl; }
+.card       { @apply bg-white rounded-2xl shadow-sm border border-slate-200 p-4; }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+.animate-float { animation: float 3s ease-in-out infinite; }

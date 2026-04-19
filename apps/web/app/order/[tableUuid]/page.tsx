@@ -18,6 +18,7 @@ type TableInfo = {
 };
 
 const tokenKey = (tableId: string) => `atable_session_${tableId}`;
+const cartKey  = (tableId: string) => `atable_cart_${tableId}`;
 
 export default function OrderPage() {
   const { tableUuid } = useParams<{ tableUuid: string }>();
@@ -26,7 +27,10 @@ export default function OrderPage() {
 
   const [info, setInfo] = useState<TableInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [cart, setCart] = useState<Record<string, number>>({});
+  const [cart, setCart] = useState<Record<string, number>>(() => {
+    if (typeof window === "undefined") return {};
+    try { return JSON.parse(localStorage.getItem(cartKey(tableUuid)) || "{}"); } catch { return {}; }
+  });
   const [submitting, setSubmitting] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<string | null>(null);
 
@@ -52,6 +56,7 @@ export default function OrderPage() {
     setCart((c) => {
       const next = { ...c, [id]: Math.max(0, (c[id] || 0) + delta) };
       if (next[id] === 0) delete next[id];
+      localStorage.setItem(cartKey(tableUuid), JSON.stringify(next));
       return next;
     });
   }
@@ -83,6 +88,7 @@ export default function OrderPage() {
       });
       setLastOrderId(res.orderId);
       setCart({});
+      localStorage.removeItem(cartKey(tableUuid));
     } catch (e: any) {
       if (String(e.message).startsWith("401")) {
         localStorage.removeItem(tokenKey(tableUuid));

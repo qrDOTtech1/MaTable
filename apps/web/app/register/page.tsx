@@ -71,7 +71,9 @@ export default function RegisterPage() {
         <button className="btn-primary w-full" disabled={loading}>
           {loading ? "…" : "S'inscrire"}
         </button>
-        <p className="text-xs text-slate-400 text-center">API: {API_URL}</p>
+        {process.env.NODE_ENV !== "production" && (
+          <p className="text-xs text-slate-400 text-center">API: {API_URL}</p>
+        )}
         <p className="text-sm text-slate-600 text-center">
           Déjà inscrit ?{" "}
           <Link href="/login" className="text-brand font-medium">Se connecter</Link>
