@@ -25,6 +25,7 @@ COPY --from=build /app/apps/web/package.json ./apps/web/package.json
 COPY --from=build /app/apps/api/package.json ./apps/api/package.json
 COPY --from=build /app/packages/db ./packages/db
 COPY --from=build /app/package.json ./package.json
+COPY start.sh ./start.sh
+RUN chmod +x ./start.sh
 
-# Default: API. Override start command per Railway service.
-CMD ["node", "apps/api/dist/server.js"]
+CMD ["./start.sh"]
