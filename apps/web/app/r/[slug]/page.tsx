@@ -10,7 +10,7 @@ export default async function RestaurantPage({ params }: { params: { slug: strin
   let reviews = { avgRating: null as number | null, count: 0, latest: [] as any[] };
 
   try {
-    const res = await fetch(`${API_URL}/api/r/${params.slug}`, { cache: "revalidate" });
+    const res = await fetch(`${API_URL}/api/r/${params.slug}`, { next: { revalidate: 60 } });
     if (res.ok) {
       const data = await res.json();
       restaurant = data.restaurant;
