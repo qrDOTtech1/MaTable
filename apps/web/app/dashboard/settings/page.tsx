@@ -14,6 +14,8 @@ type Restaurant = {
 export default function SettingsPage() {
   const [form, setForm] = useState<Partial<Restaurant>>({});
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api<{ restaurant: Restaurant }>("/api/pro/me")
@@ -23,38 +25,60 @@ export default function SettingsPage() {
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    await api("/api/pro/restaurant", {
-      method: "PATCH",
-      body: JSON.stringify({
-        name: form.name,
-        slug: form.slug || undefined,
-        description: form.description || undefined,
-        address: form.address || undefined,
-        city: form.city || undefined,
-        phone: form.phone || undefined,
-        email: form.email || undefined,
-        coverImageUrl: form.coverImageUrl || undefined,
-        acceptReservations: form.acceptReservations,
-        depositPerGuestCents: form.depositPerGuestCents ?? 0,
-        avgPrepMinutes: form.avgPrepMinutes ?? 90,
-        reservationPolicy: form.reservationPolicy || undefined,
-        tipsEnabled: form.tipsEnabled,
-        serviceCallEnabled: form.serviceCallEnabled,
-        reviewsEnabled: form.reviewsEnabled,
-      }),
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setSaving(true);
+    setError(null);
+    try {
+      await api("/api/pro/restaurant", {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: form.name,
+          slug: form.slug?.trim() || undefined,
+          description: form.description?.trim() || undefined,
+          address: form.address?.trim() || undefined,
+          city: form.city?.trim() || undefined,
+          phone: form.phone?.trim() || undefined,
+          // email vide → on ne l'envoie pas (évite l'erreur Zod email)
+          email: form.email?.trim() || undefined,
+          // URL vide → on ne l'envoie pas (évite l'erreur Zod url)
+          coverImageUrl: form.coverImageUrl?.trim() || undefined,
+          acceptReservations: form.acceptReservations ?? false,
+          depositPerGuestCents: form.depositPerGuestCents ?? 0,
+          avgPrepMinutes: form.avgPrepMinutes ?? 90,
+          reservationPolicy: form.reservationPolicy?.trim() || undefined,
+          tipsEnabled: form.tipsEnabled ?? true,
+          serviceCallEnabled: form.serviceCallEnabled ?? true,
+          reviewsEnabled: form.reviewsEnabled ?? true,
+        }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err: any) {
+      setError(err?.message ?? "Erreur lors de la sauvegarde");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const f = (field: keyof Restaurant) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setForm((p) => ({ ...p, [field]: e.target.value }));
-  const fBool = (field: keyof Restaurant) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((p) => ({ ...p, [field]: e.target.checked }));
+  const f = (field: keyof Restaurant) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setForm((p) => ({ ...p, [field]: e.target.value }));
+
+  const fBool = (field: keyof Restaurant) =>
+    (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm((p) => ({ ...p, [field]: e.target.checked }));
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Paramètres du restaurant</h1>
+
+      {error && (
+        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded text-sm text-red-700 flex items-start gap-2">
+          <span className="shrink-0">⚠️</span>
+          <span className="flex-1">{error}</span>
+          <button className="text-red-400 hover:text-red-600 shrink-0" onClick={() => setError(null)}>✕</button>
+        </div>
+      )}
+
       <form onSubmit={save} className="space-y-6 max-w-2xl">
 
         {/* Identité */}
@@ -94,13 +118,14 @@ export default function SettingsPage() {
               </button>
             </div>
           )}
+
           <div>
-            <label className="label">Description</label>
+            <label className="label">Description (affichée sur votre page publique)</label>
             <textarea className="w-full border rounded px-2 py-1" rows={3} value={form.description ?? ""} onChange={f("description")} />
           </div>
           <div>
             <label className="label">URL photo de couverture</label>
-            <input className="w-full border rounded px-2 py-1" placeholder="https://..." value={form.coverImageUrl ?? ""} onChange={f("coverImageUrl")} />
+            <input className="w-full border rounded px-2 py-1" placeholder="https://…" value={form.coverImageUrl ?? ""} onChange={f("coverImageUrl")} />
           </div>
         </div>
 
@@ -122,7 +147,8 @@ export default function SettingsPage() {
             </div>
             <div>
               <label className="label">Email contact</label>
-              <input className="w-full border rounded px-2 py-1" type="email" value={form.email ?? ""} onChange={f("email")} />
+              {/* type="text" intentionnel : on valide côté API, pas de blocage navigateur sur vide */}
+              <input className="w-full border rounded px-2 py-1" type="text" placeholder="contact@monresto.fr" value={form.email ?? ""} onChange={f("email")} />
             </div>
           </div>
         </div>
@@ -162,20 +188,33 @@ export default function SettingsPage() {
         <div className="card space-y-2">
           <h2 className="font-semibold text-slate-700 mb-3">Fonctionnalités client</h2>
           {[
-            { field: "tipsEnabled" as const, label: "💳 Pourboires" },
-            { field: "serviceCallEnabled" as const, label: "🔔 Appel serveur depuis la table" },
-            { field: "reviewsEnabled" as const, label: "⭐ Avis clients (plats & serveurs)" },
-          ].map(({ field, label }) => (
-            <label key={field} className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={(form[field] as boolean) ?? false} onChange={fBool(field)} />
-              <span className="text-sm">{label}</span>
+            { field: "tipsEnabled" as const, label: "💳 Pourboires", desc: "Les clients peuvent laisser un pourboire lors du paiement" },
+            { field: "serviceCallEnabled" as const, label: "🔔 Appel serveur", desc: "Bouton d'appel depuis la table client" },
+            { field: "reviewsEnabled" as const, label: "⭐ Avis clients", desc: "Avis sur les plats et les serveurs après paiement" },
+          ].map(({ field, label, desc }) => (
+            <label key={field} className="flex items-start gap-3 cursor-pointer py-1">
+              <input type="checkbox" className="mt-0.5" checked={(form[field] as boolean) ?? false} onChange={fBool(field)} />
+              <div>
+                <span className="text-sm font-medium">{label}</span>
+                <p className="text-xs text-slate-400">{desc}</p>
+              </div>
             </label>
           ))}
         </div>
 
-        <div className="flex items-center gap-3">
-          <button className="btn-primary" type="submit">Enregistrer</button>
-          {saved && <span className="text-green-600 text-sm font-medium">✓ Sauvegardé</span>}
+        <div className="flex items-center gap-3 pt-2">
+          <button
+            className="btn-primary px-6"
+            type="submit"
+            disabled={saving}
+          >
+            {saving ? "Enregistrement…" : "Enregistrer"}
+          </button>
+          {saved && (
+            <span className="text-green-600 text-sm font-medium flex items-center gap-1">
+              ✓ Sauvegardé
+            </span>
+          )}
         </div>
       </form>
     </div>
