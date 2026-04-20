@@ -10,6 +10,7 @@ body { @apply bg-slate-50 text-slate-900; }
 .btn-ghost  { @apply btn bg-white border border-slate-200 hover:bg-slate-50 text-slate-700; }
 .btn-lg     { @apply px-8 py-4 text-lg rounded-2xl; }
 .card       { @apply bg-white rounded-2xl shadow-sm border border-slate-200 p-4; }
+.label      { @apply block text-xs font-medium text-slate-600 mb-0.5; }
 
 @keyframes float {
   0%, 100% { transform: translateY(0); }
