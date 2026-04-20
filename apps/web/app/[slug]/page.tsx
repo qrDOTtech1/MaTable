@@ -57,7 +57,7 @@ async function getPageData(slug: string): Promise<PageData | null> {
 // ─── Metadata ──────────────────────────────────────────────────────────────────
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const data = await getPageData(params.slug);
-  if (!data) return { title: "Restaurant introuvable — A table !" };
+  if (!data || !data.restaurant) return { title: "Restaurant introuvable — A table !" };
   const { restaurant, reviews } = data;
   const desc = restaurant.description
     ?? `Retrouvez le menu de ${restaurant.name}${restaurant.city ? ` à ${restaurant.city}` : ""}. Commandez en ligne via QR code.`;
@@ -83,7 +83,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 // ─── Page ──────────────────────────────────────────────────────────────────────
 export default async function RestaurantPublicPage({ params }: { params: { slug: string } }) {
   const data = await getPageData(params.slug);
-  if (!data) notFound();
+  if (!data || !data.restaurant) notFound();
 
   const { restaurant, reviews } = data;
   const menu = restaurant.menuItems ?? [];
