@@ -55,6 +55,7 @@ export default function SettingsPage() {
           tipsEnabled: form.tipsEnabled ?? true,
           serviceCallEnabled: form.serviceCallEnabled ?? true,
           reviewsEnabled: form.reviewsEnabled ?? true,
+          openingHours: form.openingHours ?? [],
         }),
       });
       setSaved(true);
