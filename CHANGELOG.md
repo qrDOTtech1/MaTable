@@ -80,3 +80,4 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 - Auth JWT Bearer (localStorage) — compatible cross-domain
 - Socket.io client pour le dashboard temps réel
 - `NEXT_PUBLIC_API_URL` baked au build via ARG Docker
+- **Upload photo** : le restaurateur peut importer une image (upload) au lieu de saisir une URL.

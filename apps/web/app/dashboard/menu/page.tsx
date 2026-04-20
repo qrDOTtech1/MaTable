@@ -28,6 +28,14 @@ type Item = {
   modifierGroups: ModifierGroup[];
 };
 
+type CloudinarySign = {
+  cloudName: string;
+  apiKey: string;
+  timestamp: number;
+  folder: string;
+  signature: string;
+};
+
 const emptyForm = {
   name: "", price: "", category: "", description: "", imageUrl: "",
   allergens: [] as string[], diets: [] as string[],
@@ -41,6 +49,7 @@ export default function MenuPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [newGroup, setNewGroup] = useState({ name: "", required: false, multiple: false, options: "" });
   const [restockMap, setRestockMap] = useState<Record<string, string>>({});
+  const [uploading, setUploading] = useState(false);
 
   const reload = async () => {
     const r = await api<{ items: Item[] }>("/api/pro/menu");
@@ -97,6 +106,35 @@ export default function MenuPage() {
     }
     setForm(emptyForm);
     reload();
+  };
+
+  const uploadImage = async (file: File) => {
+    setUploading(true);
+    try {
+      const sign = await api<CloudinarySign>("/api/pro/uploads/sign-cloudinary", {
+        method: "POST",
+        body: JSON.stringify({ folder: "matable/menu" }),
+      });
+
+      const fd = new FormData();
+      fd.set("file", file);
+      fd.set("api_key", sign.apiKey);
+      fd.set("timestamp", String(sign.timestamp));
+      fd.set("signature", sign.signature);
+      fd.set("folder", sign.folder);
+
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${sign.cloudName}/image/upload`, {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+      const json = await res.json();
+      const url = json.secure_url as string | undefined;
+      if (!url) throw new Error("Upload failed: missing secure_url");
+      setForm((f) => ({ ...f, imageUrl: url }));
+    } finally {
+      setUploading(false);
+    }
   };
 
   const toggle = async (it: Item) => {
@@ -175,9 +213,36 @@ export default function MenuPage() {
             onChange={(e) => setForm({ ...form, description: e.target.value })} />
         </div>
         <div>
-          <label className="label">URL photo</label>
-          <input className="w-full border rounded px-2 py-1" placeholder="https://..." value={form.imageUrl}
-            onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} />
+          <label className="label">Photo</label>
+          <div className="flex flex-col md:flex-row gap-2 md:items-center">
+            <input
+              className="w-full"
+              type="file"
+              accept="image/*"
+              disabled={uploading}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                uploadImage(f).catch((err: any) => {
+                  alert(
+                    "Upload image impossible (Cloudinary non configuré ?) : " +
+                      (err?.message ?? String(err))
+                  );
+                });
+              }}
+            />
+            <input
+              className="w-full border rounded px-2 py-1"
+              placeholder="https://... (optionnel)"
+              value={form.imageUrl}
+              onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+            />
+          </div>
+          {form.imageUrl && (
+            <div className="mt-2">
+              <img src={form.imageUrl} alt="preview" className="w-24 h-24 object-cover rounded" />
+            </div>
+          )}
         </div>
 
         {/* Allergènes */}
