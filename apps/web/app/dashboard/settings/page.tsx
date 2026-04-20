@@ -66,11 +66,34 @@ export default function SettingsPage() {
               <input className="w-full border rounded px-2 py-1" value={form.name ?? ""} onChange={f("name")} required />
             </div>
             <div>
-              <label className="label">Slug public <span className="text-slate-400 text-xs">(matable.app/r/…)</span></label>
+              <label className="label">Slug public <span className="text-slate-400 text-xs">(minuscules, chiffres, tirets)</span></label>
               <input className="w-full border rounded px-2 py-1 font-mono" value={form.slug ?? ""} onChange={f("slug")}
                 pattern="[a-z0-9\-]+" title="Minuscules, chiffres et tirets uniquement" />
             </div>
           </div>
+
+          {/* Live URL preview */}
+          {form.slug && (
+            <div className="flex items-center gap-2 bg-brand/5 border border-brand/20 rounded-lg px-3 py-2">
+              <span className="text-xs text-slate-500">Votre page publique :</span>
+              <a
+                href={`/${form.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-sm text-brand font-semibold hover:underline flex items-center gap-1"
+              >
+                matable.pro/{form.slug} ↗
+              </a>
+              <button
+                type="button"
+                className="ml-auto text-xs text-slate-400 hover:text-slate-600"
+                onClick={() => navigator.clipboard.writeText(`https://matable.pro/${form.slug}`)}
+                title="Copier le lien"
+              >
+                📋 Copier
+              </button>
+            </div>
+          )}
           <div>
             <label className="label">Description</label>
             <textarea className="w-full border rounded px-2 py-1" rows={3} value={form.description ?? ""} onChange={f("description")} />
