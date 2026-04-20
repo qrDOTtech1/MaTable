@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, redirectOn401 } from "@/lib/api";
+import { API_URL, api, getProToken, redirectOn401 } from "@/lib/api";
 
 const ALLERGENS = [
   "GLUTEN","CRUSTACEANS","EGGS","FISH","PEANUTS","SOYBEANS","MILK","NUTS",
@@ -28,13 +28,7 @@ type Item = {
   modifierGroups: ModifierGroup[];
 };
 
-type CloudinarySign = {
-  cloudName: string;
-  apiKey: string;
-  timestamp: number;
-  folder: string;
-  signature: string;
-};
+type UploadRes = { id: string; path: string };
 
 const emptyForm = {
   name: "", price: "", category: "", description: "", imageUrl: "",
@@ -111,26 +105,20 @@ export default function MenuPage() {
   const uploadImage = async (file: File) => {
     setUploading(true);
     try {
-      const sign = await api<CloudinarySign>("/api/pro/uploads/sign-cloudinary", {
-        method: "POST",
-        body: JSON.stringify({ folder: "matable/menu" }),
-      });
+      const token = getProToken();
+      if (!token) throw new Error("unauthorized");
 
       const fd = new FormData();
       fd.set("file", file);
-      fd.set("api_key", sign.apiKey);
-      fd.set("timestamp", String(sign.timestamp));
-      fd.set("signature", sign.signature);
-      fd.set("folder", sign.folder);
 
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${sign.cloudName}/image/upload`, {
+      const res = await fetch(`${API_URL}/api/pro/uploads/image`, {
         method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
         body: fd,
       });
       if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-      const json = await res.json();
-      const url = json.secure_url as string | undefined;
-      if (!url) throw new Error("Upload failed: missing secure_url");
+      const json = (await res.json()) as UploadRes;
+      const url = `${API_URL}${json.path}`;
       setForm((f) => ({ ...f, imageUrl: url }));
     } finally {
       setUploading(false);
@@ -225,7 +213,7 @@ export default function MenuPage() {
                 if (!f) return;
                 uploadImage(f).catch((err: any) => {
                   alert(
-                    "Upload image impossible (Cloudinary non configuré ?) : " +
+                    "Upload image impossible : " +
                       (err?.message ?? String(err))
                   );
                 });
