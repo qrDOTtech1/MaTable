@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
+import { ImageLightbox } from "./ImageLightbox";
 
 type MenuItem = {
   id: string;
@@ -299,10 +300,10 @@ export default function OrderPage() {
               <div key={m.id} className="card flex gap-3 items-start">
                 {/* Photo */}
                 {m.imageUrl && (
-                  <img
+                  <ImageLightbox
                     src={m.imageUrl}
                     alt={m.name}
-                    className="w-20 h-20 rounded-lg object-cover shrink-0"
+                    className="w-20 h-20 rounded-lg object-cover"
                   />
                 )}
 
