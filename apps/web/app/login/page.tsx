@@ -16,15 +16,18 @@ export default function LoginPage() {
     setLoading(true);
     setErr(null);
     try {
+      console.log("[login] starting request to /api/pro/login with:", { email });
       const res = await api<{ token: string }>(`/api/pro/login`, {
         method: "POST",
         body: JSON.stringify({ email, password }),
         pro: false,
       });
+      console.log("[login] success, token received");
       setProToken(res.token);
       router.push("/dashboard");
-    } catch {
-      setErr("Identifiants invalides.");
+    } catch (err: any) {
+      console.error("[login] error:", err);
+      setErr(err?.message || "Identifiants invalides.");
     } finally {
       setLoading(false);
     }
