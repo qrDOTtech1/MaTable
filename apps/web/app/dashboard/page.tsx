@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
-import { api, API_URL } from "@/lib/api";
+import { api, API_URL, redirectOn401 } from "@/lib/api";
 
 type Order = {
   id: string;
@@ -28,7 +28,7 @@ export default function LivePage() {
   useEffect(() => {
     api<{ restaurant: { id: string } }>(`/api/pro/me`)
       .then((r) => setRestaurantId(r.restaurant.id))
-      .catch(() => (window.location.href = "/login"));
+      .catch(redirectOn401);
   }, []);
 
   useEffect(() => {

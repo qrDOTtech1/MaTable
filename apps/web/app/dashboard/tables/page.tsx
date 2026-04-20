@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
-import { api, API_URL } from "@/lib/api";
+import { api, API_URL, redirectOn401 } from "@/lib/api";
 
 type Server = { id: string; name: string };
 type Session = {
@@ -33,8 +33,8 @@ export default function TablesPage() {
   useEffect(() => {
     api<{ restaurant: { id: string } }>("/api/pro/me")
       .then((r) => setRestaurantId(r.restaurant.id))
-      .catch(() => (window.location.href = "/login"));
-    reload().catch(() => (window.location.href = "/login"));
+      .catch(redirectOn401);
+    reload().catch(redirectOn401);
     api<{ servers: Server[] }>("/api/pro/servers")
       .then((r) => setServers(r.servers.filter((s: any) => s.active)))
       .catch(() => {});

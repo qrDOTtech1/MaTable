@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, redirectOn401 } from "@/lib/api";
 
 const ALLERGENS = [
   "GLUTEN","CRUSTACEANS","EGGS","FISH","PEANUTS","SOYBEANS","MILK","NUTS",
@@ -48,7 +48,7 @@ export default function MenuPage() {
   };
 
   useEffect(() => {
-    reload().catch(() => (window.location.href = "/login"));
+    reload().catch(redirectOn401);
   }, []);
 
   const toggleAllergen = (a: string) =>

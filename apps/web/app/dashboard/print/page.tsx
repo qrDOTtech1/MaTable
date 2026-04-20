@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { jsPDF } from "jspdf";
-import { api } from "@/lib/api";
+import { api, redirectOn401 } from "@/lib/api";
 
 type Table = { id: string; number: number };
 
@@ -14,7 +14,7 @@ export default function PrintPage() {
     setOrigin(window.location.origin);
     api<{ tables: Table[] }>(`/api/pro/tables`)
       .then((r) => setTables(r.tables))
-      .catch(() => (window.location.href = "/login"));
+      .catch(redirectOn401);
   }, []);
 
   async function generate() {

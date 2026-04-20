@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, redirectOn401 } from "@/lib/api";
 
 type Server = {
   id: string;
@@ -18,7 +18,7 @@ export default function ServersPage() {
   useEffect(() => {
     api<{ servers: Server[] }>("/api/pro/servers")
       .then((r) => setServers(r.servers))
-      .catch(() => (window.location.href = "/login"));
+      .catch(redirectOn401);
   }, []);
 
   const add = async () => {

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, redirectOn401 } from "@/lib/api";
 
 type Restaurant = {
   id: string; name: string; slug?: string | null;
@@ -18,7 +18,7 @@ export default function SettingsPage() {
   useEffect(() => {
     api<{ restaurant: Restaurant }>("/api/pro/me")
       .then((r) => setForm(r.restaurant))
-      .catch(() => (window.location.href = "/login"));
+      .catch(redirectOn401);
   }, []);
 
   const save = async (e: React.FormEvent) => {
