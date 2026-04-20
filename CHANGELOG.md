@@ -33,6 +33,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 - **Page publique** `/r/[slug]` : détails resto (photo, description, adresse), menu public avec photos, note moyenne, derniers avis vérifiés.
 - **Référencement** : slug unique par restaurant, meta tags OpenGraph.
 - **URL propres `matable.pro/nomdurestaurant`** : route racine `app/[slug]/page.tsx` — chaque restaurateur obtient une URL courte sans préfixe `/r/`.
+- **Zoom images** : clic sur la photo d'un plat pour l'agrandir (lightbox).
 - **Redirection `/r/:slug` → `/:slug`** : rétrocompatibilité totale pour les anciens liens et QR codes imprimés.
 - **Page de réservation** `/:slug/reserve` : formulaire date + couverts + créneaux dynamiques, paiement arrhes Stripe, confirmation email.
 - **Dashboard layout** : lien "🌐 matable.pro/[slug]" en barre de nav + raccourci "Voir ma page publique ↗" en bas de sidebar.

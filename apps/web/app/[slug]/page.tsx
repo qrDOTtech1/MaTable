@@ -2,6 +2,7 @@ import { API_URL } from "@/lib/api";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { ImageLightbox } from "./ImageLightbox";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type OpeningHour = { dayOfWeek: number; openMin: number; closeMin: number; service?: string };
@@ -190,8 +191,11 @@ export default async function RestaurantPublicPage({ params }: { params: { slug:
                 {items.map((item) => (
                   <div key={item.id} className="card flex gap-4">
                     {item.imageUrl && (
-                      <img src={item.imageUrl} alt={item.name}
-                        className="w-24 h-24 rounded-xl object-cover shrink-0" />
+                      <ImageLightbox
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="w-24 h-24 rounded-xl object-cover"
+                      />
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
