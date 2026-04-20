@@ -9,6 +9,9 @@ type MenuItem = {
   description?: string | null;
   priceCents: number;
   category?: string | null;
+  imageUrl?: string | null;
+  allergens?: string[];
+  diets?: string[];
 };
 
 type TableInfo = {
@@ -22,6 +25,17 @@ type MyOrder = {
   status: "PENDING" | "COOKING" | "SERVED" | "PAID" | "CANCELLED";
   totalCents: number;
   createdAt: string;
+};
+
+const ALLERGEN_LABELS: Record<string, string> = {
+  GLUTEN:"Gluten",CRUSTACEANS:"Crustacés",EGGS:"Œufs",FISH:"Poisson",
+  PEANUTS:"Arachides",SOYBEANS:"Soja",MILK:"Lait",NUTS:"Fruits à coque",
+  CELERY:"Céleri",MUSTARD:"Moutarde",SESAME:"Sésame",SULPHITES:"Sulfites",
+  LUPIN:"Lupin",MOLLUSCS:"Mollusques",
+};
+const DIET_LABELS: Record<string, string> = {
+  VEGETARIAN:"🌿 Végé",VEGAN:"🌱 Vegan",GLUTEN_FREE:"Sans gluten",
+  LACTOSE_FREE:"Sans lactose",HALAL:"Halal",KOSHER:"Casher",SPICY:"🌶️ Épicé",
 };
 
 const tokenKey = (tableId: string) => `atable_session_${tableId}`;
@@ -56,7 +70,6 @@ export default function OrderPage() {
   async function loadMyOrders(token: string) {
     const r = await api<{ orders: MyOrder[] }>(`/api/orders/mine`, {
       token,
-      // Session token is not a pro token.
       pro: false,
     });
     setMyOrders(r.orders);
@@ -151,7 +164,6 @@ export default function OrderPage() {
     const token = localStorage.getItem(tokenKey(tableUuid));
     if (!token) return;
     try {
-      // Session-level checkout: pays everything not yet paid for the table.
       const res = await api<{ url: string }>(`/api/stripe/checkout`, {
         method: "POST",
         token,
@@ -190,7 +202,7 @@ export default function OrderPage() {
 
       {lastOrderId && !paid && (
         <div className="card bg-amber-50 border-amber-200 mb-4">
-          <p className="font-medium">Commande envoyée en cuisine.</p>
+          <p className="font-medium">Commande envoyée en cuisine. 🍽️</p>
         </div>
       )}
 
@@ -214,20 +226,17 @@ export default function OrderPage() {
             <button
               className="btn-primary"
               onClick={async () => {
-                // Make it visible to the resto, then redirect to Stripe.
-                try {
-                  await requestBill("CARD");
-                } catch {}
+                try { await requestBill("CARD"); } catch {}
                 await payBill();
               }}
             >
-              Carte
+              💳 Carte
             </button>
             <button className="btn-ghost" onClick={() => requestBill("COUNTER")}>
-              Caisse
+              🏪 Caisse
             </button>
             <button className="btn-ghost" onClick={() => requestBill("CASH")}>
-              Espèces
+              💵 Espèces
             </button>
           </div>
         </div>
@@ -235,23 +244,70 @@ export default function OrderPage() {
 
       {Object.entries(byCat).map(([cat, items]) => (
         <section key={cat} className="mb-6">
-          <h2 className="text-lg font-semibold mb-2">{cat}</h2>
-          <div className="space-y-2">
+          <h2 className="text-lg font-semibold mb-3 pb-1 border-b border-slate-100">{cat}</h2>
+          <div className="space-y-3">
             {items.map((m) => (
-              <div key={m.id} className="card flex items-center justify-between">
-                <div>
-                  <div className="font-medium">{m.name}</div>
-                  {m.description && (
-                    <div className="text-sm text-slate-500">{m.description}</div>
-                  )}
-                  <div className="text-sm mt-1">
-                    {(m.priceCents / 100).toFixed(2)} €
+              <div key={m.id} className="card flex gap-3 items-start">
+                {/* Photo */}
+                {m.imageUrl && (
+                  <img
+                    src={m.imageUrl}
+                    alt={m.name}
+                    className="w-20 h-20 rounded-lg object-cover shrink-0"
+                  />
+                )}
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-medium leading-tight">{m.name}</div>
+                    <div className="text-sm font-bold text-brand shrink-0">
+                      {(m.priceCents / 100).toFixed(2)} €
+                    </div>
                   </div>
+
+                  {m.description && (
+                    <div className="text-xs text-slate-500 mt-0.5 line-clamp-2">{m.description}</div>
+                  )}
+
+                  {/* Diets */}
+                  {m.diets && m.diets.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {m.diets.map((d) => (
+                        <span key={d} className="text-[10px] px-1.5 py-0.5 bg-green-50 text-green-700 rounded border border-green-100">
+                          {DIET_LABELS[d] ?? d}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Allergens */}
+                  {m.allergens && m.allergens.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {m.allergens.map((a) => (
+                        <span key={a} className="text-[10px] px-1.5 py-0.5 bg-red-50 text-red-600 rounded border border-red-100">
+                          ⚠️ {ALLERGEN_LABELS[a] ?? a}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <button className="btn-ghost w-9 h-9 !p-0" onClick={() => inc(m.id, -1)}>−</button>
-                  <span className="w-6 text-center">{cart[m.id] || 0}</span>
-                  <button className="btn-ghost w-9 h-9 !p-0" onClick={() => inc(m.id, 1)}>+</button>
+
+                {/* Qty controls */}
+                <div className="flex items-center gap-1.5 shrink-0 mt-1">
+                  <button
+                    className="btn-ghost w-8 h-8 !p-0 text-lg leading-none"
+                    onClick={() => inc(m.id, -1)}
+                    disabled={!cart[m.id]}
+                  >
+                    −
+                  </button>
+                  <span className="w-5 text-center text-sm font-medium">{cart[m.id] || 0}</span>
+                  <button
+                    className="btn-ghost w-8 h-8 !p-0 text-lg leading-none"
+                    onClick={() => inc(m.id, 1)}
+                  >
+                    +
+                  </button>
                 </div>
               </div>
             ))}
@@ -260,18 +316,18 @@ export default function OrderPage() {
       ))}
 
       {total > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 shadow-lg">
           <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm text-slate-500">Total</div>
+              <div className="text-xs text-slate-500">Total panier</div>
               <div className="text-xl font-bold">{(total / 100).toFixed(2)} €</div>
             </div>
             <button
-              className="btn-primary flex-1"
+              className="btn-primary flex-1 py-3"
               disabled={submitting}
               onClick={submitOrder}
             >
-              {submitting ? "Envoi…" : "Commander"}
+              {submitting ? "Envoi…" : "🛒 Commander"}
             </button>
           </div>
         </div>
