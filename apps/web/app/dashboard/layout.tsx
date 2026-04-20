@@ -51,7 +51,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               🌐 <span className="font-mono text-xs">matable.pro/{slug}</span>
             </a>
           )}
-          <button onClick={logout} className="text-sm text-slate-400 hover:text-slate-700 transition-colors">
+          <button
+            onClick={logout}
+            className="text-sm text-slate-400 hover:text-slate-700 transition-colors"
+          >
             Déconnexion
           </button>
         </div>
@@ -77,7 +80,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 py-1 mt-3">Config</p>
           <NavLink href="/dashboard/settings">⚙️ Paramètres</NavLink>
 
-          {/* Page publique shortcut */}
           {slug && (
             <div className="mt-4 px-3">
               <a
@@ -92,9 +94,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           )}
         </aside>
 
-        <main className="flex-1 p-6 overflow-auto">
-          {children}
-        </main>
+        <main className="flex-1 p-6 overflow-auto">{children}</main>
       </div>
     </div>
   );

@@ -56,6 +56,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 ### Ajouté
 - **Addition** : choix du mode de paiement côté client (Carte / Caisse / Espèces) + demande d'addition.
 - **Tables (dashboard)** : affichage "Addition demandée" et bouton "Encaisser" pour clôturer une session payée hors Stripe.
+- **Planning** : prise en compte des **horaires d'ouverture** (configurés dans les paramètres) pour désactiver la commande côté client quand le restaurant est fermé.
 
 ## [1.0.0] — 2026-04-19
 

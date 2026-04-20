@@ -16,9 +16,46 @@ type MenuItem = {
 
 type TableInfo = {
   table: { id: string; number: number };
-  restaurant: { id: string; name: string };
+  restaurant: {
+    id: string;
+    name: string;
+    openingHours?: unknown;
+    timezone?: string | null;
+  };
   menu: MenuItem[];
 };
+
+type DayHours = {
+  day: number;
+  closed: boolean;
+  open: string;
+  close: string;
+};
+
+function parseHm(s: string): number | null {
+  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(s);
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+function isOpenNow(openingHours: unknown): boolean | null {
+  if (!Array.isArray(openingHours)) return null;
+
+  // We use browser local time; timezone support can be added later.
+  const now = new Date();
+  const jsDay = now.getDay(); // 0=Sun..6=Sat
+  const day = jsDay === 0 ? 6 : jsDay - 1; // 0=Mon..6=Sun
+  const mins = now.getHours() * 60 + now.getMinutes();
+
+  const entry = (openingHours as any[]).find((x) => x?.day === day);
+  if (!entry) return null;
+  if (entry.closed) return false;
+  const o = parseHm(String(entry.open ?? ""));
+  const c = parseHm(String(entry.close ?? ""));
+  if (o == null || c == null) return null;
+  // Simple range; doesn't support overnight.
+  return mins >= o && mins <= c;
+}
 
 type MyOrder = {
   id: string;
@@ -181,6 +218,9 @@ export default function OrderPage() {
   const unpaidOrders = myOrders.filter((o) => o.status !== "PAID" && o.status !== "CANCELLED");
   const unpaidTotal = unpaidOrders.reduce((s, o) => s + o.totalCents, 0);
 
+  const openState = isOpenNow(info.restaurant.openingHours);
+  const restaurantClosed = openState === false;
+
   const byCat = info.menu.reduce<Record<string, MenuItem[]>>((acc, m) => {
     const k = m.category || "Autres";
     (acc[k] ||= []).push(m);
@@ -238,6 +278,15 @@ export default function OrderPage() {
             <button className="btn-ghost" onClick={() => requestBill("CASH")}>
               💵 Espèces
             </button>
+          </div>
+        </div>
+      )}
+
+      {!paid && restaurantClosed && (
+        <div className="card bg-slate-50 border-slate-200 mb-4">
+          <div className="font-medium">Restaurant fermé</div>
+          <div className="text-sm text-slate-600">
+            Les commandes sont désactivées en dehors des horaires d'ouverture.
           </div>
         </div>
       )}
@@ -324,7 +373,7 @@ export default function OrderPage() {
             </div>
             <button
               className="btn-primary flex-1 py-3"
-              disabled={submitting}
+              disabled={submitting || restaurantClosed}
               onClick={submitOrder}
             >
               {submitting ? "Envoi…" : "🛒 Commander"}
