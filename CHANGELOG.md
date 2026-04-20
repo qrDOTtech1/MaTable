@@ -19,6 +19,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 - **Serveurs** : attribution dynamique d'un serveur à la session, affichage en fin de repas, formulaire d'avis serveur.
 - **Pourboires** : slider % + montant fixe lors du checkout Stripe, inclus dans l'addition.
 - **Appel serveur** : bouton "Appeler un serveur" pendant la session, raison optionnelle, alerte temps réel dashboard.
+- **Horaires d'ouverture (commande)** : sur la page client `/order/[tableUuid]`, le bouton "Commander" est désactivé si le restaurant est fermé selon les horaires configurés.
 
 ### Ajouté — Lot C : Analytics & fiscalité
 - **Dashboard analytiques** : `/dashboard/analytics` — CA, nombre de commandes, ticket moyen, top 10 plats, CA par jour/serveur.
