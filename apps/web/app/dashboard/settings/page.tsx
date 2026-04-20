@@ -2,6 +2,9 @@
 import { useEffect, useState } from "react";
 import { api, redirectOn401 } from "@/lib/api";
 
+type OpeningHour = { id?: string; dayOfWeek: number; openMin: number; closeMin: number; service?: string };
+type Server = { id: string; name: string; schedules: ServerSchedule[] };
+type ServerSchedule = { id: string; dayOfWeek: number; openMin: number; closeMin: number };
 type Restaurant = {
   id: string; name: string; slug?: string | null;
   description?: string | null; address?: string | null; city?: string | null;
@@ -9,7 +12,11 @@ type Restaurant = {
   acceptReservations: boolean; depositPerGuestCents: number;
   avgPrepMinutes: number; reservationPolicy?: string | null;
   tipsEnabled: boolean; serviceCallEnabled: boolean; reviewsEnabled: boolean;
+  openingHours?: OpeningHour[];
 };
+
+const DAYS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+const minToTime = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
 export default function SettingsPage() {
   const [form, setForm] = useState<Partial<Restaurant>>({});
@@ -67,6 +74,43 @@ export default function SettingsPage() {
     (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((p) => ({ ...p, [field]: e.target.checked }));
 
+  const timeToMin = (t: string) => {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + m;
+  };
+
+  const saveOpeningHours = async () => {
+    try {
+      await api("/api/pro/restaurant", {
+        method: "PATCH",
+        body: JSON.stringify({ openingHours: form.openingHours ?? [] }),
+      });
+    } catch (err) {
+      console.error("Failed to save opening hours:", err);
+    }
+  };
+
+  const addOpeningHour = () => {
+    setForm(p => ({
+      ...p,
+      openingHours: [...(p.openingHours ?? []), { dayOfWeek: 1, openMin: 540, closeMin: 1380 }]
+    }));
+  };
+
+  const updateOpeningHour = (idx: number, field: keyof OpeningHour, value: number) => {
+    setForm(p => ({
+      ...p,
+      openingHours: (p.openingHours ?? []).map((h, i) => i === idx ? { ...h, [field]: value } : h)
+    }));
+  };
+
+  const removeOpeningHour = (idx: number) => {
+    setForm(p => ({
+      ...p,
+      openingHours: (p.openingHours ?? []).filter((_, i) => i !== idx)
+    }));
+  };
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Paramètres du restaurant</h1>
@@ -80,6 +124,51 @@ export default function SettingsPage() {
       )}
 
       <form onSubmit={save} className="space-y-6 max-w-2xl">
+        {/* Opening Hours */}
+        <div className="card space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-slate-700">Horaires d'ouverture</h2>
+            <button type="button" className="text-sm text-brand hover:underline" onClick={addOpeningHour}>
+              + Ajouter un créneau
+            </button>
+          </div>
+          {(form.openingHours ?? []).length === 0 ? (
+            <p className="text-sm text-slate-400">Aucun horaire défini. Cliquez pour ajouter.</p>
+          ) : (
+            <div className="space-y-2">
+              {(form.openingHours ?? []).map((h, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <select
+                    className="border rounded px-2 py-1"
+                    value={h.dayOfWeek}
+                    onChange={(e) => updateOpeningHour(idx, "dayOfWeek", parseInt(e.target.value))}
+                  >
+                    {DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+                  </select>
+                  <input
+                    type="time"
+                    className="border rounded px-2 py-1"
+                    value={minToTime(h.openMin)}
+                    onChange={(e) => updateOpeningHour(idx, "openMin", timeToMin(e.target.value))}
+                  />
+                  <span>-</span>
+                  <input
+                    type="time"
+                    className="border rounded px-2 py-1"
+                    value={minToTime(h.closeMin)}
+                    onChange={(e) => updateOpeningHour(idx, "closeMin", timeToMin(e.target.value))}
+                  />
+                  <button type="button" className="text-red-500 hover:text-red-700" onClick={() => removeOpeningHour(idx)}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+          {(form.openingHours ?? []).length > 0 && (
+            <button type="button" className="btn-secondary text-sm" onClick={saveOpeningHours}>
+              Sauvegarder les horaires
+            </button>
+          )}
+        </div>
 
         {/* Identité */}
         <div className="card space-y-3">
