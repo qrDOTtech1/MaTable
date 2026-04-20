@@ -1,4 +1,5 @@
 import Link from "next/link";
+import LandingTestimonials from "./LandingTestimonials";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -77,27 +78,6 @@ const steps = [
     icon: "🚀",
     title: "Les clients commandent",
     desc: "Scan → menu → panier → paiement. Vous recevez tout en direct. Vos serveurs s'occupent du service, pas des commandes.",
-  },
-];
-
-const testimonials = [
-  {
-    name: "Sophie M.",
-    role: "Propriétaire, Brasserie des Halles",
-    quote: "On a réduit le temps de prise de commande de 40 %. Les erreurs de commande ont disparu. Mes serveurs passent maintenant leur temps à accueillir, pas à griffonner.",
-    avatar: "SM",
-  },
-  {
-    name: "Karim B.",
-    role: "Chef, Restaurant L'Atelier",
-    quote: "En cuisine, on voit les commandes arriver en temps réel, classées par table. Plus besoin de déchiffrer les tickets papier. C'est calme, c'est propre.",
-    avatar: "KB",
-  },
-  {
-    name: "Lucie V.",
-    role: "Gérante, Café du Port",
-    quote: "La page vitrine avec les réservations, c'est ce qui m'a convaincue. J'ai une présence pro en ligne sans payer une agence web.",
-    avatar: "LV",
   },
 ];
 
@@ -375,34 +355,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Testimonials ── */}
-      <section className="py-24 px-6 border-t border-white/5">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl md:text-4xl font-extrabold mb-4">Ils ont digitalisé leur salle</h2>
-            <p className="text-white/40">Témoignages de restaurateurs qui ont adopté A table !</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((t) => (
-              <div key={t.name} className="bg-white/3 border border-white/8 rounded-2xl p-6">
-                <div className="flex text-brand text-lg mb-4">★★★★★</div>
-                <p className="text-sm text-white/60 leading-relaxed mb-6 italic">
-                  &ldquo;{t.quote}&rdquo;
-                </p>
-                <div className="flex items-center gap-3 border-t border-white/5 pt-4">
-                  <div className="w-10 h-10 rounded-full bg-brand/20 flex items-center justify-center text-brand font-bold text-sm">
-                    {t.avatar}
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-white">{t.name}</div>
-                    <div className="text-xs text-white/40">{t.role}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <LandingTestimonials />
 
       {/* ── Pricing teaser ── */}
       <section className="py-24 px-6 border-t border-white/5">

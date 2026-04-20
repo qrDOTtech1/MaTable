@@ -40,6 +40,9 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 - **Dashboard layout** : lien "🌐 matable.pro/[slug]" en barre de nav + raccourci "Voir ma page publique ↗" en bas de sidebar.
 - **Paramètres** : aperçu live de l'URL publique `matable.pro/[slug]` avec bouton copier, mis à jour au fil de la saisie du slug.
 
+### Ajouté — Lot G : Marketing
+- **Témoignages landing** : page dashboard `/dashboard/testimonial` pour soumettre un témoignage, affichage des témoignages publiés sur `/`.
+
 ### Ajouté — Lot F : Réservations
 - **Disponibilité slots** : calcul dynamique des créneaux libres en fonction des horaires, durée de repas, réservations existantes.
 - **Création réservation** : `/r/[slug]/reserve` — date, heure, nombre de couverts, paiement arrhes Stripe si requis.
@@ -50,6 +53,9 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 - **Menu dashboard** : enrichissement avec photos, allergens, diets, stock, modifier groups.
 - **Page client** : filtre allergènes/régimes, photos des plats, modifier picker, service call button, tips slider, reviews post-payment.
 - **Seed démo** : restaurant complet avec vitrine, horaires, 3 serveurs, 7 plats, allergens, stocks, modifiers.
+
+### Retiré
+- **Landing page** : suppression des témoignages hardcodés (faux avis) en attendant un système de témoignages/avis authentifiés.
 
 ## [Unreleased] — v1.0.x (socle billing antérieur)
 
