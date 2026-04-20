@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, setProToken } from "@/lib/api";
+import { api, setProToken, API_URL } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,8 +26,12 @@ export default function LoginPage() {
       setProToken(res.token);
       router.push("/dashboard");
     } catch (err: any) {
-      console.error("[login] error:", err);
-      setErr(err?.message || "Identifiants invalides.");
+      const msg = String(err?.message ?? err);
+      console.error("[login] error:", msg, "| API_URL:", API_URL);
+      if (msg.includes("401")) setErr("Identifiants invalides.");
+      else if (msg.includes("Failed to fetch") || msg.includes("fetch"))
+        setErr(`Impossible de contacter le serveur (${API_URL}). Vérifie la config.`);
+      else setErr(`Erreur: ${msg}`);
     } finally {
       setLoading(false);
     }
