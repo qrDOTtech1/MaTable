@@ -50,8 +50,8 @@ export const metadata: Metadata = {
     description: "Transformez votre restaurant avec la commande QR sans app. Essai gratuit 14 jours.",
     images: ["https://matable.pro/og-image.png"],
   },
-  canonical: "https://matable.pro",
   alternates: {
+    canonical: "https://matable.pro",
     languages: {
       en: "https://en.matable.pro",
       es: "https://es.matable.pro",
