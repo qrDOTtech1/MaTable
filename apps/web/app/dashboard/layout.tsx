@@ -66,7 +66,6 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
       items: [
         { href: "/dashboard/settings", icon: "⚙️", label: "Paramètres" },
         { href: "/dashboard/testimonial", icon: "💬", label: "Témoignage" },
-        { href: "/dashboard/admin", icon: "🛡️", label: "Admin Nova" },
       ],
     },
   ];
