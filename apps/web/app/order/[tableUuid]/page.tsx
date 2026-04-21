@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { io, Socket } from "socket.io-client";
 import { api, API_URL } from "@/lib/api";
 import { ImageLightbox } from "./ImageLightbox";
@@ -278,9 +279,17 @@ export default function OrderPage() {
 
   return (
     <main className="max-w-2xl mx-auto p-4 pb-40">
-      <header className="mb-6">
-        <p className="text-sm text-slate-500">{info.restaurant.name}</p>
-        <h1 className="text-3xl font-bold">Table {info.table.number}</h1>
+      <header className="mb-6 flex justify-between items-start">
+        <div>
+          <p className="text-sm text-slate-500">{info.restaurant.name}</p>
+          <h1 className="text-3xl font-bold">Table {info.table.number}</h1>
+        </div>
+        <Link 
+          href={`https://matable.app/onboarding?restaurantId=${info.restaurant.id}&tableId=${info.table.id}`}
+          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white px-4 py-2 rounded-full text-xs font-black shadow-lg hover:scale-105 transition-all"
+        >
+          ✨ SOCIAL
+        </Link>
       </header>
 
       {paid && (
