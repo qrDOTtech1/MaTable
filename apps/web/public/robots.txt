@@ -1,0 +1,53 @@
+# A table ! — robots.txt
+# https://matable.pro
+
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /register
+Allow: /[slug]
+Allow: /[slug]/reserve
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /api/
+Disallow: /auth/
+Disallow: /*.json$
+Disallow: /*.js$
+Disallow: /*.css$
+Disallow: /?*utm_*
+Disallow: /?*affiliate_*
+Disallow: /*?sort=
+Disallow: /*?page=*&page=
+
+# Sitemap
+Sitemap: https://matable.pro/sitemap.xml
+Sitemap: https://matable.pro/sitemap-restaurants.xml
+
+# Crawl delay
+Crawl-delay: 1
+
+# Rules for specific bots
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
+
+# Block bad bots
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /

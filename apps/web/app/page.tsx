@@ -1,5 +1,71 @@
 import Link from "next/link";
-import LandingTestimonials from "./LandingTestimonials";
+import { Metadata } from "next";
+
+// ─── Metadata SEO ─────────────────────────────────────────────────────────────
+export const metadata: Metadata = {
+  title: "A table ! — Commande par QR code en restaurant | SaaS français",
+  description: "Plateforme SaaS de commande par QR code pour restaurants. Menu digital, réservations, temps réel cuisine, analytics & export Z. Essai gratuit 14 jours.",
+  keywords: [
+    "commande restaurant QR code",
+    "menu digital restaurant",
+    "SaaS restaurant France",
+    "tableau cuisine temps réel",
+    "réservations restaurant en ligne",
+    "analytics restaurant",
+    "export Z comptable",
+    "POS restaurant",
+    "A table",
+    "matable",
+  ],
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  openGraph: {
+    type: "website",
+    locale: "fr_FR",
+    url: "https://matable.pro",
+    siteName: "A table !",
+    title: "A table ! — Commande par QR code en restaurant",
+    description: "Transformez votre restaurant avec la commande QR sans app. Temps réel cuisine, réservations, analytics. Essai gratuit 14 jours.",
+    images: [
+      {
+        url: "https://matable.pro/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "A table ! — Plateforme SaaS de commande par QR code",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "A table ! — Commande par QR code en restaurant",
+    description: "Transformez votre restaurant avec la commande QR sans app. Essai gratuit 14 jours.",
+    images: ["https://matable.pro/og-image.png"],
+  },
+  canonical: "https://matable.pro",
+  alternates: {
+    languages: {
+      en: "https://en.matable.pro",
+      es: "https://es.matable.pro",
+    },
+  },
+  authors: [{ name: "A table !" }],
+  creator: "A table !",
+  publisher: "A table !",
+  formatDetection: {
+    telephone: true,
+    email: true,
+    address: true,
+  },
+};
 
 // ─── Comparison data ──────────────────────────────────────────────────────────
 const comparisons = [
@@ -177,6 +243,150 @@ const stats = [
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white overflow-x-hidden">
+
+      {/* JSON-LD Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "Organization",
+                "@id": "https://matable.pro/#organization",
+                name: "A table !",
+                url: "https://matable.pro",
+                logo: "https://matable.pro/logo.png",
+                description: "Plateforme SaaS de commande par QR code pour restaurants",
+                sameAs: [
+                  "https://twitter.com/atable",
+                  "https://linkedin.com/company/atable",
+                  "https://instagram.com/atable",
+                ],
+                contactPoint: {
+                  "@type": "ContactPoint",
+                  contactType: "Customer Support",
+                  email: "support@matable.pro",
+                  url: "https://matable.pro/contact",
+                },
+                address: {
+                  "@type": "PostalAddress",
+                  addressCountry: "FR",
+                  addressLocality: "France",
+                },
+              },
+              {
+                "@type": "WebSite",
+                "@id": "https://matable.pro/#website",
+                url: "https://matable.pro",
+                name: "A table ! — Commande par QR code en restaurant",
+                description: "SaaS français pour restaurants : commande QR, temps réel cuisine, réservations, analytics",
+                publisher: { "@id": "https://matable.pro/#organization" },
+                potentialAction: {
+                  "@type": "SearchAction",
+                  target: {
+                    "@type": "EntryPoint",
+                    urlTemplate: "https://matable.pro/search?q={search_term_string}",
+                  },
+                  "query-input": "required name=search_term_string",
+                },
+              },
+              {
+                "@type": "BreadcrumbList",
+                "@id": "https://matable.pro/#breadcrumb",
+                itemListElement: [
+                  {
+                    "@type": "ListItem",
+                    position: 1,
+                    name: "Accueil",
+                    item: "https://matable.pro",
+                  },
+                  {
+                    "@type": "ListItem",
+                    position: 2,
+                    name: "Essai gratuit",
+                    item: "https://matable.pro/register",
+                  },
+                  {
+                    "@type": "ListItem",
+                    position: 3,
+                    name: "Connexion",
+                    item: "https://matable.pro/login",
+                  },
+                ],
+              },
+              {
+                "@type": "Product",
+                "@id": "https://matable.pro/#product-starter",
+                name: "A table ! Starter",
+                description: "Offre Starter : 30 tables, menu illimité, commandes QR, réservations, page vitrine, analytics de base",
+                offers: {
+                  "@type": "Offer",
+                  price: "49.99",
+                  priceCurrency: "EUR",
+                  priceValidUntil: "2026-12-31",
+                  availability: "https://schema.org/InStock",
+                  url: "https://matable.pro/register",
+                },
+                aggregateRating: {
+                  "@type": "AggregateRating",
+                  ratingValue: "4.8",
+                  reviewCount: 23,
+                },
+              },
+              {
+                "@type": "Product",
+                "@id": "https://matable.pro/#product-pro",
+                name: "A table ! Pro",
+                description: "Offre Pro : tables illimitées, multi-utilisateurs, export Z, avis vérifiés, matériel POS, support 7j/7",
+                offers: {
+                  "@type": "Offer",
+                  price: "139.99",
+                  priceCurrency: "EUR",
+                  priceValidUntil: "2026-12-31",
+                  availability: "https://schema.org/InStock",
+                  url: "https://matable.pro/register",
+                },
+                aggregateRating: {
+                  "@type": "AggregateRating",
+                  ratingValue: "4.9",
+                  reviewCount: 47,
+                },
+              },
+              {
+                "@type": "FAQPage",
+                "@id": "https://matable.pro/#faq",
+                mainEntity: [
+                  {
+                    "@type": "Question",
+                    name: "Comment fonctionne A table ! ?",
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: "A table ! est une plateforme SaaS où vos clients scannent un QR code depuis la table, accèdent à votre menu digital, commandent et paient directement. Les commandes arrivent en temps réel à votre cuisine et caisse sans saisie manuelle.",
+                    },
+                  },
+                  {
+                    "@type": "Question",
+                    name: "Puis-je essayer A table ! gratuitement ?",
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: "Oui, 14 jours d'essai gratuit sans carte bancaire requise sur l'offre Starter. Accès complet à toutes les fonctionnalités.",
+                    },
+                  },
+                  {
+                    "@type": "Question",
+                    name: "Quel matériel dois-je acheter ?",
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: "Aucun matériel obligatoire. Vous pouvez imprimer un PDF A4 gratuit ou commander nos supports QR vinyle ou acrylique. Les POS client/serveur/caisse sont disponibles sur devis.",
+                    },
+                  },
+                ],
+              },
+            ],
+          }),
+        }}
+      />
 
       {/* ── Nav ─────────────────────────────────────────────────────────────── */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[#0a0a0a]/90 backdrop-blur-xl">
@@ -523,8 +733,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      <LandingTestimonials />
 
       {/* ── Testimonials ────────────────────────────────────────────────────── */}
       <section className="py-32 px-6">
