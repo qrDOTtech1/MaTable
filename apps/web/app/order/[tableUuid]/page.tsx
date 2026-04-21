@@ -152,7 +152,24 @@ export default function OrderPage() {
     const socket: Socket = io(API_URL, { auth: { sessionId } });
     socket.on("order:updated", (data: { id: string; status: string }) => {
       setMyOrders(prev => prev.map(o => o.id === data.id ? { ...o, status: data.status as any } : o));
+      
+      // Notification visuelle et sonore quand le plat est SERVI
+      if (data.status === "SERVED") {
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("À table !", { body: "Votre commande est prête et arrive !" });
+        }
+        try {
+          const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+          audio.play();
+        } catch (e) {}
+      }
     });
+
+    // Demander la permission pour les notifications au montage
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+
     return () => void socket.disconnect();
   }, [sessionId]);
 
