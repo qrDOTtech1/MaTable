@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { Footer } from "@/components/layout/Footer";
 
 export const metadata: Metadata = {
   title: "A table !",
@@ -18,7 +19,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="alternate" hrefLang="en" href="https://en.matable.pro" />
         <link rel="alternate" hrefLang="es" href="https://es.matable.pro" />
       </head>
-      <body>{children}</body>
+      <body className="flex flex-col min-h-screen">
+        <div className="flex-1">{children}</div>
+        <Footer />
+      </body>
     </html>
   );
 }
