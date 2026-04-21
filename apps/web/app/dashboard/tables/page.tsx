@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import { api, API_URL, redirectOn401 } from "@/lib/api";
+import { DashboardLayout, Card, Button, Badge, Select } from "@/components/ui";
 
 type Server = { id: string; name: string };
 type Session = {
@@ -75,95 +76,117 @@ export default function TablesPage() {
     reload();
   };
 
+  const tabs = [
+    { id: "live", icon: "🔴", label: "Cuisine en direct", badge: 0 },
+    { id: "stats", icon: "📊", label: "Statistiques", badge: 0 },
+    { id: "commandes", icon: "📋", label: "Commandes", badge: 0 },
+    { id: "menu", icon: "🍽️", label: "Menu", badge: 0 },
+    { id: "serveurs", icon: "👥", label: "Serveurs", badge: 0 },
+    { id: "reservations", icon: "📅", label: "Réservations", badge: 0 },
+  ];
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Tables</h1>
-        <button className="btn-primary" onClick={add}>+ Ajouter une table</button>
-      </div>
+    <DashboardLayout
+      activeTabId="live"
+      tabs={tabs}
+      onTabChange={(tabId) => console.log("Tab changed to:", tabId)}
+      restaurantName="Restaurant"
+      title="Tables"
+    >
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-2">Tables</h2>
+            <p className="text-white/50">{tables.length} table(s) · {tables.filter((t) => t.sessions.find((s) => s.active)).length} occupée(s)</p>
+          </div>
+          <Button onClick={add}>+ Ajouter une table</Button>
+        </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-        {tables.map((t) => {
-          const session = t.sessions.find((s) => s.active);
-          const active = Boolean(session);
-          const billMode = session?.billPaymentMode ?? null;
-          const billRequested = Boolean(session?.billRequestedAt);
-          const currentServer = servers.find((s) => s.id === session?.serverId);
+        {/* Tables Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {tables.map((t) => {
+            const session = t.sessions.find((s) => s.active);
+            const active = Boolean(session);
+            const billMode = session?.billPaymentMode ?? null;
+            const billRequested = Boolean(session?.billRequestedAt);
 
-          return (
-            <div
-              key={t.id}
-              className={`card border-2 transition-colors ${
-                active ? "border-green-200" : "border-slate-100"
-              }`}
-            >
-              {/* En-tête */}
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <div className="text-xl font-bold">Table {t.number}</div>
-                  {t.label && <div className="text-xs text-slate-400">{t.label}</div>}
-                  <div className="text-xs text-slate-400">{t.seats} couvert{t.seats > 1 ? "s" : ""}</div>
-                </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  active ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
-                }`}>
-                  {active ? "Occupée" : "Libre"}
-                </span>
-              </div>
-
-              {/* Badges session */}
-              {active && (
-                <div className="space-y-1 mb-3">
-                  {billRequested && (
-                    <div className="text-xs px-2 py-1 rounded bg-amber-100 text-amber-800 font-medium">
-                      🧾 Addition demandée{billMode ? ` · ${billMode}` : ""}
-                      {session?.tipCents ? ` · +${(session.tipCents / 100).toFixed(2)} € pourboire` : ""}
-                    </div>
-                  )}
-
-                  {/* Attribution serveur */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500">Serveur :</span>
-                    <select
-                      className="flex-1 border rounded px-1.5 py-0.5 text-xs"
-                      value={session?.serverId ?? ""}
-                      onChange={(e) => assignServer(t.id, e.target.value || null)}
-                    >
-                      <option value="">— Non assigné</option>
-                      {servers.map((s) => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </select>
+            return (
+              <Card
+                key={t.id}
+                variant={active ? "cooking" : "default"}
+                hover
+              >
+                {/* Header */}
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <p className="text-xl font-bold text-white">Table {t.number}</p>
+                    {t.label && <p className="text-xs text-white/50">{t.label}</p>}
+                    <p className="text-xs text-white/50">👥 {t.seats} couvert{t.seats > 1 ? "s" : ""}</p>
                   </div>
+                  <Badge variant={active ? "cooking" : "default"}>
+                    {active ? "🔴 Occupée" : "⚪ Libre"}
+                  </Badge>
                 </div>
-              )}
 
-              {/* ID table (raccourci) */}
-              <div className="text-[10px] text-slate-300 break-all mb-3 font-mono">{t.id}</div>
+                {/* Session Status */}
+                {active && (
+                  <div className="mb-4 space-y-2 pb-4 border-b border-white/10">
+                    {billRequested && (
+                      <Badge variant="pending">
+                        🧾 Addition demandée
+                        {session?.tipCents ? ` +${(session.tipCents / 100).toFixed(2)}€` : ""}
+                      </Badge>
+                    )}
 
-              {/* Actions */}
-              <div className="space-y-1.5">
-                <button
-                  className="btn-ghost w-full text-sm"
-                  disabled={!active}
-                  onClick={() => reset(t.id)}
-                >
-                  🔄 Reset session
-                </button>
-
-                {active && billRequested && billMode !== "CARD" && (
-                  <button
-                    className="btn-primary w-full text-sm"
-                    onClick={() => settle(t.id)}
-                  >
-                    ✅ Encaisser
-                  </button>
+                    {/* Server Assignment */}
+                    <div className="space-y-1">
+                      <label className="text-xs text-white/50">Serveur</label>
+                      <select
+                        className="w-full px-2 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white text-xs focus:border-orange-500 focus:outline-none transition-all"
+                        value={session?.serverId ?? ""}
+                        onChange={(e) => assignServer(t.id, e.target.value || null)}
+                      >
+                        <option value="">— Non assigné</option>
+                        {servers.map((s) => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 )}
-              </div>
-            </div>
-          );
-        })}
+
+                {/* Table ID */}
+                <div className="text-[10px] text-white/30 break-all mb-4 font-mono">{t.id}</div>
+
+                {/* Actions */}
+                <div className="space-y-2">
+                  <Button
+                    variant={active ? "danger" : "secondary"}
+                    size="sm"
+                    fullWidth
+                    disabled={!active}
+                    onClick={() => reset(t.id)}
+                  >
+                    🔄 Reset session
+                  </Button>
+
+                  {active && billRequested && billMode !== "CARD" && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      fullWidth
+                      onClick={() => settle(t.id)}
+                    >
+                      ✅ Encaisser
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
