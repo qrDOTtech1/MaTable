@@ -5,6 +5,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+### Ajouté — Écosystème Social
+- **Intégration Ma Table (Social)** : Préparation du pont vers `matable.app` pour les fonctionnalités Business, Fun et Date.
+- **Onboarding Questionnaire** : Système de profilage IA pour maximiser la pertinence des mises en relation au restaurant.
+
 ## [Unreleased] — v1.2 (Nova IA & Real-time)
 
 ### Ajouté — Nova IA (Phase 3)
