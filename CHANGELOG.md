@@ -46,6 +46,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 - **Multi-langues menu** : champs de traduction par locale (EN, ES, IT, ...) au dashboard.
 
 ### Ajouté — Lot B : Expérience client
+- **Notifications temps réel (commande)** : le client reçoit désormais des mises à jour en direct via Socket.io lorsque le statut de sa commande change en cuisine (Reçue, En préparation, Servie).
 - **Avis plats** : formulaire post-paiement (1-5 étoiles + commentaire optionnel), moyenne affichée sur menu.
 - **Serveurs** : attribution dynamique d'un serveur à la session, affichage en fin de repas, formulaire d'avis serveur.
 - **Pourboires** : slider % + montant fixe lors du checkout Stripe, inclus dans l'addition.

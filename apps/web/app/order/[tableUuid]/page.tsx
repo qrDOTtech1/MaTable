@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { api } from "@/lib/api";
+import { io, Socket } from "socket.io-client";
+import { api, API_URL } from "@/lib/api";
 import { ImageLightbox } from "./ImageLightbox";
 import { NovaAssistant } from "@/components/ui";
 
@@ -77,7 +78,16 @@ const DIET_LABELS: Record<string, string> = {
   LACTOSE_FREE:"Sans lactose",HALAL:"Halal",KOSHER:"Casher",SPICY:"🌶️ Épicé",
 };
 
+const STATUS_LABELS: Record<MyOrder["status"], { label: string; color: string; icon: string }> = {
+  PENDING:   { label: "Reçue", color: "bg-amber-50 border-amber-100 text-amber-800", icon: "📩" },
+  COOKING:   { label: "En préparation", color: "bg-orange-50 border-orange-100 text-orange-800", icon: "👨‍🍳" },
+  SERVED:    { label: "Servie", color: "bg-emerald-50 border-emerald-100 text-emerald-800", icon: "✅" },
+  PAID:      { label: "Payée", color: "bg-blue-50 border-blue-100 text-blue-800", icon: "💳" },
+  CANCELLED: { label: "Annulée", color: "bg-red-50 border-red-100 text-red-800", icon: "❌" },
+};
+
 const tokenKey = (tableId: string) => `atable_session_${tableId}`;
+const sessionIdKey = (tableId: string) => `atable_session_id_${tableId}`;
 const cartKey  = (tableId: string) => `atable_cart_${tableId}`;
 
 export default function OrderPage() {
@@ -95,6 +105,10 @@ export default function OrderPage() {
   const [lastOrderId, setLastOrderId] = useState<string | null>(null);
   const [myOrders, setMyOrders] = useState<MyOrder[]>([]);
   const [billRequestedMode, setBillRequestedMode] = useState<"CARD" | "CASH" | "COUNTER" | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem(sessionIdKey(tableUuid));
+  });
 
   useEffect(() => {
     api<TableInfo>(`/api/tables/${tableUuid}`, { pro: false })
@@ -103,7 +117,10 @@ export default function OrderPage() {
   }, [tableUuid]);
 
   useEffect(() => {
-    if (paid) localStorage.removeItem(tokenKey(tableUuid));
+    if (paid) {
+      localStorage.removeItem(tokenKey(tableUuid));
+      localStorage.removeItem(sessionIdKey(tableUuid));
+    }
   }, [paid, tableUuid]);
 
   async function loadMyOrders(token: string) {
@@ -119,14 +136,25 @@ export default function OrderPage() {
     if (paid) {
       setMyOrders([]);
       setBillRequestedMode(null);
+      setSessionId(null);
       return;
     }
     const token = localStorage.getItem(tokenKey(tableUuid));
     if (!token) return;
     loadMyOrders(token).catch(() => {
       localStorage.removeItem(tokenKey(tableUuid));
+      localStorage.removeItem(sessionIdKey(tableUuid));
     });
   }, [paid, tableUuid]);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    const socket: Socket = io(API_URL, { auth: { sessionId } });
+    socket.on("order:updated", (data: { id: string; status: string }) => {
+      setMyOrders(prev => prev.map(o => o.id === data.id ? { ...o, status: data.status as any } : o));
+    });
+    return () => void socket.disconnect();
+  }, [sessionId]);
 
   const total = useMemo(() => {
     if (!info) return 0;
@@ -148,12 +176,14 @@ export default function OrderPage() {
   async function ensureToken(): Promise<string> {
     const cached = localStorage.getItem(tokenKey(tableUuid));
     if (cached) return cached;
-    const res = await api<{ token: string }>(`/api/session`, {
+    const res = await api<{ token: string; sessionId: string }>(`/api/session`, {
       method: "POST",
       pro: false,
       body: JSON.stringify({ tableId: tableUuid }),
     });
     localStorage.setItem(tokenKey(tableUuid), res.token);
+    localStorage.setItem(sessionIdKey(tableUuid), res.sessionId);
+    setSessionId(res.sessionId);
     return res.token;
   }
 
@@ -242,9 +272,20 @@ export default function OrderPage() {
         </div>
       )}
 
-      {lastOrderId && !paid && (
-        <div className="card bg-amber-50 border-amber-200 mb-4">
-          <p className="font-medium">Commande envoyée en cuisine. 🍽️</p>
+      {!paid && myOrders.length > 0 && (
+        <div className="space-y-2 mb-4">
+          {myOrders
+            .filter(o => o.status !== "PAID" && o.status !== "CANCELLED")
+            .map(o => (
+              <div key={o.id} className={`flex items-center justify-between px-4 py-2 rounded-lg border ${STATUS_LABELS[o.status].color}`}>
+                <div className="flex items-center gap-2">
+                  <span>{STATUS_LABELS[o.status].icon}</span>
+                  <span className="text-sm font-semibold">{STATUS_LABELS[o.status].label}</span>
+                </div>
+                <span className="text-xs opacity-60">{new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+            ))
+          }
         </div>
       )}
 
