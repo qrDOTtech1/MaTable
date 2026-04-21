@@ -1,0 +1,15 @@
+.git
+.gitignore
+.gitattributes
+README.md
+CHANGELOG.md
+*.md
+.env
+.env.*
+docs
+node_modules
+.next
+.turbo
+.DS_Store
+coverage
+*.log
