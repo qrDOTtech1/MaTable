@@ -35,13 +35,16 @@ export default function RegisterPage() {
     }
   }
 
+  const inputClass =
+    "w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder:text-white/30 focus:outline-none focus:border-orange-500 transition-colors";
+
   return (
     <main className="min-h-screen flex items-center justify-center p-4">
       <form onSubmit={onSubmit} className="card w-full max-w-sm space-y-4">
-        <h1 className="text-2xl font-bold text-brand">A table !</h1>
-        <p className="text-sm text-slate-500">Créer votre compte restaurateur</p>
+        <h1 className="text-2xl font-bold">Ma <span className="text-orange-500">Table</span></h1>
+        <p className="text-sm text-white/50">Créer votre compte restaurateur</p>
         <input
-          className="w-full border rounded-lg px-3 py-2"
+          className={inputClass}
           type="text"
           value={restaurantName}
           onChange={(e) => setRestaurantName(e.target.value)}
@@ -49,7 +52,7 @@ export default function RegisterPage() {
           required
         />
         <input
-          className="w-full border rounded-lg px-3 py-2"
+          className={inputClass}
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -57,7 +60,7 @@ export default function RegisterPage() {
           required
         />
         <input
-          className="w-full border rounded-lg px-3 py-2"
+          className={inputClass}
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -66,17 +69,17 @@ export default function RegisterPage() {
           required
         />
         {err && (
-          <div className="text-sm text-red-600 bg-red-50 p-2 rounded break-all">{err}</div>
+          <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 p-2 rounded break-all">{err}</div>
         )}
         <button className="btn-primary w-full" disabled={loading}>
           {loading ? "…" : "S'inscrire"}
         </button>
         {process.env.NODE_ENV !== "production" && (
-          <p className="text-xs text-slate-400 text-center">API: {API_URL}</p>
+          <p className="text-xs text-white/30 text-center">API: {API_URL}</p>
         )}
-        <p className="text-sm text-slate-600 text-center">
+        <p className="text-sm text-white/50 text-center">
           Déjà inscrit ?{" "}
-          <Link href="/login" className="text-brand font-medium">Se connecter</Link>
+          <Link href="/login" className="text-orange-400 font-medium hover:text-orange-300">Se connecter</Link>
         </p>
       </form>
     </main>

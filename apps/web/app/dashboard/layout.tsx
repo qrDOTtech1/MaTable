@@ -4,8 +4,12 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { clearProToken, api } from "@/lib/api";
 
+type Subscription = "STARTER" | "PRO" | "PRO_IA";
+
 export default function DashboardLayoutWrapper({ children }: { children: React.ReactNode }) {
   const [slug, setSlug] = useState<string | null>(null);
+  const [restaurantName, setRestaurantName] = useState<string>("");
+  const [subscription, setSubscription] = useState<Subscription>("STARTER");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const pathname = usePathname();
 
@@ -25,8 +29,12 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   };
 
   useEffect(() => {
-    api<{ restaurant: { slug?: string | null } }>("/api/pro/me")
-      .then((r) => setSlug(r.restaurant.slug ?? null))
+    api<{ restaurant: { slug?: string | null; name?: string; subscription?: Subscription } }>("/api/pro/me")
+      .then((r) => {
+        setSlug(r.restaurant.slug ?? null);
+        setRestaurantName(r.restaurant.name ?? "");
+        setSubscription(r.restaurant.subscription ?? "STARTER");
+      })
       .catch(() => {});
   }, []);
 
@@ -34,6 +42,8 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
     clearProToken();
     window.location.href = "/login";
   }
+
+  const hasIA = subscription === "PRO_IA";
 
   // Navigation menu
   const navSections = [
@@ -70,12 +80,30 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
     },
   ];
 
+  const iaSections = hasIA
+    ? [
+        {
+          label: "NOVA IA",
+          accent: true,
+          items: [
+            { href: "/dashboard/ia/chatbot", icon: "🤖", label: "Chatbot IA" },
+            { href: "/dashboard/ia/magic-scan", icon: "📷", label: "Magic Scan" },
+            { href: "/dashboard/ia/planning", icon: "🗓️", label: "Planning IA" },
+            { href: "/dashboard/ia/descriptions", icon: "✍️", label: "Descriptions IA" },
+          ],
+        },
+      ]
+    : [];
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
       {/* Top Bar */}
       <div className="h-16 border-b border-white/[0.06] bg-[#0a0a0a]/90 backdrop-blur-xl px-8 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-black">Ma <span className="text-orange-500">Table</span></h1>
+          {restaurantName && (
+            <span className="text-sm text-white/40">{restaurantName}</span>
+          )}
           {slug && (
             <a
               href={`/${slug}`}
@@ -90,12 +118,17 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
         </div>
 
         <div className="flex items-center gap-4">
+          {hasIA && (
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-xs text-purple-300 font-semibold">
+              ✨ Nova IA actif
+            </span>
+          )}
           <button
             onClick={toggleTheme}
             className="w-10 h-10 rounded-lg flex items-center justify-center transition-all bg-white/5 hover:bg-white/10 text-white/50 hover:text-white"
             title={theme === "dark" ? "Mode clair" : "Mode sombre"}
           >
-            {theme === "dark" ? "☀️" : "🌙"}
+            {theme === "dark" ? "🌙" : "☀️"}
           </button>
           <button
             onClick={logout}
@@ -135,10 +168,52 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
               })}
             </div>
           ))}
+
+          {/* Nova IA section — PRO_IA only */}
+          {iaSections.map((section) => (
+            <div key={section.label}>
+              <p className="text-[10px] font-bold text-purple-400/70 uppercase tracking-wider px-3 py-2 mt-4 flex items-center gap-1.5">
+                <span>✨</span> {section.label}
+              </p>
+              {section.items.map((item) => {
+                const isActive = pathname === item.href || pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`block px-3 py-2.5 rounded-lg text-sm transition-all ${
+                      isActive
+                        ? "bg-purple-500/20 border border-purple-500/30 text-purple-300 font-semibold"
+                        : "text-white/50 hover:text-purple-300/70 hover:bg-purple-500/5"
+                    }`}
+                  >
+                    <span className="mr-2">{item.icon}</span>
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
+
+          {/* Upgrade banner for non-IA plans */}
+          {!hasIA && (
+            <div className="mt-6 mx-1 p-3 rounded-xl bg-gradient-to-br from-purple-500/10 to-violet-500/5 border border-purple-500/20">
+              <p className="text-xs font-bold text-purple-300 mb-1">✨ Nova IA</p>
+              <p className="text-[11px] text-white/40 mb-2 leading-relaxed">
+                Chatbot, Magic Scan, Planning IA & descriptions auto.
+              </p>
+              <a
+                href="mailto:contact@novavivo.online?subject=Upgrade PRO_IA"
+                className="block text-center text-xs font-semibold py-1.5 px-3 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 transition-colors"
+              >
+                Découvrir →
+              </a>
+            </div>
+          )}
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto bg-[#0a0a0a]">
+        <main className="flex-1 overflow-auto bg-[#0a0a0a] p-8">
           {children}
         </main>
       </div>

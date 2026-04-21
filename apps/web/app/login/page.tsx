@@ -40,10 +40,10 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center p-4">
       <form onSubmit={onSubmit} className="card w-full max-w-sm space-y-4">
-        <h1 className="text-2xl font-bold text-brand">A table !</h1>
-        <p className="text-sm text-slate-500">Connexion restaurateur</p>
+        <h1 className="text-2xl font-bold">Ma <span className="text-orange-500">Table</span></h1>
+        <p className="text-sm text-white/50">Connexion restaurateur</p>
         <input
-          className="w-full border rounded-lg px-3 py-2"
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder:text-white/30 focus:outline-none focus:border-orange-500 transition-colors"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -51,18 +51,18 @@ export default function LoginPage() {
           required
         />
         <input
-          className="w-full border rounded-lg px-3 py-2"
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder:text-white/30 focus:outline-none focus:border-orange-500 transition-colors"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Mot de passe"
           required
         />
-        {err && <div className="text-sm text-red-600">{err}</div>}
+        {err && <div className="text-sm text-red-400">{err}</div>}
         <button className="btn-primary w-full" disabled={loading}>
           {loading ? "…" : "Se connecter"}
         </button>
-        <p className="text-sm text-slate-600 text-center">
+        <p className="text-sm text-white/50 text-center">
           Pas encore inscrit ?{" "}
           <Link href="/register" className="text-brand font-medium">Créer un compte</Link>
         </p>
