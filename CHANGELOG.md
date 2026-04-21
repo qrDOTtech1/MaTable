@@ -7,6 +7,37 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ## [Unreleased] — v1.1 + v1.2 (en cours)
 
+### Ajouté — Design System & UI Library (Phase 2)
+- **Design Tokens** : Centralized design system (`/lib/design-system.ts`) with:
+  - Colors (primary orange #f97316, backgrounds, text, borders, status)
+  - Spacing scale (xs-4xl)
+  - Typography (h1-h3, body, small, xs)
+  - Borders (radius, width)
+  - Shadows (sm-xl)
+  - Transitions (fast, normal, slow)
+  - Z-index layering
+  - Utility functions: `cn()`, `getStatusColor()`, `getStatusEmoji()`
+  
+- **UI Components Library** :
+  - `DashboardLayout`: Main layout wrapper with top bar, horizontal tabs, theme toggle
+  - `Card`: Base card component with variants (default, pending, cooking, served, stat)
+  - `Button`: Buttons with variants (primary, secondary, danger) and sizes (sm, md, lg)
+  - `Badge`: Status/count indicators with multiple color variants
+  - `StatCard`: KPI metrics display with trend indicators
+  - `OrderCard`: Individual order display with items, status, and amount
+  - `Input`: Form input field with label, error state, icon support
+  - `Modal`: Dialog component with header, content, and footer actions
+  - `Select`: Dropdown selector with custom options and icons
+  - `KanbanColumn`: Reusable column component for Kanban boards
+  - `Table`: Data table with customizable columns and row rendering
+  - Centralized exports via `components/ui/index.ts`
+
+- **Dashboard Pages** (using new components) :
+  - `/dashboard/live`: Kitchen live view with Kanban board (Pending → Cooking → Served columns)
+  - `/dashboard/stats`: Analytics dashboard with KPI cards and historical table
+  - `/dashboard/commandes`: Order history with status filtering and badges
+  - `/dashboard/serveurs`: Staff management with roster table and add member modal
+
 ### Ajouté — Lot A : Menu enrichi
 - **Photos plats** : champ `imageUrl`, affichage sur page client et vitrine publique.
 - **Allergènes & régimes** : filtre par allergène / régime alimentaire sur page client, badges affichés.
