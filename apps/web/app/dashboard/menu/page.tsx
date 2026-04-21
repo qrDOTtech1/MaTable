@@ -170,41 +170,41 @@ export default function MenuPage() {
   }, {});
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Menu</h1>
+    <div className="p-8">
+      <h1 className="text-2xl font-bold mb-6 text-white">Menu</h1>
 
       {/* ── Formulaire ajout / édition ── */}
       <form onSubmit={save} className="card mb-6 space-y-3">
-        <h2 className="font-semibold text-slate-700">{editId ? "✏️ Modifier le plat" : "➕ Nouveau plat"}</h2>
+        <h2 className="font-semibold text-white">{editId ? "✏️ Modifier le plat" : "➕ Nouveau plat"}</h2>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <div className="col-span-2">
             <label className="label">Nom *</label>
-            <input className="w-full border rounded px-2 py-1" value={form.name}
+            <input className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30" value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           </div>
           <div>
             <label className="label">Prix (€) *</label>
-            <input className="w-full border rounded px-2 py-1" type="number" step="0.01"
+            <input className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30" type="number" step="0.01"
               value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
           </div>
           <div>
             <label className="label">Catégorie</label>
-            <input className="w-full border rounded px-2 py-1" value={form.category}
+            <input className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30" value={form.category}
               onChange={(e) => setForm({ ...form, category: e.target.value })} />
           </div>
         </div>
 
         <div>
           <label className="label">Description</label>
-          <input className="w-full border rounded px-2 py-1" value={form.description}
+          <input className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30" value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })} />
         </div>
         <div>
           <label className="label">Photo</label>
           <div className="flex flex-col md:flex-row gap-2 md:items-center">
             <input
-              className="w-full"
+              className="w-full text-white"
               type="file"
               accept="image/*"
               disabled={uploading}
@@ -220,7 +220,7 @@ export default function MenuPage() {
               }}
             />
             <input
-              className="w-full border rounded px-2 py-1"
+              className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30"
               placeholder="https://... (optionnel)"
               value={form.imageUrl}
               onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
@@ -240,7 +240,7 @@ export default function MenuPage() {
             {ALLERGENS.map((a) => (
               <button key={a} type="button"
                 className={`px-2 py-0.5 rounded text-xs border transition-colors ${
-                  form.allergens.includes(a) ? "bg-red-100 border-red-400 text-red-700 font-semibold" : "border-slate-300 text-slate-500"
+                  form.allergens.includes(a) ? "bg-red-500/20 border-red-500/50 text-red-400 font-semibold" : "border-white/10 text-white/50"
                 }`}
                 onClick={() => toggleAllergen(a)}
               >{ALLERGEN_LABELS[a]}</button>
@@ -255,7 +255,7 @@ export default function MenuPage() {
             {DIETS.map((d) => (
               <button key={d} type="button"
                 className={`px-2 py-0.5 rounded text-xs border transition-colors ${
-                  form.diets.includes(d) ? "bg-green-100 border-green-400 text-green-700 font-semibold" : "border-slate-300 text-slate-500"
+                  form.diets.includes(d) ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400 font-semibold" : "border-white/10 text-white/50"
                 }`}
                 onClick={() => toggleDiet(d)}
               >{DIET_LABELS[d]}</button>
@@ -268,18 +268,18 @@ export default function MenuPage() {
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.stockEnabled}
               onChange={(e) => setForm({ ...form, stockEnabled: e.target.checked })} />
-            <span className="text-sm font-medium">Gestion du stock</span>
+            <span className="text-sm font-medium text-white">Gestion du stock</span>
           </label>
           {form.stockEnabled && (
             <>
               <div>
                 <label className="label">Quantité</label>
-                <input className="w-20 border rounded px-2 py-1" type="number" min="0"
+                <input className="w-20 border border-white/10 rounded px-2 py-1 bg-white/5 text-white placeholder-white/30" type="number" min="0"
                   value={form.stockQty} onChange={(e) => setForm({ ...form, stockQty: e.target.value })} />
               </div>
               <div>
                 <label className="label">Alerte si ≤</label>
-                <input className="w-16 border rounded px-2 py-1" type="number" min="0"
+                <input className="w-16 border border-white/10 rounded px-2 py-1 bg-white/5 text-white placeholder-white/30" type="number" min="0"
                   value={form.lowStockThreshold} onChange={(e) => setForm({ ...form, lowStockThreshold: e.target.value })} />
               </div>
             </>
@@ -295,7 +295,7 @@ export default function MenuPage() {
       {/* ── Liste des plats par catégorie ── */}
       {Object.entries(byCat).map(([cat, catItems]) => (
         <div key={cat} className="mb-6">
-          <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-2">{cat}</h2>
+          <h2 className="text-sm font-bold text-white/30 uppercase tracking-wide mb-2">{cat}</h2>
           <div className="space-y-2">
             {catItems.map((it) => {
               const lowStock = it.stockEnabled && it.stockQty != null && it.lowStockThreshold != null && it.stockQty <= it.lowStockThreshold;
@@ -310,22 +310,22 @@ export default function MenuPage() {
                           className="w-14 h-14 object-cover rounded shrink-0" />
                       )}
                       <div className="min-w-0">
-                        <div className="font-medium flex items-center gap-2 flex-wrap">
+                        <div className="font-medium flex items-center gap-2 flex-wrap text-white">
                           {it.name}
-                          {!it.available && <span className="text-xs px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded">Désactivé</span>}
-                          {outOfStock && <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-700 rounded font-semibold">Rupture</span>}
-                          {lowStock && !outOfStock && <span className="text-xs px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded">Stock faible ({it.stockQty})</span>}
+                          {!it.available && <span className="text-xs px-1.5 py-0.5 bg-white/10 text-white/50 rounded">Désactivé</span>}
+                          {outOfStock && <span className="text-xs px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded font-semibold">Rupture</span>}
+                          {lowStock && !outOfStock && <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded">Stock faible ({it.stockQty})</span>}
                           {it.stockEnabled && !lowStock && it.stockQty != null && (
-                            <span className="text-xs text-slate-400">📦 {it.stockQty}</span>
+                            <span className="text-xs text-white/50">📦 {it.stockQty}</span>
                           )}
                         </div>
-                        {it.description && <div className="text-xs text-slate-500 truncate">{it.description}</div>}
-                        <div className="text-sm font-semibold mt-0.5">{(it.priceCents / 100).toFixed(2)} €</div>
+                        {it.description && <div className="text-xs text-white/50 truncate">{it.description}</div>}
+                        <div className="text-sm font-semibold mt-0.5 text-white">{(it.priceCents / 100).toFixed(2)} €</div>
                         {/* Badges allergènes */}
                         {it.allergens?.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1">
                             {it.allergens.map((a) => (
-                              <span key={a} className="text-[10px] px-1.5 py-0.5 bg-red-50 text-red-600 rounded border border-red-200">
+                              <span key={a} className="text-[10px] px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded border border-red-500/30">
                                 ⚠️ {ALLERGEN_LABELS[a] ?? a}
                               </span>
                             ))}
@@ -334,7 +334,7 @@ export default function MenuPage() {
                         {it.diets?.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1">
                             {it.diets.map((d) => (
-                              <span key={d} className="text-[10px] px-1.5 py-0.5 bg-green-50 text-green-700 rounded border border-green-200">
+                              <span key={d} className="text-[10px] px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded border border-emerald-500/30">
                                 {DIET_LABELS[d] ?? d}
                               </span>
                             ))}
@@ -358,15 +358,15 @@ export default function MenuPage() {
 
                   {/* Panneau expansible : stock + modifiers */}
                   {expandedId === it.id && (
-                    <div className="mt-3 pt-3 border-t border-slate-100 space-y-4">
+                    <div className="mt-3 pt-3 border-t border-white/10 space-y-4">
                       {/* Réassort */}
                       {it.stockEnabled && (
                         <div>
-                          <p className="text-xs font-semibold text-slate-600 mb-1">📦 Réassort</p>
+                          <p className="text-xs font-semibold text-white/70 mb-1">📦 Réassort</p>
                           <div className="flex gap-2 items-center">
                             <input
                               type="number"
-                              className="w-20 border rounded px-2 py-1 text-sm"
+                              className="w-20 border border-white/10 rounded px-2 py-1 text-sm bg-white/5 text-white placeholder-white/30"
                               placeholder="Qté"
                               value={restockMap[it.id] ?? ""}
                               onChange={(e) => setRestockMap((m) => ({ ...m, [it.id]: e.target.value }))}
@@ -374,7 +374,7 @@ export default function MenuPage() {
                             <button className="btn-primary text-xs" onClick={() => restock(it.id)}>
                               Ajouter
                             </button>
-                            <span className="text-xs text-slate-500">
+                            <span className="text-xs text-white/50">
                               Stock actuel : <strong>{it.stockQty ?? "—"}</strong>
                             </span>
                           </div>
@@ -384,15 +384,15 @@ export default function MenuPage() {
                       {/* Modifier groups existants */}
                       {it.modifierGroups.length > 0 && (
                         <div>
-                          <p className="text-xs font-semibold text-slate-600 mb-1">⚙️ Variantes & options</p>
+                          <p className="text-xs font-semibold text-white/70 mb-1">⚙️ Variantes & options</p>
                           <div className="space-y-1">
                             {it.modifierGroups.map((g) => (
-                              <div key={g.id} className="bg-slate-50 rounded p-2 text-xs flex items-start justify-between gap-2">
+                              <div key={g.id} className="bg-white/5 rounded p-2 text-xs flex items-start justify-between gap-2 border border-white/10">
                                 <div>
-                                  <span className="font-semibold">{g.name}</span>
-                                  {g.required && <span className="ml-1 text-red-600">(obligatoire)</span>}
-                                  {g.multiple && <span className="ml-1 text-slate-400">(multiple)</span>}
-                                  <div className="mt-0.5 text-slate-600">
+                                  <span className="font-semibold text-white">{g.name}</span>
+                                  {g.required && <span className="ml-1 text-red-400">(obligatoire)</span>}
+                                  {g.multiple && <span className="ml-1 text-white/50">(multiple)</span>}
+                                  <div className="mt-0.5 text-white/50">
                                     {g.options.map((o) => (
                                       <span key={o.id} className="mr-2">
                                         {o.name}{o.priceDeltaCents !== 0 ? ` +${(o.priceDeltaCents/100).toFixed(2)}€` : ""}
@@ -400,7 +400,7 @@ export default function MenuPage() {
                                     ))}
                                   </div>
                                 </div>
-                                <button className="text-red-500 hover:text-red-700 shrink-0" onClick={() => delGroup(g.id)}>✕</button>
+                                <button className="text-red-400/50 hover:text-red-400 shrink-0" onClick={() => delGroup(g.id)}>✕</button>
                               </div>
                             ))}
                           </div>
@@ -409,14 +409,14 @@ export default function MenuPage() {
 
                       {/* Ajouter un groupe */}
                       <div>
-                        <p className="text-xs font-semibold text-slate-600 mb-1">➕ Ajouter un groupe d'options</p>
+                        <p className="text-xs font-semibold text-white/70 mb-1">➕ Ajouter un groupe d'options</p>
                         <div className="space-y-2">
-                          <input className="w-full border rounded px-2 py-1 text-xs"
+                          <input className="w-full border border-white/10 rounded px-2 py-1 text-xs bg-white/5 text-white placeholder-white/30"
                             placeholder='Nom du groupe ex: "Cuisson"'
                             value={newGroup.name}
                             onChange={(e) => setNewGroup({ ...newGroup, name: e.target.value })} />
                           <textarea
-                            className="w-full border rounded px-2 py-1 text-xs font-mono"
+                            className="w-full border border-white/10 rounded px-2 py-1 text-xs font-mono bg-white/5 text-white placeholder-white/30"
                             rows={3}
                             placeholder={"Une option par ligne :\nSaignant\nBacon | 1.50\nDouble steak | 4.00"}
                             value={newGroup.options}
