@@ -6,7 +6,23 @@ import { clearProToken, api } from "@/lib/api";
 
 export default function DashboardLayoutWrapper({ children }: { children: React.ReactNode }) {
   const [slug, setSlug] = useState<string | null>(null);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const pathname = usePathname();
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") as "dark" | "light" | null;
+    if (savedTheme) {
+      setTheme(savedTheme);
+      document.documentElement.classList.toggle("dark", savedTheme === "dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+    document.documentElement.classList.toggle("dark", newTheme === "dark");
+  };
 
   useEffect(() => {
     api<{ restaurant: { slug?: string | null } }>("/api/pro/me")
@@ -73,7 +89,14 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
           )}
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={toggleTheme}
+            className="w-10 h-10 rounded-lg flex items-center justify-center transition-all bg-white/5 hover:bg-white/10 text-white/50 hover:text-white"
+            title={theme === "dark" ? "Mode clair" : "Mode sombre"}
+          >
+            {theme === "dark" ? "☀️" : "🌙"}
+          </button>
           <button
             onClick={logout}
             className="text-sm text-white/50 hover:text-white transition-colors"
