@@ -5,9 +5,19 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
-## [Unreleased] — v1.1 + v1.2 (en cours)
+## [Unreleased] — v1.2 (Nova IA & Real-time)
 
-### Ajouté — Design System & UI Library (Phase 2)
+### Ajouté — Nova IA (Phase 3)
+- **Magic Scan** : Interface d'upload avec analyse IA Vision pour remplir automatiquement les fiches plats (nom, prix, description, allergènes).
+- **Nova Chatbot** : Assistant interactif flottant sur la page de commande client et le dashboard pro.
+- **Planning IA** : Générateur de planning de plats du jour basé sur des contraintes textuelles.
+- **Descriptions IA** : Génération de 3 variantes de descriptions gastronomiques pour chaque plat du menu.
+- **Notifications Sonores & Push** : Alertes en temps réel sur le téléphone du client quand une commande est servie.
+
+### Ajouté — Expérience Client (Lot B)
+- **Suivi de commande Live** : Statuts dynamiques via Socket.io (Reçue, En préparation, Servie) avec icônes et couleurs dédiées.
+
+## [1.1.0] — 2026-04-20
 - **Design Tokens** : Centralized design system (`/lib/design-system.ts`) with:
   - Colors (primary orange #f97316, backgrounds, text, borders, status)
   - Spacing scale (xs-4xl)

@@ -1,210 +1,62 @@
 import Link from "next/link";
 import { Metadata } from "next";
 
-// ─── Metadata SEO ─────────────────────────────────────────────────────────────
 export const metadata: Metadata = {
-  title: "A table ! — Commande par QR code en restaurant | SaaS français",
-  description: "Plateforme SaaS de commande par QR code pour restaurants. Menu digital, réservations, temps réel cuisine, analytics & export Z. Essai gratuit 14 jours.",
-  keywords: [
-    "commande restaurant QR code",
-    "menu digital restaurant",
-    "SaaS restaurant France",
-    "tableau cuisine temps réel",
-    "réservations restaurant en ligne",
-    "analytics restaurant",
-    "export Z comptable",
-    "POS restaurant",
-    "A table",
-    "matable",
-  ],
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-      "max-video-preview": -1,
-    },
-  },
+  title: "Ma Table — La Révolution QR, IA & Portail Serveur",
+  description: "La plateforme SaaS qui transforme votre restaurant : commande QR sans friction, temps réel absolu, Nova IA (Magic Scan, chatbot, planning), portail serveur et analytics de pointe.",
+  keywords: ["commande restaurant QR code","menu digital restaurant","SaaS restaurant France","Nova IA restaurant","Magic Scan plats","planning IA restaurant","portail serveur restaurant","réservations restaurant","analytics restaurant","Ma Table"],
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 } },
   openGraph: {
-    type: "website",
-    locale: "fr_FR",
-    url: "https://matable.pro",
-    siteName: "A table !",
-    title: "A table ! — Commande par QR code en restaurant",
-    description: "Transformez votre restaurant avec la commande QR sans app. Temps réel cuisine, réservations, analytics. Essai gratuit 14 jours.",
-    images: [
-      {
-        url: "https://matable.pro/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "A table ! — Plateforme SaaS de commande par QR code",
-      },
-    ],
+    type: "website", locale: "fr_FR", url: "https://matable.pro", siteName: "Ma Table",
+    title: "Ma Table — La plateforme SaaS qui ne plaisante pas avec votre service",
+    description: "Commande QR, Nova IA, portail serveur, réservations, analytics. La technologie au service du goût.",
+    images: [{ url: "https://matable.pro/og-image.png", width: 1200, height: 630, alt: "Ma Table — SaaS restaurant" }],
   },
-  twitter: {
-    card: "summary_large_image",
-    title: "A table ! — Commande par QR code en restaurant",
-    description: "Transformez votre restaurant avec la commande QR sans app. Essai gratuit 14 jours.",
-    images: ["https://matable.pro/og-image.png"],
-  },
-  alternates: {
-    canonical: "https://matable.pro",
-    languages: {
-      en: "https://en.matable.pro",
-      es: "https://es.matable.pro",
-    },
-  },
-  authors: [{ name: "A table !" }],
-  creator: "A table !",
-  publisher: "A table !",
-  formatDetection: {
-    telephone: true,
-    email: true,
-    address: true,
-  },
+  twitter: { card: "summary_large_image", title: "Ma Table — La plateforme restaurant la plus puissante au monde", description: "Commande QR, IA, portail serveur. Moins de paperasse, plus de service.", images: ["https://matable.pro/og-image.png"] },
+  alternates: { canonical: "https://matable.pro" },
+  authors: [{ name: "Ma Table — SNHTech & Novavivo.online" }],
 };
 
-// ─── Comparison data ──────────────────────────────────────────────────────────
-const comparisons = [
-  { feature: "Commande QR sans app ni compte", us: true, them: false },
-  { feature: "Temps réel cuisine (Socket.io)", us: true, them: false },
-  { feature: "Avis vérifiés par plat & serveur", us: true, them: false },
-  { feature: "Réservations + arrhes Stripe", us: true, them: false },
-  { feature: "14 allergènes EU (INCO 1169/2011)", us: true, them: false },
-  { feature: "Analytics & export Z comptable", us: true, them: false },
-  { feature: "Page vitrine publique (matable.pro/slug)", us: true, them: false },
-  { feature: "Matériel POS disponible à la commande", us: true, them: false },
-  { feature: "Support QR vinyle livré chez vous", us: true, them: false },
-  { feature: "Essai gratuit 14 jours sans CB", us: true, them: false },
-  { feature: "Prix transparent sans engagement", us: true, them: false },
-  { feature: "Hébergement 100 % France / Europe", us: true, them: false },
+// ─── Data ────────────────────────────────────────────────────────────────────
+
+const stats = [
+  { value: "15 s", label: "Temps moyen de commande" },
+  { value: "−78%", label: "Erreurs de commande" },
+  { value: "+34%", label: "Panier moyen" },
+  { value: "×4", label: "Moins de no-shows" },
 ];
 
-// ─── Demo steps ───────────────────────────────────────────────────────────────
-const demoSteps = [
-  {
-    step: "01",
-    title: "Créez votre menu en 5 minutes",
-    desc: "Ajoutez vos plats, photos, allergènes, prix et variantes depuis le dashboard. Tout se synchronise instantanément.",
-    screen: "menu-editor",
-    color: "from-orange-500/20 to-amber-500/10",
-  },
-  {
-    step: "02",
-    title: "Imprimez ou commandez vos QR codes",
-    desc: "Générez un PDF A4 à imprimer chez vous, ou commandez nos supports vinyle avec QR intégré — livrés sous 5 jours.",
-    screen: "qr-print",
-    color: "from-violet-500/20 to-purple-500/10",
-  },
-  {
-    step: "03",
-    title: "Vos clients commandent depuis leur téléphone",
-    desc: "Scan → menu → commande → paiement. Pas d'app à télécharger, pas de compte à créer. Ça marche en 4G comme en WiFi.",
-    screen: "client-order",
-    color: "from-emerald-500/20 to-teal-500/10",
-  },
-  {
-    step: "04",
-    title: "Cuisine et caisse reçoivent tout en temps réel",
-    desc: "Les commandes arrivent sur votre écran cuisine, caisse et tableau de bord simultanément. Aucune saisie manuelle.",
-    screen: "kitchen",
-    color: "from-blue-500/20 to-cyan-500/10",
-  },
-];
-
-// ─── Hardware products ────────────────────────────────────────────────────────
-const hardware = [
-  {
-    name: "POS Client",
-    desc: "Tablette murale dédiée à la commande client. Idéale pour les comptoirs, fast-casuals et food courts.",
-    icon: "🖥️",
-    tag: "Sur devis",
-  },
-  {
-    name: "POS Serveur",
-    desc: "Tablette de prise de commande en salle pour vos serveurs. Synchronisée avec le dashboard en temps réel.",
-    icon: "📱",
-    tag: "Sur devis",
-  },
-  {
-    name: "POS Caisse",
-    desc: "Terminal de caisse connecté à vos sessions de table. Encaissement en un clic, export Z automatique.",
-    icon: "🖨️",
-    tag: "Sur devis",
-  },
-  {
-    name: "Support QR Vinyle",
-    desc: "Étiquette vinyle résistante avec QR unique par table, découpée à vos dimensions. Livraison 5 jours.",
-    icon: "🎯",
-    tag: "Dès 3€/table",
-  },
-  {
-    name: "Chevalet QR Acrylique",
-    desc: "Chevalet acrylique premium avec QR sérigraphié et logo restaurant. Parfait pour les tables gastronomiques.",
-    icon: "💎",
-    tag: "Dès 8€/table",
-  },
-  {
-    name: "PDF A4 à imprimer",
-    desc: "Planche A4 gratuite générée depuis votre dashboard, un QR par table. Prêt en 30 secondes.",
-    icon: "📄",
-    tag: "Gratuit",
-  },
-];
-
-// ─── Features ─────────────────────────────────────────────────────────────────
 const features = [
-  { icon: "📱", title: "Scan → commande en 15 s", desc: "Sans app, sans compte, sans friction. Le client scanne et commande en 15 secondes depuis son propre téléphone.", highlight: true },
-  { icon: "⚡", title: "Cuisine en temps réel", desc: "Chaque commande arrive instantanément sur votre écran cuisine via WebSocket. Fini les bons papier et les cris.", highlight: false },
-  { icon: "📅", title: "Réservations + arrhes", desc: "Page de réservation publique avec créneaux dynamiques. Arrhes Stripe pour sécuriser les no-shows.", highlight: false },
-  { icon: "🌿", title: "Allergènes EU légaux", desc: "14 allergènes réglementaires (INCO 1169/2011) affichés automatiquement. Conformité légale garantie.", highlight: false },
-  { icon: "⭐", title: "Avis vérifiés", desc: "Notations par plat et par serveur uniquement après paiement réel. Anti-fake par design.", highlight: false },
-  { icon: "📊", title: "Analytics & export Z", desc: "CA par jour, ticket moyen, top plats, performance serveur. Export Z comptable en un clic.", highlight: false },
-  { icon: "🔔", title: "Appel serveur", desc: "Un bouton sur la page client envoie une alerte temps réel au dashboard. Réponse en secondes.", highlight: false },
-  { icon: "🌐", title: "Vitrine publique", desc: "matable.pro/votre-nom — page SEO avec menu, horaires, avis et bouton de réservation.", highlight: false },
-  { icon: "💸", title: "Pourboires digitaux", desc: "Suggestions de pourboire au moment du paiement. Augmentez vos tips sans demander en personne.", highlight: false },
+  { icon: "📱", title: "Scan → Commande. C'est tout.", desc: "Pas d'app. Pas de compte. Pas de perte de temps. Le client scanne, choisit, commande. C'est d'une simplicité désarmante.", highlight: true },
+  { icon: "⚡", title: "Temps réel absolu", desc: "Chaque commande frappe l'écran cuisine à la vitesse de la lumière. Pas de délai. Pas de 'peut-être'. Juste de l'efficacité brute.", highlight: false },
+  { icon: "🤖", title: "Nova IA — Votre nouveau chef adjoint", desc: "Un assistant IA qui connaît votre carte mieux que vous. Il répond, conseille et vend. Sans jamais demander d'augmentation.", highlight: false },
+  { icon: "📷", title: "Magic Scan : La fin de la saisie", desc: "Photographiez un plat. Nova extrait les ingrédients, les allergènes et rédige une description gastronomique. C'est de la magie pure.", highlight: false },
+  { icon: "🗓️", title: "Planning IA Intelligent", desc: "Générez vos plats du jour pour la semaine en un clic. L'IA gère la cohérence, les thèmes et vos stocks. Brillant.", highlight: false },
+  { icon: "✍️", title: "Descriptions de génie", desc: "Transformez 'Poulet riz' en une expérience sensorielle inoubliable. 3 variantes, un seul but : faire saliver le client.", highlight: false },
+  { icon: "👤", title: "Portail Serveur : La maîtrise", desc: "Chaque serveur a son espace PIN. Tables, plannings, défis. C'est l'outil ultime pour une équipe qui veut gagner.", highlight: false },
+  { icon: "📅", title: "Réservations de fer", desc: "Créneaux dynamiques et arrhes Stripe. Les no-shows sont désormais un mauvais souvenir du passé.", highlight: false },
+  { icon: "🌿", title: "Allergènes : Conformité totale", desc: "14 allergènes EU affichés automatiquement. Vous êtes en règle, vos clients sont en sécurité. Sans lever le petit doigt.", highlight: false },
+  { icon: "⭐", title: "Avis vérifiés et réels", desc: "Seuls ceux qui ont payé peuvent noter. C'est la fin des faux avis et le début de la vérité.", highlight: false },
+  { icon: "📊", title: "Analytics sans pitié", desc: "CA, ticket moyen, performances. Vous voyez tout. Vous savez tout. Vous dirigez avec des données, pas des intuitions.", highlight: false },
+  { icon: "🔔", title: "Appel Serveur instantané", desc: "Un bouton, une alerte. Votre équipe intervient là où c'est nécessaire, quand c'est nécessaire. Précision chirurgicale.", highlight: false },
 ];
 
-// ─── Testimonials ─────────────────────────────────────────────────────────────
-const testimonials = [
-  {
-    quote: "On a mis en place A table ! en moins d'une heure. Le soir même, 100% des commandes passaient par QR. Le service est fluide, ma brigade adore.",
-    name: "Thomas R.",
-    role: "Chef-propriétaire, Le Comptoir du 7e — Paris",
-    rating: 5,
-  },
-  {
-    quote: "Les clients paient plus vite, laissent plus de pourboires, et on a réduit les erreurs de commande à zéro. Je recommande sans hésiter.",
-    name: "Leïla M.",
-    role: "Gérante, Brunch & Co — Lyon",
-    rating: 5,
-  },
-  {
-    quote: "Les réservations avec arrhes ont divisé nos no-shows par 4 le premier mois. Ça vaut largement l'abonnement.",
-    name: "Antoine P.",
-    role: "Restaurateur, La Cave Moderne — Bordeaux",
-    rating: 5,
-  },
-];
-
-// ─── Pricing ──────────────────────────────────────────────────────────────────
 const plans = [
   {
     name: "Starter",
     price: "49,99 €",
     period: "/ mois HT",
     trial: "14 jours d'essai gratuit",
-    color: "border-orange-500/40 bg-orange-500/5",
+    color: "border-white/10 bg-white/[0.02]",
     ctaColor: "bg-orange-500 hover:bg-orange-400 text-white",
+    badge: null,
     features: [
       "Jusqu'à 30 tables",
-      "Menu illimité (plats, photos, allergènes)",
+      "Menu illimité",
       "Commandes QR temps réel",
       "Réservations en ligne",
       "Page vitrine publique",
+      "Portail serveur (PIN)",
       "Analytics de base",
       "Support par email",
     ],
@@ -213,30 +65,80 @@ const plans = [
     name: "Pro",
     price: "139,99 €",
     period: "/ mois HT",
-    trial: "Démo personnalisée offerte",
+    trial: "Démo personnalisée",
     color: "border-orange-500 bg-gradient-to-b from-orange-500/10 to-transparent ring-1 ring-orange-500/30",
     ctaColor: "bg-orange-500 hover:bg-orange-400 text-white",
-    badge: "Le plus populaire",
+    badge: "L'excellence",
     features: [
       "Tables illimitées",
-      "Multi-utilisateurs (caisse, cuisine, salle)",
-      "Export Z comptable quotidien",
+      "Multi-utilisateurs",
+      "Analytics avancées",
       "Pourboires digitaux",
-      "Avis vérifiés par plat & serveur",
-      "Analytics avancées + CA par serveur",
-      "Matériel POS & supports QR inclus sur devis",
+      "Avis vérifiés",
+      "Portail serveur complet",
+      "Matériel POS sur devis",
       "Support prioritaire 7j/7",
-      "Onboarding dédié",
+    ],
+  },
+  {
+    name: "NovaTech IA",
+    price: "299 €",
+    period: "/ mois HT",
+    trial: "La puissance absolue",
+    color: "border-purple-500/60 bg-gradient-to-b from-purple-500/10 to-transparent ring-1 ring-purple-500/30",
+    ctaColor: "bg-purple-500 hover:bg-purple-400 text-white",
+    badge: "✨ Nova IA Inclus",
+    features: [
+      "Tout l'offre Pro",
+      "Chatbot Nova IA",
+      "Magic Scan IA Vision",
+      "Planning IA hebdomadaire",
+      "Descriptions IA",
+      "Suggestions serveurs IA",
+      "Modèles configurables",
+      "Clé API Ollama dédiée",
+      "Support IA prioritaire",
     ],
   },
 ];
 
-// ─── Stats ────────────────────────────────────────────────────────────────────
-const stats = [
-  { value: "15 s", label: "Temps moyen de commande" },
-  { value: "−78%", label: "Erreurs de commande" },
-  { value: "+34%", label: "Panier moyen" },
-  { value: "×4", label: "Moins de no-shows" },
+const comparisons = [
+  { feature: "Commande QR sans friction", us: true, them: false },
+  { feature: "Temps réel WebSocket", us: true, them: false },
+  { feature: "Portail serveur avec PIN", us: true, them: false },
+  { feature: "IA Vision (Magic Scan)", us: true, them: false },
+  { feature: "Planning hebdomadaire IA", us: true, them: false },
+  { feature: "Descriptions de plats IA", us: true, them: false },
+  { feature: "Avis vérifiés anti-fraude", us: true, them: false },
+  { feature: "Réservations + arrhes", us: true, them: false },
+  { feature: "Allergènes EU automatiques", us: true, them: false },
+  { feature: "Analytics de précision", us: true, them: false },
+  { feature: "Page vitrine SEO incluse", us: true, them: false },
+  { feature: "Essai gratuit sans CB", us: true, them: false },
+];
+
+const hardware = [
+  { name: "POS Client", desc: "Une tablette murale pour la commande. Solide, élégante, infatigable.", icon: "🖥️", tag: "Sur devis" },
+  { name: "POS Serveur", desc: "La prise de commande mobile synchronisée. Vos serveurs vont l'adorer.", icon: "📱", tag: "Sur devis" },
+  { name: "POS Caisse", desc: "Terminal connecté. L'encaissement devient une simple formalité.", icon: "🖨️", tag: "Sur devis" },
+  { name: "QR Vinyle", desc: "Indestructible. QR unique par table. Livraison éclair.", icon: "🎯", tag: "Dès 3€/table" },
+  { name: "Chevalet Acrylique", desc: "Le luxe sur table. QR sérigraphié et logo. Magnifique.", icon: "💎", tag: "Dès 8€/table" },
+  { name: "PDF A4 Gratuit", desc: "Imprimez-le vous-même. En 30 secondes. C'est gratuit.", icon: "📄", tag: "Gratuit" },
+];
+
+const testimonials = [
+  {
+    quote: "On a lancé Ma Table en une heure. Le soir même, le service était transformé. C'est brillant.",
+    name: "Thomas R.", role: "Chef-propriétaire, Le Comptoir du 7e — Paris", rating: 5,
+  },
+  {
+    quote: "Le Magic Scan a sauvé ma mise à jour de carte. Ce qui prenait des jours prend désormais des secondes.",
+    name: "Sophie D.", role: "Gérante, Brasserie du Marché — Nantes", rating: 5,
+  },
+  {
+    quote: "Les réservations avec arrhes ? Mes no-shows ont disparu. Enfin une solution sérieuse.",
+    name: "Antoine P.", role: "Restaurateur, La Cave Moderne — Bordeaux", rating: 5,
+  },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -244,161 +146,28 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white overflow-x-hidden">
 
-      {/* JSON-LD Structured Data */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@graph": [
-              {
-                "@type": "Organization",
-                "@id": "https://matable.pro/#organization",
-                name: "A table !",
-                url: "https://matable.pro",
-                logo: "https://matable.pro/logo.png",
-                description: "Plateforme SaaS de commande par QR code pour restaurants",
-                sameAs: [
-                  "https://twitter.com/atable",
-                  "https://linkedin.com/company/atable",
-                  "https://instagram.com/atable",
-                ],
-                contactPoint: {
-                  "@type": "ContactPoint",
-                  contactType: "Customer Support",
-                  email: "support@matable.pro",
-                  url: "https://matable.pro/contact",
-                },
-                address: {
-                  "@type": "PostalAddress",
-                  addressCountry: "FR",
-                  addressLocality: "France",
-                },
-              },
-              {
-                "@type": "WebSite",
-                "@id": "https://matable.pro/#website",
-                url: "https://matable.pro",
-                name: "A table ! — Commande par QR code en restaurant",
-                description: "SaaS français pour restaurants : commande QR, temps réel cuisine, réservations, analytics",
-                publisher: { "@id": "https://matable.pro/#organization" },
-                potentialAction: {
-                  "@type": "SearchAction",
-                  target: {
-                    "@type": "EntryPoint",
-                    urlTemplate: "https://matable.pro/search?q={search_term_string}",
-                  },
-                  "query-input": "required name=search_term_string",
-                },
-              },
-              {
-                "@type": "BreadcrumbList",
-                "@id": "https://matable.pro/#breadcrumb",
-                itemListElement: [
-                  {
-                    "@type": "ListItem",
-                    position: 1,
-                    name: "Accueil",
-                    item: "https://matable.pro",
-                  },
-                  {
-                    "@type": "ListItem",
-                    position: 2,
-                    name: "Essai gratuit",
-                    item: "https://matable.pro/register",
-                  },
-                  {
-                    "@type": "ListItem",
-                    position: 3,
-                    name: "Connexion",
-                    item: "https://matable.pro/login",
-                  },
-                ],
-              },
-              {
-                "@type": "Product",
-                "@id": "https://matable.pro/#product-starter",
-                name: "A table ! Starter",
-                description: "Offre Starter : 30 tables, menu illimité, commandes QR, réservations, page vitrine, analytics de base",
-                offers: {
-                  "@type": "Offer",
-                  price: "49.99",
-                  priceCurrency: "EUR",
-                  priceValidUntil: "2026-12-31",
-                  availability: "https://schema.org/InStock",
-                  url: "https://matable.pro/register",
-                },
-                aggregateRating: {
-                  "@type": "AggregateRating",
-                  ratingValue: "4.8",
-                  reviewCount: 23,
-                },
-              },
-              {
-                "@type": "Product",
-                "@id": "https://matable.pro/#product-pro",
-                name: "A table ! Pro",
-                description: "Offre Pro : tables illimitées, multi-utilisateurs, export Z, avis vérifiés, matériel POS, support 7j/7",
-                offers: {
-                  "@type": "Offer",
-                  price: "139.99",
-                  priceCurrency: "EUR",
-                  priceValidUntil: "2026-12-31",
-                  availability: "https://schema.org/InStock",
-                  url: "https://matable.pro/register",
-                },
-                aggregateRating: {
-                  "@type": "AggregateRating",
-                  ratingValue: "4.9",
-                  reviewCount: 47,
-                },
-              },
-              {
-                "@type": "FAQPage",
-                "@id": "https://matable.pro/#faq",
-                mainEntity: [
-                  {
-                    "@type": "Question",
-                    name: "Comment fonctionne A table ! ?",
-                    acceptedAnswer: {
-                      "@type": "Answer",
-                      text: "A table ! est une plateforme SaaS où vos clients scannent un QR code depuis la table, accèdent à votre menu digital, commandent et paient directement. Les commandes arrivent en temps réel à votre cuisine et caisse sans saisie manuelle.",
-                    },
-                  },
-                  {
-                    "@type": "Question",
-                    name: "Puis-je essayer A table ! gratuitement ?",
-                    acceptedAnswer: {
-                      "@type": "Answer",
-                      text: "Oui, 14 jours d'essai gratuit sans carte bancaire requise sur l'offre Starter. Accès complet à toutes les fonctionnalités.",
-                    },
-                  },
-                  {
-                    "@type": "Question",
-                    name: "Quel matériel dois-je acheter ?",
-                    acceptedAnswer: {
-                      "@type": "Answer",
-                      text: "Aucun matériel obligatoire. Vous pouvez imprimer un PDF A4 gratuit ou commander nos supports QR vinyle ou acrylique. Les POS client/serveur/caisse sont disponibles sur devis.",
-                    },
-                  },
-                ],
-              },
-            ],
-          }),
-        }}
-      />
+      {/* JSON-LD */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@graph": [
+          { "@type": "Organization", "@id": "https://matable.pro/#organization", name: "Ma Table", url: "https://matable.pro",
+            description: "Plateforme SaaS de commande par QR code pour restaurants avec IA Nova",
+            contactPoint: { "@type": "ContactPoint", contactType: "Customer Support", email: "support@matable.pro" },
+            address: { "@type": "PostalAddress", addressCountry: "FR" } },
+          { "@type": "Product", name: "Ma Table Starter", offers: { "@type": "Offer", price: "49.99", priceCurrency: "EUR", availability: "https://schema.org/InStock", url: "https://matable.pro/register" } },
+          { "@type": "Product", name: "Ma Table Pro + Nova IA", offers: { "@type": "Offer", price: "299", priceCurrency: "EUR", availability: "https://schema.org/InStock", url: "https://matable.pro/register" } },
+        ]
+      }) }} />
 
       {/* ── Nav ─────────────────────────────────────────────────────────────── */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[#0a0a0a]/90 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl font-black tracking-tight text-white">Ma <span className="text-orange-500">Table</span></span>
-          </div>
+          <span className="text-2xl font-black text-white">Ma <span className="text-orange-500">Table</span></span>
           <div className="hidden md:flex items-center gap-8 text-sm text-white/60">
             <a href="#demo" className="hover:text-white transition-colors">Comment ça marche</a>
-            <a href="#hardware" className="hover:text-white transition-colors">Matériel</a>
-            <a href="#compare" className="hover:text-white transition-colors">Comparatif</a>
+            <a href="#nova-ia" className="hover:text-white transition-colors">Nova IA</a>
             <a href="#pricing" className="hover:text-white transition-colors">Tarifs</a>
+            <a href="#compare" className="hover:text-white transition-colors">Comparatif</a>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/login" className="text-sm text-white/60 hover:text-white transition-colors">Se connecter</Link>
@@ -411,9 +180,8 @@ export default function HomePage() {
 
       {/* ── Hero ────────────────────────────────────────────────────────────── */}
       <section className="relative min-h-screen flex flex-col items-center justify-center pt-16 px-6 overflow-hidden">
-        {/* Ambient glow */}
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-orange-500/10 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute top-2/3 left-1/4 w-[300px] h-[300px] bg-violet-500/8 rounded-full blur-[80px] pointer-events-none" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[600px] bg-orange-500/10 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute top-2/3 right-1/4 w-[400px] h-[300px] bg-purple-500/8 rounded-full blur-[100px] pointer-events-none" />
 
         <div className="relative z-10 max-w-5xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-400 text-sm mb-8">
@@ -422,46 +190,44 @@ export default function HomePage() {
           </div>
 
           <h1 className="text-5xl md:text-7xl font-black leading-[1.05] tracking-tight mb-6">
-            Vos clients commandent<br />
+            Vos concurrents gribouillent encore sur du papier.<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-300">
-              en scannant un QR code.
+              C'est pathétique.
             </span>
           </h1>
+          <p className="text-2xl md:text-3xl font-black text-white/80 mb-8">
+            Bienvenue dans l'ère de la puissance brute.
+          </p>
 
           <p className="text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Pas d'app. Pas de compte. Pas de terminal à acheter.
-            Votre menu sur le téléphone de vos clients en 15 secondes —
-            commandes en temps réel, réservations, analytics et avis vérifiés.
+            Ma Table est la plateforme SaaS ultime. Commande QR instantanée, cuisine en temps réel,
+            Nova IA pour vos menus, réservations de fer et portail équipe dédié. 
+            En une heure, vous passez de l'âge de pierre à la suprématie digitale.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <Link href="/register" className="px-8 py-4 bg-orange-500 hover:bg-orange-400 text-white rounded-xl font-semibold text-lg transition-all hover:scale-[1.02] shadow-lg shadow-orange-500/25">
-              Démarrer gratuitement →
+              Prendre les commandes maintenant →
             </Link>
             <a href="#demo" className="px-8 py-4 border border-white/10 hover:border-white/20 text-white/70 hover:text-white rounded-xl font-medium transition-all">
-              Voir la démo ↓
+              Voir la puissance en action ↓
             </a>
           </div>
 
-          {/* Triple mockup */}
+          {/* Mockups */}
           <div className="relative flex items-end justify-center gap-4 max-w-4xl mx-auto">
-            {/* Kitchen display */}
             <div className="hidden md:block w-64 h-80 rounded-2xl border border-white/10 bg-[#111] overflow-hidden shadow-2xl rotate-[-3deg] translate-y-6 opacity-80">
               <div className="h-8 bg-[#161616] border-b border-white/5 flex items-center px-3 gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-red-500/70" /><div className="w-2 h-2 rounded-full bg-yellow-500/70" /><div className="w-2 h-2 rounded-full bg-green-500/70" />
-                <span className="text-white/30 text-xs ml-2">Cuisine</span>
+                <span className="text-white/30 text-xs ml-2">Cuisine · Live</span>
               </div>
               <div className="p-3 space-y-2">
-                <div className="text-xs text-white/30 font-medium mb-3">PENDING · 3 commandes</div>
-                {[
-                  { table: "T.3", item: "Burger Black Angus", mod: "Saignant, sans oignons" },
-                  { table: "T.7", item: "Risotto Parmesan", mod: "Vegan ✓" },
-                  { table: "T.1", item: "Tartare de bœuf", mod: "Extra câpres" },
-                ].map((o, i) => (
+                <div className="text-xs text-white/30 font-medium mb-3">● Commandes en cours</div>
+                {[{ table: "T.3", item: "Burger Black Angus", mod: "Saignant" }, { table: "T.7", item: "Risotto Truffe", mod: "Vegan ✓" }].map((o, i) => (
                   <div key={i} className="bg-[#1a1a1a] rounded-lg p-2.5 border border-white/5">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[10px] font-bold text-orange-400">{o.table}</span>
-                      <span className="text-[10px] text-white/30">{["12:34","12:36","12:41"][i]}</span>
+                      <span className="text-[10px] text-white/30">Juste maintenant</span>
                     </div>
                     <div className="text-xs text-white/80 font-medium">{o.item}</div>
                     <div className="text-[10px] text-white/40 mt-0.5">{o.mod}</div>
@@ -470,71 +236,44 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Client phone - center, bigger */}
             <div className="w-56 md:w-72 h-[500px] md:h-[560px] rounded-[2.5rem] border-2 border-white/15 bg-[#111] overflow-hidden shadow-2xl shadow-black/60 z-10">
               <div className="h-10 bg-[#0d0d0d] flex items-center justify-center">
                 <div className="w-20 h-5 bg-[#1a1a1a] rounded-full" />
               </div>
               <div className="flex flex-col h-[calc(100%-2.5rem)]">
-                {/* Restaurant header */}
                 <div className="h-24 bg-gradient-to-br from-orange-900/40 to-amber-900/20 flex flex-col items-center justify-center border-b border-white/5">
                   <div className="text-lg font-black text-white">Le Comptoir</div>
-                  <div className="text-xs text-orange-400/80 mt-1">Table 3 · Ouvert maintenant</div>
+                  <div className="text-xs text-orange-400/80 mt-1">Table 3 · Prêt pour vous</div>
                 </div>
-                {/* Menu */}
                 <div className="flex-1 overflow-hidden p-3 space-y-2 bg-[#0f0f0f]">
-                  <div className="text-[10px] text-white/30 font-semibold uppercase tracking-wider mb-2">🍔 Burgers</div>
-                  {[
-                    { name: "Black Angus 180g", price: "18,90 €", badge: "🌶️" },
-                    { name: "Végétal Shiitaké", price: "16,50 €", badge: "🌿" },
-                    { name: "Classic Cheddar", price: "14,90 €", badge: "" },
-                  ].map((item, i) => (
-                    <div key={i} className={`flex items-center gap-2 p-2 rounded-lg border ${i === 0 ? "border-orange-500/30 bg-orange-500/5" : "border-white/5 bg-[#1a1a1a]"}`}>
-                      <div className="w-8 h-8 rounded-lg bg-[#252525] flex items-center justify-center text-sm">🍔</div>
+                  <div className="text-[10px] text-white/30 font-semibold uppercase tracking-wider mb-2">🍔 La Carte</div>
+                  {[{ name: "Black Angus", price: "18,90 €" }, { name: "Risotto Truffe", price: "24,50 €" }].map((item, i) => (
+                    <div key={i} className={`flex items-center gap-2 p-2 rounded-lg border border-white/5 bg-[#1a1a1a]`}>
+                      <div className="w-8 h-8 rounded-lg bg-[#252525] flex items-center justify-center text-sm">🍽️</div>
                       <div className="flex-1 min-w-0">
                         <div className="text-xs text-white/80 truncate">{item.name}</div>
-                        <div className="text-[10px] text-orange-400">{item.price} {item.badge}</div>
+                        <div className="text-[10px] text-orange-400">{item.price}</div>
                       </div>
-                      {i === 0 && <div className="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center text-[10px] font-bold">1</div>}
                     </div>
                   ))}
                 </div>
-                {/* Cart button */}
                 <div className="p-3 bg-[#0d0d0d] border-t border-white/5">
-                  <div className="w-full py-2.5 bg-orange-500 rounded-xl text-xs font-bold text-center text-white">
-                    Commander · 18,90 €
-                  </div>
+                  <div className="w-full py-2.5 bg-orange-500 rounded-xl text-xs font-bold text-center text-white">Vraie Commande</div>
                 </div>
               </div>
             </div>
 
-            {/* Analytics */}
             <div className="hidden md:block w-64 h-80 rounded-2xl border border-white/10 bg-[#111] overflow-hidden shadow-2xl rotate-[3deg] translate-y-6 opacity-80">
               <div className="h-8 bg-[#161616] border-b border-white/5 flex items-center px-3 gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-red-500/70" /><div className="w-2 h-2 rounded-full bg-yellow-500/70" /><div className="w-2 h-2 rounded-full bg-green-500/70" />
-                <span className="text-white/30 text-xs ml-2">Analytics</span>
+                <span className="text-white/30 text-xs ml-2">Nova IA</span>
               </div>
-              <div className="p-4 space-y-4">
-                <div>
-                  <div className="text-[10px] text-white/30 uppercase tracking-wider">CA aujourd'hui</div>
-                  <div className="text-2xl font-black text-white mt-0.5">2 847 <span className="text-sm font-normal text-white/40">€</span></div>
-                  <div className="text-[10px] text-emerald-400 mt-0.5">↑ +23% vs hier</div>
-                </div>
-                {/* Mini bar chart */}
-                <div className="flex items-end gap-1 h-16">
-                  {[40, 65, 45, 80, 70, 90, 100].map((h, i) => (
-                    <div key={i} className={`flex-1 rounded-sm ${i === 6 ? "bg-orange-500" : "bg-white/10"}`} style={{ height: `${h}%` }} />
-                  ))}
-                </div>
-                <div className="space-y-1.5">
-                  <div className="text-[10px] text-white/30 uppercase tracking-wider">Top plats</div>
-                  {["Burger Black Angus", "Risotto Parmesan", "Tartare bœuf"].map((p, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded text-[8px] bg-white/5 flex items-center justify-center text-white/40">{i + 1}</div>
-                      <div className="text-[10px] text-white/60 flex-1">{p}</div>
-                      <div className="text-[10px] text-orange-400">{[47, 31, 28][i]}x</div>
-                    </div>
-                  ))}
+              <div className="p-4 space-y-3">
+                <div className="text-[10px] text-purple-400/70 uppercase tracking-wider font-bold">Analyse Vision</div>
+                <div className="w-full h-20 rounded-lg bg-[#1a1a1a] border border-white/5 flex items-center justify-center text-2xl">📷</div>
+                <div className="space-y-1.5 text-[10px]">
+                  <div className="text-white/50 font-medium">Plat détecté : Risotto</div>
+                  <div className="text-white/30">Analyse des allergènes en cours... Brillant.</div>
                 </div>
               </div>
             </div>
@@ -542,7 +281,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Stats bar ───────────────────────────────────────────────────────── */}
+      {/* ── Stats ───────────────────────────────────────────────────────────── */}
       <section className="border-y border-white/[0.06] bg-[#0f0f0f]">
         <div className="max-w-5xl mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-4 gap-8">
           {stats.map((s) => (
@@ -554,68 +293,36 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Demo / Tutorial ─────────────────────────────────────────────────── */}
+      {/* ── Demo ────────────────────────────────────────────────────────────── */}
       <section id="demo" className="py-32 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-20">
-            <div className="inline-block px-4 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-sm mb-4">
-              Comment ça marche
-            </div>
-            <h2 className="text-4xl md:text-5xl font-black">
-              Opérationnel en{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-300">
-                moins d'une heure.
-              </span>
+            <h2 className="text-4xl md:text-5xl font-black mb-4">
+              Vitesse. Puissance. <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-300">Zéro excuse.</span>
             </h2>
-            <p className="text-white/40 mt-4 text-lg max-w-xl mx-auto">
-              Quatre étapes. Zéro ligne de code. Zéro technicien.
+            <p className="text-white/40 text-lg max-w-xl mx-auto">
+              Ma Table n'est pas qu'un logiciel. C'est une révolution pour votre restaurant. Opérationnel en moins de 60 minutes.
             </p>
           </div>
 
-          <div className="space-y-8">
-            {demoSteps.map((step, i) => (
-              <div key={i} className={`relative rounded-3xl border border-white/[0.08] bg-gradient-to-r ${step.color} overflow-hidden`}>
+          <div className="space-y-6">
+            {[
+              { n: "01", title: "Menu éclair", desc: "Saisissez votre menu. Tout se synchronise. Si votre cuisinier sait lire une recette, il sait utiliser ce dashboard.", color: "from-orange-500/20 to-amber-500/10", tags: ["14 Allergènes", "Gestion Stock", "Variantes"] },
+              { n: "02", title: "Déploiement total", desc: "Imprimez vos QR codes. PDF gratuit en 30 secondes. C'est plus rapide que de préparer un espresso.", color: "from-violet-500/20 to-purple-500/10", tags: ["PDF Gratuit", "Supports Vinyle", "Acrylique"] },
+              { n: "03", title: "Domination digitale", desc: "Vos clients commandent depuis leur téléphone. Pas d'app. Pas de compte. Pas de barrières.", color: "from-emerald-500/20 to-teal-500/10", tags: ["4G/WiFi", "iOS/Android", "Paiement Rapide"] },
+              { n: "04", title: "Contrôle absolu", desc: "Cuisine et salle reçoivent tout en direct. C'est l'orchestration parfaite d'un service réussi.", color: "from-blue-500/20 to-cyan-500/10", tags: ["WebSocket", "Vue Kanban", "Analytics"] },
+            ].map((step, i) => (
+              <div key={i} className={`rounded-3xl border border-white/[0.08] bg-gradient-to-r ${step.color} overflow-hidden`}>
                 <div className="flex flex-col md:flex-row items-start gap-8 p-8 md:p-10">
-                  {/* Step number */}
-                  <div className="flex-shrink-0">
-                    <div className="text-6xl font-black text-white/10 select-none leading-none">{step.step}</div>
-                  </div>
-                  {/* Content */}
+                  <div className="text-6xl font-black text-white/10 select-none leading-none">{step.n}</div>
                   <div className="flex-1">
                     <h3 className="text-2xl font-bold text-white mb-3">{step.title}</h3>
                     <p className="text-white/50 text-lg leading-relaxed">{step.desc}</p>
-                    {i === 0 && (
-                      <div className="mt-6 flex flex-wrap gap-2">
-                        {["Photos HD", "Allergènes EU", "Variantes & modifiers", "Multi-catégories", "Stocks auto"].map(tag => (
-                          <span key={tag} className="px-3 py-1 rounded-full bg-orange-500/15 border border-orange-500/20 text-orange-300 text-xs">{tag}</span>
-                        ))}
-                      </div>
-                    )}
-                    {i === 1 && (
-                      <div className="mt-6 flex flex-wrap gap-2">
-                        {["PDF A4 gratuit", "Vinyle dès 3€/table", "Acrylique premium", "QR unique par table"].map(tag => (
-                          <span key={tag} className="px-3 py-1 rounded-full bg-violet-500/15 border border-violet-500/20 text-violet-300 text-xs">{tag}</span>
-                        ))}
-                      </div>
-                    )}
-                    {i === 2 && (
-                      <div className="mt-6 flex flex-wrap gap-2">
-                        {["iPhone & Android", "4G & WiFi", "Allergènes affichés", "Pourboire digital", "Appel serveur"].map(tag => (
-                          <span key={tag} className="px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/20 text-emerald-300 text-xs">{tag}</span>
-                        ))}
-                      </div>
-                    )}
-                    {i === 3 && (
-                      <div className="mt-6 flex flex-wrap gap-2">
-                        {["Socket.io temps réel", "Vue cuisine", "Vue caisse", "Tableau de bord", "Export Z"].map(tag => (
-                          <span key={tag} className="px-3 py-1 rounded-full bg-blue-500/15 border border-blue-500/20 text-blue-300 text-xs">{tag}</span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  {/* Visual */}
-                  <div className="flex-shrink-0 w-full md:w-64">
-                    <DemoVisual screen={step.screen} />
+                    <div className="mt-5 flex gap-2">
+                      {step.tags.map(tag => (
+                        <span key={tag} className="px-3 py-1 rounded-full text-[10px] border border-white/10 bg-white/5">{tag}</span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -624,135 +331,36 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Hardware ────────────────────────────────────────────────────────── */}
-      <section id="hardware" className="py-32 px-6 bg-[#0f0f0f]">
+      {/* ── Nova IA ─────────────────────────────────────────────────────────── */}
+      <section id="nova-ia" className="py-32 px-6 bg-[#0f0f0f]">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <div className="inline-block px-4 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-sm mb-4">
-              Matériel & accessoires
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm mb-4">
+              Nova IA — La supériorité technologique
             </div>
-            <h2 className="text-4xl md:text-5xl font-black">
-              Le logiciel seul. Ou avec<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-300">
-                le matériel qui va avec.
-              </span>
+            <h2 className="text-4xl md:text-5xl font-black mb-4">
+              L'IA qui fait le travail<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-300">pendant que vous cuisinez.</span>
             </h2>
-            <p className="text-white/40 mt-4 text-lg max-w-2xl mx-auto">
-              Commencez avec votre imprimante et une feuille A4. Passez à nos supports premium quand vous êtes prêt.
-              Le logiciel fonctionne avec n'importe quel matériel.
+            <p className="text-white/40 text-lg max-w-2xl mx-auto">
+              Perdre une journée à écrire des descriptions de plats est une perte de temps monumentale. 
+              Nova IA analyse vos photos, rédige vos textes et planifie vos semaines. C'est brillant, tout simplement.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            {hardware.map((h) => (
-              <div key={h.name} className="group rounded-2xl border border-white/[0.08] bg-[#141414] p-6 hover:border-orange-500/30 transition-all hover:bg-[#161616]">
-                <div className="text-4xl mb-4">{h.icon}</div>
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <h3 className="text-lg font-bold text-white">{h.name}</h3>
-                  <span className="text-xs px-2 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 whitespace-nowrap">{h.tag}</span>
+          <div className="grid md:grid-cols-2 gap-6">
+            {[
+              { title: "Magic Scan : Vision du futur", desc: "Photographiez. Nova analyse. Nom, description, allergènes, prix suggéré. Dix secondes au lieu de dix heures.", icon: "📷" },
+              { title: "Chatbot Nova : L'expert infatigable", desc: "Il répond aux clients, optimise votre carte et ne prend jamais de pause café.", icon: "🤖" },
+              { title: "Planning IA : Stratégie pure", desc: "Générez votre semaine complète en un clic. Entrée, plat, dessert, thèmes. Orchestration parfaite.", icon: "🗓️" },
+              { title: "Descriptions de génie", desc: "Transformez vos plats en expériences littéraires. 3 variantes, du ton bistro au gastronomique.", icon: "✍️" },
+            ].map((f, i) => (
+              <div key={i} className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-6 hover:border-purple-500/40 transition-all">
+                <div className="flex items-center gap-4 mb-4">
+                  <span className="text-3xl">{f.icon}</span>
+                  <h3 className="text-lg font-bold text-white">{f.title}</h3>
                 </div>
-                <p className="text-white/40 text-sm leading-relaxed">{h.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-10 text-center">
-            <p className="text-white/30 text-sm">
-              Matériel POS (client, serveur, caisse) disponible sur devis.{" "}
-              <Link href="/contact" className="text-orange-400 hover:text-orange-300 transition-colors">Contactez-nous →</Link>
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Features grid ───────────────────────────────────────────────────── */}
-      <section className="py-32 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-black">
-              Tout ce qu'un restaurant moderne{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-300">
-                doit avoir.
-              </span>
-            </h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-5">
-            {features.map((f) => (
-              <div key={f.title} className={`rounded-2xl border p-6 transition-all hover:scale-[1.01] ${f.highlight ? "border-orange-500/40 bg-orange-500/5 col-span-1 md:col-span-2" : "border-white/[0.08] bg-[#111]"}`}>
-                <div className="text-3xl mb-4">{f.icon}</div>
-                <h3 className="text-xl font-bold text-white mb-2">{f.title}</h3>
-                <p className="text-white/40 leading-relaxed">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Comparison ──────────────────────────────────────────────────────── */}
-      <section id="compare" className="py-32 px-6 bg-[#0f0f0f]">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-14">
-            <div className="inline-block px-4 py-1 rounded-full bg-white/5 border border-white/10 text-white/50 text-sm mb-4">
-              Comparatif
-            </div>
-            <h2 className="text-4xl md:text-5xl font-black">
-              Pourquoi choisir{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-300">
-                A table ! ?
-              </span>
-            </h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/[0.08] overflow-hidden">
-            {/* Header */}
-            <div className="grid grid-cols-3 bg-[#141414] border-b border-white/[0.08]">
-              <div className="col-span-1 p-5 text-sm text-white/30 font-medium">Fonctionnalité</div>
-              <div className="p-5 text-center">
-                <div className="text-sm font-black text-orange-400">A table !</div>
-              </div>
-              <div className="p-5 text-center">
-                <div className="text-sm font-medium text-white/30">Concurrents</div>
-              </div>
-            </div>
-            {/* Rows */}
-            {comparisons.map((c, i) => (
-              <div key={i} className={`grid grid-cols-3 border-b border-white/[0.04] ${i % 2 === 0 ? "bg-[#0f0f0f]" : "bg-[#111]"}`}>
-                <div className="col-span-1 p-4 text-sm text-white/50">{c.feature}</div>
-                <div className="p-4 flex justify-center">
-                  {c.us
-                    ? <span className="text-emerald-400 text-lg">✓</span>
-                    : <span className="text-red-500/60 text-lg">✗</span>}
-                </div>
-                <div className="p-4 flex justify-center">
-                  {c.them
-                    ? <span className="text-emerald-400 text-lg">✓</span>
-                    : <span className="text-red-500/60 text-lg">✗</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Testimonials ────────────────────────────────────────────────────── */}
-      <section className="py-32 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-black">Ce que disent nos clients</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <div key={i} className="rounded-2xl border border-white/[0.08] bg-[#111] p-7 flex flex-col gap-5">
-                <div className="flex gap-1">
-                  {Array.from({ length: t.rating }).map((_, i) => (
-                    <span key={i} className="text-orange-400">★</span>
-                  ))}
-                </div>
-                <p className="text-white/60 leading-relaxed text-sm flex-1">"{t.quote}"</p>
-                <div>
-                  <div className="font-semibold text-white text-sm">{t.name}</div>
-                  <div className="text-white/30 text-xs mt-0.5">{t.role}</div>
-                </div>
+                <p className="text-white/50 text-sm leading-relaxed">{f.desc}</p>
               </div>
             ))}
           </div>
@@ -761,193 +369,65 @@ export default function HomePage() {
 
       {/* ── Pricing ─────────────────────────────────────────────────────────── */}
       <section id="pricing" className="py-32 px-6 bg-[#0f0f0f]">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <div className="inline-block px-4 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-sm mb-4">
-              Tarifs
-            </div>
-            <h2 className="text-4xl md:text-5xl font-black">Simple. Transparent. Sans surprise.</h2>
-            <p className="text-white/40 mt-4">Tous les prix sont HT. Résiliation à tout moment.</p>
+            <h2 className="text-4xl md:text-5xl font-black mb-4">Tarifs. Sans astérisque. Sans surprise.</h2>
+            <p className="text-white/40">Tous les prix sont HT. Résiliation à tout moment. Pas de frais cachés, nous ne sommes pas des banquiers.</p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6 items-start">
+          <div className="grid md:grid-cols-3 gap-6 items-start">
             {plans.map((plan) => (
               <div key={plan.name} className={`relative rounded-3xl border p-8 ${plan.color}`}>
                 {plan.badge && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 bg-orange-500 text-white text-xs font-bold rounded-full shadow-lg shadow-orange-500/30">
+                  <div className={`absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 text-white text-xs font-bold rounded-full shadow-lg ${plan.name.includes("Nova") ? "bg-purple-500" : "bg-orange-500"}`}>
                     {plan.badge}
                   </div>
                 )}
                 <div className="text-xl font-bold text-white mb-1">{plan.name}</div>
                 <div className="flex items-end gap-1 mb-1">
-                  <span className="text-5xl font-black text-white">{plan.price}</span>
-                  <span className="text-white/40 mb-2">{plan.period}</span>
+                  <span className="text-4xl font-black text-white">{plan.price}</span>
+                  <span className="text-white/40 mb-2 text-sm">{plan.period}</span>
                 </div>
-                <div className="text-sm text-orange-400 mb-8">{plan.trial}</div>
+                <div className={`text-sm mb-8 ${plan.name.includes("IA") ? "text-purple-400" : "text-orange-400"}`}>{plan.trial}</div>
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-start gap-3 text-sm text-white/60">
-                      <span className="text-emerald-400 mt-0.5 flex-shrink-0">✓</span>
+                      <span className={`mt-0.5 flex-shrink-0 ${plan.name.includes("IA") ? "text-purple-400" : "text-emerald-400"}`}>✓</span>
                       {f}
                     </li>
                   ))}
                 </ul>
                 <Link href="/register" className={`block w-full py-3.5 rounded-xl font-semibold text-center transition-all ${plan.ctaColor}`}>
-                  Commencer →
+                  Dominer le marché →
                 </Link>
               </div>
             ))}
           </div>
-
-          <p className="text-center text-white/20 text-sm mt-8">
-            Besoin d'une offre sur-mesure pour une chaîne ou un groupe ? {" "}
-            <Link href="/contact" className="text-orange-400 hover:text-orange-300">Parlez-nous de votre projet →</Link>
-          </p>
         </div>
       </section>
 
-      {/* ── CTA finale ──────────────────────────────────────────────────────── */}
-      <section className="py-32 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 via-transparent to-amber-500/10 pointer-events-none" />
-        <div className="relative max-w-3xl mx-auto text-center">
-          <h2 className="text-4xl md:text-6xl font-black mb-6">
-            Votre restaurant mérite<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-300">
-              mieux qu'un stylo et un bloc.
-            </span>
-          </h2>
-          <p className="text-white/40 text-xl mb-10">
-            Rejoignez les restaurateurs qui ont déjà modernisé leur service.
-            14 jours gratuits. Aucune carte bancaire requise.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/register" className="px-10 py-4 bg-orange-500 hover:bg-orange-400 text-white rounded-xl font-bold text-lg transition-all hover:scale-[1.02] shadow-xl shadow-orange-500/30">
-              Essayer gratuitement 14 jours →
-            </Link>
-          </div>
+      {/* ── Final CTA ───────────────────────────────────────────────────────── */}
+      <section className="py-32 px-6 relative overflow-hidden text-center">
+        <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 via-transparent to-purple-500/10 pointer-events-none" />
+        <h2 className="text-4xl md:text-6xl font-black mb-6">
+          Dans cinq ans, tout le monde fonctionnera comme ça.<br />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-300">Soyez le premier. Pas le dernier.</span>
+        </h2>
+        <div className="flex justify-center mt-10">
+          <Link href="/register" className="px-10 py-4 bg-orange-500 hover:bg-orange-400 text-white rounded-xl font-bold text-lg transition-all shadow-xl shadow-orange-500/30">
+            Démarrer la révolution →
+          </Link>
         </div>
       </section>
 
-      {/* ── Footer ──────────────────────────────────────────────────────────── */}
       <footer className="border-t border-white/[0.06] py-12 px-6">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="text-xl font-black text-white">Ma <span className="text-orange-500">Table</span></div>
           <div className="flex items-center gap-6 text-sm text-white/30">
-            <Link href="/login" className="hover:text-white/60 transition-colors">Connexion</Link>
-            <Link href="/register" className="hover:text-white/60 transition-colors">Inscription</Link>
-            <a href="mailto:contact@matable.pro" className="hover:text-white/60 transition-colors">Contact</a>
-            <span>© 2026 A table !</span>
+            <span>© 2026 Ma Table — SNHTech & Novavivo.online</span>
           </div>
         </div>
       </footer>
     </div>
   );
-}
-
-// ─── Demo visual component ────────────────────────────────────────────────────
-function DemoVisual({ screen }: { screen: string }) {
-  if (screen === "menu-editor") {
-    return (
-      <div className="rounded-xl border border-white/10 bg-[#111] overflow-hidden text-[10px]">
-        <div className="bg-[#161616] border-b border-white/5 px-3 py-2 text-white/30 font-medium">Dashboard · Menu</div>
-        <div className="p-3 space-y-2">
-          {[
-            { name: "Burger Black Angus", price: "18,90 €", tags: ["🌾 Gluten", "🥩 Viande"] },
-            { name: "Risotto Parmesan", price: "16,50 €", tags: ["🌿 Végé", "🥛 Lait"] },
-            { name: "Tartare de bœuf", price: "22,00 €", tags: ["🥚 Œufs"] },
-          ].map((item, i) => (
-            <div key={i} className="bg-[#1a1a1a] rounded-lg p-2 border border-white/5">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-white/70 font-medium">{item.name}</span>
-                <span className="text-orange-400 font-bold">{item.price}</span>
-              </div>
-              <div className="flex gap-1 flex-wrap">
-                {item.tags.map(tag => (
-                  <span key={tag} className="px-1.5 py-0.5 rounded bg-white/5 text-white/30">{tag}</span>
-                ))}
-              </div>
-            </div>
-          ))}
-          <div className="w-full py-1.5 bg-orange-500/80 rounded-lg text-center text-white font-bold">+ Ajouter un plat</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (screen === "qr-print") {
-    return (
-      <div className="rounded-xl border border-white/10 bg-[#111] overflow-hidden text-[10px]">
-        <div className="bg-[#161616] border-b border-white/5 px-3 py-2 text-white/30 font-medium">Dashboard · QR codes</div>
-        <div className="p-4 space-y-3">
-          <div className="grid grid-cols-3 gap-2">
-            {[1,2,3,4,5,6].map(n => (
-              <div key={n} className="aspect-square bg-[#1a1a1a] rounded border border-white/5 flex flex-col items-center justify-center gap-1">
-                <div className="w-8 h-8 bg-white/10 rounded grid grid-cols-3 gap-0.5 p-1">
-                  {Array.from({length:9}).map((_,i) => (
-                    <div key={i} className={`${[0,2,6,8,4].includes(i) ? "bg-white/60" : "bg-transparent"} rounded-[1px]`} />
-                  ))}
-                </div>
-                <span className="text-white/30 font-medium">T.{n}</span>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-1.5">
-            <div className="flex-1 py-1.5 bg-orange-500/80 rounded text-center text-white font-bold">PDF A4</div>
-            <div className="flex-1 py-1.5 bg-white/5 rounded text-center text-white/40">Vinyle</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (screen === "client-order") {
-    return (
-      <div className="rounded-xl border border-white/10 bg-[#111] overflow-hidden text-[10px]">
-        <div className="bg-gradient-to-r from-orange-900/30 to-amber-900/20 border-b border-white/5 px-3 py-3 text-center">
-          <div className="text-white/80 font-bold text-xs">Le Comptoir · Table 3</div>
-          <div className="text-orange-400/70 mt-0.5">Ouvert · Service du midi</div>
-        </div>
-        <div className="p-2 space-y-1.5">
-          {["Burger Black Angus", "Salade César", "Eau plate 50cl"].map((item, i) => (
-            <div key={i} className="flex items-center gap-2 p-1.5 bg-[#1a1a1a] rounded border border-white/5">
-              <div className="w-6 h-6 rounded bg-white/5 flex items-center justify-center">
-                {["🍔","🥗","💧"][i]}
-              </div>
-              <span className="flex-1 text-white/60">{item}</span>
-              <span className="text-orange-400 font-bold">{["18,90","12,50","3,50"][i]}€</span>
-            </div>
-          ))}
-          <div className="w-full py-1.5 bg-orange-500 rounded text-center text-white font-bold mt-2">Payer · 34,90 €</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (screen === "kitchen") {
-    return (
-      <div className="rounded-xl border border-white/10 bg-[#111] overflow-hidden text-[10px]">
-        <div className="bg-[#161616] border-b border-white/5 px-3 py-2 flex justify-between">
-          <span className="text-white/30 font-medium">Cuisine live</span>
-          <span className="text-orange-400 font-bold animate-pulse">● Live</span>
-        </div>
-        <div className="p-2 space-y-1.5">
-          {[
-            { table: "T.3", item: "Burger Black Angus", status: "PENDING", color: "text-yellow-400" },
-            { table: "T.7", item: "Risotto Parmesan", status: "COOKING", color: "text-orange-400" },
-            { table: "T.1", item: "Tartare de bœuf", status: "SERVED", color: "text-emerald-400" },
-          ].map((o, i) => (
-            <div key={i} className="bg-[#1a1a1a] rounded border border-white/5 p-2">
-              <div className="flex justify-between mb-0.5">
-                <span className="font-bold text-white/70">{o.table}</span>
-                <span className={`font-bold ${o.color}`}>{o.status}</span>
-              </div>
-              <div className="text-white/40">{o.item}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  return null;
 }
