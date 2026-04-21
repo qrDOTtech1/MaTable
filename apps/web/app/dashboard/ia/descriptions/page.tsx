@@ -52,7 +52,7 @@ Réponds UNIQUEMENT avec un tableau JSON de 3 chaînes de caractères, sans mark
       });
       const raw = res.message.content.trim().replace(/^```json\n?|```$/g, "");
       const parsed = JSON.parse(raw) as string[];
-      setResults(Array.isArray(parsed) ? parsed : [parsed.toString()]);
+      setResults(Array.isArray(parsed) ? parsed : [String(parsed)]);
     } catch (e: any) {
       redirectOn401(e);
       setError("Génération impossible. Vérifiez votre clé API Nova IA.");

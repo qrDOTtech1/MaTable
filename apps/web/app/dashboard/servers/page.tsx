@@ -7,6 +7,7 @@ type Server = {
   name: string;
   photoUrl?: string | null;
   active: boolean;
+  pin?: string | null;
   avgRating?: number | null;
   reviewsCount: number;
 };
@@ -33,6 +34,15 @@ export default function ServersPage() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingSchedules, setEditingSchedules] = useState<ServerSchedule[]>([]);
+  const [editingPin, setEditingPin] = useState<string>("");
+  const [pinSaving, setPinSaving] = useState(false);
+  const [slug, setSlug] = useState<string | null>(null);
+
+  useEffect(() => {
+    api<{ restaurant: { slug?: string | null } }>("/api/pro/me")
+      .then((r) => setSlug(r.restaurant.slug ?? null))
+      .catch(() => {});
+  }, []);
 
   const reload = async () => {
     const r = await api<{ servers: Server[] }>("/api/pro/servers");
@@ -63,11 +73,32 @@ export default function ServersPage() {
 
   const startEdit = async (server: Server) => {
     setEditingId(server.id);
+    setEditingPin(server.pin ?? "");
     try {
       const res = await api<{ schedules: ServerSchedule[] }>(`/api/pro/servers/${server.id}/schedules`);
       setEditingSchedules(res.schedules);
     } catch (err) {
       setError("Erreur chargement planning");
+    }
+  };
+
+  const savePin = async () => {
+    if (!editingId) return;
+    if (editingPin && (editingPin.length < 4 || editingPin.length > 6 || !/^\d+$/.test(editingPin))) {
+      setError("Le PIN doit être composé de 4 à 6 chiffres.");
+      return;
+    }
+    setPinSaving(true);
+    try {
+      await api(`/api/pro/servers/${editingId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ pin: editingPin || null }),
+      });
+      await reload();
+    } catch (err: any) {
+      setError("Erreur sauvegarde PIN");
+    } finally {
+      setPinSaving(false);
     }
   };
 
@@ -145,7 +176,9 @@ export default function ServersPage() {
                   </div>
                   <div>
                     <div className="font-medium text-white">{s.name}</div>
-                    <div className="text-xs text-white/50">Cliquez pour le planning</div>
+                    <div className="text-xs text-white/50">
+                      {s.pin ? `PIN: ${"●".repeat(s.pin.length)}` : "Pas de PIN · Cliquez pour configurer"}
+                    </div>
                   </div>
                 </div>
                 <button className="text-white/50 hover:text-red-400 p-1 transition-colors" onClick={(e) => { e.stopPropagation(); del(s.id); }}>
@@ -191,6 +224,34 @@ export default function ServersPage() {
               <div className="flex gap-2 pt-4 border-t border-white/10">
                 <button className="flex-1 px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-400 text-white font-semibold text-sm transition-all" onClick={saveSchedules}>Enregistrer le planning</button>
                 <button className="px-4 py-2 rounded-lg border border-white/10 text-white/70 hover:text-white font-semibold text-sm transition-all" onClick={() => setEditingId(null)}>Annuler</button>
+              </div>
+
+              {/* PIN section */}
+              <div className="pt-4 border-t border-white/10 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-white">Code PIN portail serveur</p>
+                    <p className="text-xs text-white/40">4–6 chiffres · permet au serveur de se connecter sur <span className="font-mono text-orange-400">{slug ? `matable.pro/${slug}/login` : "…/login"}</span></p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={editingPin}
+                    onChange={(e) => setEditingPin(e.target.value.replace(/\D/g, ""))}
+                    placeholder="ex: 1234"
+                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono placeholder:text-white/30 focus:outline-none focus:border-orange-500"
+                  />
+                  <button
+                    onClick={savePin}
+                    disabled={pinSaving}
+                    className="px-4 py-2 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-400 text-sm font-semibold hover:bg-orange-500/30 transition-all disabled:opacity-40"
+                  >
+                    {pinSaving ? "…" : "Sauver PIN"}
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
