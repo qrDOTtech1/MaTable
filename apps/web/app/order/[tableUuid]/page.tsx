@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { ImageLightbox } from "./ImageLightbox";
+import { NovaAssistant } from "@/components/ui";
 
 type MenuItem = {
   id: string;
@@ -382,6 +383,12 @@ export default function OrderPage() {
           </div>
         </div>
       )}
+
+      {/* NovaTech Assistant */}
+      <NovaAssistant 
+        restaurantName={info.restaurant.name} 
+        menuContext={JSON.stringify(info.menu.map(m => ({ name: m.name, price: m.priceCents/100, desc: m.description })))} 
+      />
     </main>
   );
 }

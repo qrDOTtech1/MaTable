@@ -1,0 +1,68 @@
+================================================================================
+          MA TABLE + NOVATECH IA : LE MASTERPLAN DE LA DISRUPTION
+================================================================================
+Vision : Transformer MaTable en un ERP Intelligent (NovaTech OS) capable de 
+         quadriller tout le marché de la restauration en automatisant la 
+         création, la vente, et la gestion humaine.
+
+--------------------------------------------------------------------------------
+1. INFRASTRUCTURE "NERV" (CORE AI)
+--------------------------------------------------------------------------------
+- Connecteur : Ollama Cloud API (gpt-oss:120b & Vision models).
+- Mode : Streaming (réponse temps réel) + Mode JSON (pour l'intégration UI).
+- Nova Context Engine : Injection dynamique des données (Menu, Staff, Stats, 
+  Stocks) dans chaque requête IA pour une pertinence locale absolue.
+- Sécurité : Proxy backend pour protéger les clés OLLAMA_API_KEY.
+
+--------------------------------------------------------------------------------
+2. AXE VISION & CRÉATION (RESTAURATEUR)
+--------------------------------------------------------------------------------
+- Magic Menu Scan : Upload de photo -> IA Vision -> Extraction auto (Nom, Prix, 
+  Ingrédients, Allergènes UE).
+- Nova Copywriter : Bouton "Sublimer" pour transformer une saisie brute en 
+  description gastronomique vendeuse.
+- Assistant Cuisine Live : Interface d'aide au dressage et optimisation des 
+  préparations via chat contextuel pour le chef.
+
+--------------------------------------------------------------------------------
+3. AXE EXPÉRIENCE & BUSINESS (CLIENT FINAL)
+--------------------------------------------------------------------------------
+- Nudges d'Upselling : Analyse invisible du panier -> Suggestions d'accords 
+  mets-vins et suppléments à haute marge.
+- Chatbot "Nova" : Compagnon de table (Chatbot client) pour répondre aux 
+  questions sur la carte, les allergènes et les recommandations.
+- Nova Checkout : Rappel intelligent des desserts/cafés juste avant le paiement.
+
+--------------------------------------------------------------------------------
+4. AXE SERVEUR AUGMENTÉ & GAMIFICATION (PERSONNEL)
+--------------------------------------------------------------------------------
+- Priorisation IA : Notification intelligente aux serveurs selon l'urgence 
+  (Table en attente, Table ayant fini, Facture demandée).
+- Nova Leaderboard : Système de gamification (Points, Badges, Rangs) basé sur :
+  * Chiffre d'affaires généré par le serveur.
+  * Rapidité de traitement des commandes.
+  * Notes de satisfaction client.
+- Quêtes Journalières : Défis IA ("Vends 10 plats du jour", "Obtiens 5 étoiles").
+
+--------------------------------------------------------------------------------
+5. AXE PLANNING & FORECASTING (MANAGEMENT)
+--------------------------------------------------------------------------------
+- AI Smart Planning : Prédiction d'affluence (Météo + Historique + Événements) 
+  pour suggérer la grille de personnel optimale.
+- Briefing Automatique : Génération d'un résumé audio/texte pour l'équipe 
+  (Objectifs, stocks critiques, VIP attendus).
+- Nova Insights : Analyse hebdomadaire du ROI IA et conseils de gestion.
+
+--------------------------------------------------------------------------------
+6. MODÈLES DE REVENUS (COMMERCIAL)
+--------------------------------------------------------------------------------
+- Matable Standard : Commande + Paiement QR.
+- Matable + NovaTech IA : Suite complète IA (SaaS Premium).
+- NovaTech Pro : Accès aux API et intégrations POS avancées.
+
+--------------------------------------------------------------------------------
+ENGAGEMENT QUALITÉ :
+- Performance : Latence < 2s via streaming.
+- Fiabilité : Fallback manuel 100% opérationnel en cas de coupure cloud.
+- Intégrité : Respect strict du Design System original.
+================================================================================

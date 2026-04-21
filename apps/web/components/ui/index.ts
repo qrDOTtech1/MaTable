@@ -12,3 +12,4 @@ export { Modal } from "./Modal";
 export { Select, type SelectOption } from "./Select";
 export { KanbanColumn } from "./KanbanColumn";
 export { Table } from "./Table";
+export { NovaAssistant } from "./NovaAssistant";

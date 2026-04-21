@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { API_URL, api, getProToken, redirectOn401 } from "@/lib/api";
+import { chatWithNova } from "@/lib/ai";
 
 const ALLERGENS = [
   "GLUTEN","CRUSTACEANS","EGGS","FISH","PEANUTS","SOYBEANS","MILK","NUTS",
@@ -44,6 +45,44 @@ export default function MenuPage() {
   const [newGroup, setNewGroup] = useState({ name: "", required: false, multiple: false, options: "" });
   const [restockMap, setRestockMap] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+
+  const magicScan = async (file: File) => {
+    setAiAnalyzing(true);
+    try {
+      // 1. Upload initial
+      await uploadImage(file);
+      
+      // 2. Analyse IA (Simulée pour le moment car nécessite le backend AI endpoint)
+      // Dans une version finale, on enverrait l'image à Ollama Cloud Vision
+      const messages = [
+        { 
+          role: "system" as const, 
+          content: "Tu es Nova, l'IA experte NovaTech OS. Analyse cette photo de plat et renvoie un JSON avec: name, description (courte et vendeuse), category, priceCents (estimé), allergens (parmi la liste officielle), diets (parmi la liste officielle). Ne parle pas, donne juste le JSON." 
+        },
+        { role: "user" as const, content: "Analyse ce plat." }
+      ];
+      
+      const res = await chatWithNova("gpt-oss:120b-cloud", messages);
+      if (!res || typeof res !== 'object') throw new Error("Réponse IA invalide");
+      const content = 'message' in res ? res.message.content : "";
+      const data = JSON.parse(content);
+      
+      setForm((f) => ({
+        ...f,
+        name: data.name || f.name,
+        price: data.priceCents ? (data.priceCents / 100).toFixed(2) : f.price,
+        description: data.description || f.description,
+        category: data.category || f.category,
+        allergens: data.allergens || f.allergens,
+        diets: data.diets || f.diets,
+      }));
+    } catch (err) {
+      console.error("[MagicScan]", err);
+    } finally {
+      setAiAnalyzing(false);
+    }
+  };
 
   const reload = async () => {
     const r = await api<{ items: Item[] }>("/api/pro/menu");
@@ -203,22 +242,28 @@ export default function MenuPage() {
         <div>
           <label className="label">Photo</label>
           <div className="flex flex-col md:flex-row gap-2 md:items-center">
-            <input
-              className="w-full text-white"
-              type="file"
-              accept="image/*"
-              disabled={uploading}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (!f) return;
-                uploadImage(f).catch((err: any) => {
-                  alert(
-                    "Upload image impossible : " +
-                      (err?.message ?? String(err))
-                  );
-                });
-              }}
-            />
+            <div className="flex-1 flex gap-2 items-center">
+              <input
+                className="w-full text-white text-sm"
+                type="file"
+                accept="image/*"
+                disabled={uploading || aiAnalyzing}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  if (confirm("✨ Utiliser le Magic Scan NovaTech pour remplir automatiquement ce plat ?")) {
+                    magicScan(f);
+                  } else {
+                    uploadImage(f);
+                  }
+                }}
+              />
+              {aiAnalyzing && (
+                <span className="animate-pulse text-orange-400 text-xs font-bold shrink-0">
+                  🪄 Analyse IA...
+                </span>
+              )}
+            </div>
             <input
               className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30"
               placeholder="https://... (optionnel)"
