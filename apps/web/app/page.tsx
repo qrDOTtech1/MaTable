@@ -392,7 +392,7 @@ export default function HomePage() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[#0a0a0a]/90 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-black tracking-tight text-white">A<span className="text-orange-500"> table</span> !</span>
+            <span className="text-2xl font-black tracking-tight text-white">Ma <span className="text-orange-500">Table</span></span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-white/60">
             <a href="#demo" className="hover:text-white transition-colors">Comment ça marche</a>
@@ -831,7 +831,7 @@ export default function HomePage() {
       {/* ── Footer ──────────────────────────────────────────────────────────── */}
       <footer className="border-t border-white/[0.06] py-12 px-6">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="text-xl font-black text-white">A<span className="text-orange-500"> table</span> !</div>
+          <div className="text-xl font-black text-white">Ma <span className="text-orange-500">Table</span></div>
           <div className="flex items-center gap-6 text-sm text-white/30">
             <Link href="/login" className="hover:text-white/60 transition-colors">Connexion</Link>
             <Link href="/register" className="hover:text-white/60 transition-colors">Inscription</Link>

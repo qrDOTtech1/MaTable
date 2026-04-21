@@ -45,7 +45,7 @@ export function DashboardLayout({
       {/* Top Bar */}
       <div className={`h-16 border-b ${border} ${isDark ? "bg-[#0a0a0a]/90" : "bg-white/90"} backdrop-blur-xl px-8 flex items-center justify-between sticky top-0 z-50`}>
         <div className="flex items-center gap-4">
-          <h1 className="text-xl font-black">A<span className="text-orange-500">table</span>!</h1>
+          <h1 className="text-xl font-black">Ma <span className="text-orange-500">Table</span></h1>
           <span className={`text-sm ${textSecondary}`}>{restaurantName}</span>
         </div>
 

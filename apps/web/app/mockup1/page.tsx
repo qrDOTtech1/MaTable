@@ -10,7 +10,7 @@ export default function Mockup1() {
       {/* Sidebar */}
       <aside className="w-64 border-r border-white/[0.06] bg-[#0a0a0a] p-6 flex flex-col">
         <div className="mb-12">
-          <h1 className="text-2xl font-black">A<span className="text-orange-500">table</span>!</h1>
+          <h1 className="text-2xl font-black">Ma <span className="text-orange-500">Table</span></h1>
           <p className="text-xs text-white/30 mt-1">Le Comptoir du 7e</p>
         </div>
 

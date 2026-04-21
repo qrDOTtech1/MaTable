@@ -11,7 +11,7 @@ export default function Mockup2() {
       {/* Top Bar */}
       <nav className="h-16 border-b border-white/[0.06] bg-[#0a0a0a]/90 backdrop-blur-xl px-8 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-6">
-          <h1 className="text-xl font-black">A<span className="text-orange-500">table</span>!</h1>
+          <h1 className="text-xl font-black">Ma <span className="text-orange-500">Table</span></h1>
           <div className="flex items-center gap-4 ml-4 pl-4 border-l border-white/[0.06]">
             <span className="text-sm text-white/50">Le Comptoir du 7e</span>
             <div className="px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-bold flex items-center gap-1.5">

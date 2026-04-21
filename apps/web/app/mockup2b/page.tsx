@@ -34,7 +34,7 @@ export default function Mockup2B() {
       <aside className={`w-72 border-r ${border} ${isDark ? "bg-[#0a0a0a]" : "bg-white"} flex flex-col p-6 sticky top-0 h-screen overflow-y-auto`}>
         {/* Logo */}
         <div className="mb-8">
-          <h1 className="text-2xl font-black">A<span className="text-orange-500">table</span>!</h1>
+          <h1 className="text-2xl font-black">Ma <span className="text-orange-500">Table</span></h1>
           <p className={`text-xs ${textSecondary} mt-1`}>Restaurant Dashboard</p>
         </div>
 
