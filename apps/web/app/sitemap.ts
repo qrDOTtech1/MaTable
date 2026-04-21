@@ -30,7 +30,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     const res = await fetch(`${apiUrl}/api/public/restaurants`, {
-      cache: 'revalidate',
       next: { revalidate: 86400 }, // Revalidate every 24 hours
     });
 

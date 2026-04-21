@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * MOCKUP 2B — Design OS Style (Sidebar navigation verticale)
  * Navagation par sidebar à gauche avec émojis

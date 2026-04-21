@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * MOCKUP 2A — Design OS Style (Tabs horizontaux en haut)
  * Navigation par tabs/onglets en haut
