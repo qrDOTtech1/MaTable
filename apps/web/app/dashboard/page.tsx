@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import { api, API_URL, redirectOn401 } from "@/lib/api";
+import { DashboardLayout, KanbanColumn, OrderCard, Button } from "@/components/ui";
 
 type Order = {
   id: string;
@@ -13,21 +14,18 @@ type Order = {
 };
 
 const COLS: Order["status"][] = ["PENDING", "COOKING", "SERVED"];
-const LABELS: Record<Order["status"], string> = {
-  PENDING: "Reçues",
-  COOKING: "En préparation",
-  SERVED: "Servies",
-  PAID: "Payées",
-  CANCELLED: "Annulées",
-};
 
-export default function LivePage() {
+export default function DashboardPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
+  const [restaurantName, setRestaurantName] = useState("Restaurant");
 
   useEffect(() => {
-    api<{ restaurant: { id: string } }>(`/api/pro/me`)
-      .then((r) => setRestaurantId(r.restaurant.id))
+    api<{ restaurant: { id: string; name: string } }>(`/api/pro/me`)
+      .then((r) => {
+        setRestaurantId(r.restaurant.id);
+        setRestaurantName(r.restaurant.name);
+      })
       .catch(redirectOn401);
   }, []);
 
@@ -58,47 +56,168 @@ export default function LivePage() {
     setOrders(r.orders);
   }
 
+  const pendingOrders = orders.filter((o) => o.status === "PENDING");
+  const cookingOrders = orders.filter((o) => o.status === "COOKING");
+  const servedOrders = orders.filter((o) => o.status === "SERVED");
+
+  const tabs = [
+    { id: "live", icon: "🔴", label: "Cuisine en direct", badge: orders.length },
+    { id: "stats", icon: "📊", label: "Statistiques", badge: 0 },
+    { id: "commandes", icon: "📋", label: "Commandes", badge: 0 },
+    { id: "menu", icon: "🍽️", label: "Menu", badge: 0 },
+    { id: "serveurs", icon: "👥", label: "Serveurs", badge: 0 },
+    { id: "reservations", icon: "📅", label: "Réservations", badge: 0 },
+  ];
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Cuisine — temps réel</h1>
-      <div className="grid grid-cols-3 gap-4">
-        {COLS.map((col) => (
-          <div key={col}>
-            <h2 className="font-semibold mb-2">{LABELS[col]}</h2>
-            <div className="space-y-2">
-              {orders
-                .filter((o) => o.status === col)
-                .map((o) => (
-                  <div key={o.id} className="card">
-                    <div className="flex justify-between items-center mb-2">
-                      <div className="font-bold">Table {o.table.number}</div>
-                      <div className="text-xs text-slate-500">
-                        {new Date(o.createdAt).toLocaleTimeString()}
+    <DashboardLayout
+      activeTabId="live"
+      tabs={tabs}
+      onTabChange={(tabId) => console.log("Tab changed to:", tabId)}
+      restaurantName={restaurantName}
+      title="Cuisine en direct"
+    >
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h2 className="text-2xl font-bold text-white mb-2">Cuisine en direct</h2>
+          <p className="text-white/50">
+            {orders.length} commande{orders.length > 1 ? "s" : ""} en cours
+          </p>
+        </div>
+
+        {/* Kanban Board */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[600px]">
+          {/* Column 1: Pending */}
+          <KanbanColumn
+            title="À préparer"
+            icon="⏳"
+            count={pendingOrders.length}
+            color="yellow"
+          >
+            {pendingOrders.map((order) => (
+              <div key={order.id} className="space-y-2">
+                <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4 hover:shadow-md transition-all">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="font-bold text-lg text-yellow-400">Table {order.table.number}</p>
+                      <p className="text-white/40 text-xs">
+                        {new Date(order.createdAt).toLocaleTimeString("fr-FR")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mb-3 space-y-1">
+                    {order.items.map((item, idx) => (
+                      <div key={idx} className="flex items-start justify-between gap-2">
+                        <span className="text-white/70 text-sm truncate flex-1">
+                          {item.quantity}× {item.name}
+                        </span>
                       </div>
-                    </div>
-                    <ul className="text-sm space-y-1">
-                      {o.items.map((it, i) => (
-                        <li key={i}>
-                          {it.quantity}× {it.name}
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="text-sm font-medium mt-2">
-                      Total : {(o.totalCents / 100).toFixed(2)} €
-                    </div>
-                    <button className="btn-primary w-full mt-3" onClick={() => advance(o)}>
-                      {col === "PENDING"
-                        ? "Passer en cuisson"
-                        : col === "COOKING"
-                        ? "Marquer servi"
-                        : "Marquer payé"}
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-white/80">
+                      {(order.totalCents / 100).toFixed(2)}€
+                    </span>
+                    <button
+                      onClick={() => advance(order)}
+                      className="px-2 py-1 rounded text-white/50 hover:text-white hover:bg-white/5 transition-all text-xs font-medium"
+                    >
+                      👨‍🍳 Cuire
                     </button>
                   </div>
-                ))}
-            </div>
-          </div>
-        ))}
+                </div>
+              </div>
+            ))}
+          </KanbanColumn>
+
+          {/* Column 2: Cooking */}
+          <KanbanColumn
+            title="En préparation"
+            icon="👨‍🍳"
+            count={cookingOrders.length}
+            color="orange"
+          >
+            {cookingOrders.map((order) => (
+              <div key={order.id} className="space-y-2">
+                <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-4 hover:shadow-md transition-all">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="font-bold text-lg text-orange-400">Table {order.table.number}</p>
+                      <p className="text-white/40 text-xs">
+                        {new Date(order.createdAt).toLocaleTimeString("fr-FR")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mb-3 space-y-1">
+                    {order.items.map((item, idx) => (
+                      <div key={idx} className="flex items-start justify-between gap-2">
+                        <span className="text-white/70 text-sm truncate flex-1">
+                          {item.quantity}× {item.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-white/80">
+                      {(order.totalCents / 100).toFixed(2)}€
+                    </span>
+                    <button
+                      onClick={() => advance(order)}
+                      className="px-2 py-1 rounded text-white/50 hover:text-white hover:bg-white/5 transition-all text-xs font-medium"
+                    >
+                      ✅ Servir
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </KanbanColumn>
+
+          {/* Column 3: Served */}
+          <KanbanColumn
+            title="À servir"
+            icon="✅"
+            count={servedOrders.length}
+            color="emerald"
+          >
+            {servedOrders.map((order) => (
+              <div key={order.id} className="space-y-2">
+                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 hover:shadow-md transition-all">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="font-bold text-lg text-emerald-400">Table {order.table.number}</p>
+                      <p className="text-white/40 text-xs">
+                        {new Date(order.createdAt).toLocaleTimeString("fr-FR")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mb-3 space-y-1">
+                    {order.items.map((item, idx) => (
+                      <div key={idx} className="flex items-start justify-between gap-2">
+                        <span className="text-white/70 text-sm truncate flex-1">
+                          {item.quantity}× {item.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-white/80">
+                      {(order.totalCents / 100).toFixed(2)}€
+                    </span>
+                    <button
+                      onClick={() => advance(order)}
+                      className="px-2 py-1 rounded text-white/50 hover:text-white hover:bg-white/5 transition-all text-xs font-medium"
+                    >
+                      💳 Payé
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </KanbanColumn>
+        </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
