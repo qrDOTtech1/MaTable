@@ -12,6 +12,7 @@ FROM deps AS build
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 COPY . .
+RUN npx prisma db push --accept-data-loss
 RUN npm --workspace @atable/web run build
 
 FROM base AS runner
