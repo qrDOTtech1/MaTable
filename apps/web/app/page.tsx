@@ -33,8 +33,8 @@ const features = [
   { icon: "📷", title: "Magic Scan : La fin de la saisie", desc: "Photographiez un plat. Nova extrait les ingrédients, les allergènes et rédige une description gastronomique. C'est de la magie pure.", highlight: false },
   { icon: "🗓️", title: "Planning IA Intelligent", desc: "Générez vos plats du jour pour la semaine en un clic. L'IA gère la cohérence, les thèmes et vos stocks. Brillant.", highlight: false },
   { icon: "✍️", title: "Descriptions de génie", desc: "Transformez 'Poulet riz' en une expérience sensorielle inoubliable. 3 variantes, un seul but : faire saliver le client.", highlight: false },
-            { icon: "👤", title: "Portail Serveur : La maîtrise", desc: "Chaque serveur a son espace PIN. Tables, plannings, défis. C'est l'outil ultime pour une équipe qui veut gagner.", highlight: false },
-            { icon: "🌐", title: "Ma Table Social : En dev", desc: "Le réseau social culinaire. Connectez vos tables, partagez vos coups de cœur. L'IA Nova Match fait le pont entre vos envies et les bonnes personnes.", highlight: true },
+            { icon: "👤", title: "Portail Serveur : Dashboard individuel", desc: "Chaque serveur a son propre espace sécurisé par PIN. Il voit uniquement ses tables assignées, son planning du service, ses commandes en cours et ses objectifs. Zéro confusion, efficacité totale.", highlight: false },
+            { icon: "🌐", title: "Ma Table Social — En cours de développement", desc: "Le réseau social culinaire arrive. Connectez vos tables, matchez par affinités culinaires, Business, Date ou Fun. Nova IA fait le pont. Déjà disponible sur matable.app.", highlight: true },
   { icon: "📅", title: "Réservations de fer", desc: "Créneaux dynamiques et arrhes Stripe. Les no-shows sont désormais un mauvais souvenir du passé.", highlight: false },
   { icon: "🌿", title: "Allergènes : Conformité totale", desc: "14 allergènes EU affichés automatiquement. Vous êtes en règle, vos clients sont en sécurité. Sans lever le petit doigt.", highlight: false },
   { icon: "⭐", title: "Avis vérifiés et réels", desc: "Seuls ceux qui ont payé peuvent noter. C'est la fin des faux avis et le début de la vérité.", highlight: false },
@@ -104,18 +104,21 @@ const plans = [
 ];
 
 const comparisons = [
-  { feature: "Commande QR sans friction", us: true, them: false },
-  { feature: "Temps réel WebSocket", us: true, them: false },
-  { feature: "Portail serveur avec PIN", us: true, them: false },
-  { feature: "IA Vision (Magic Scan)", us: true, them: false },
-  { feature: "Planning hebdomadaire IA", us: true, them: false },
-  { feature: "Descriptions de plats IA", us: true, them: false },
-  { feature: "Avis vérifiés anti-fraude", us: true, them: false },
-  { feature: "Réservations + arrhes", us: true, them: false },
-  { feature: "Allergènes EU automatiques", us: true, them: false },
-  { feature: "Analytics de précision", us: true, them: false },
-  { feature: "Page vitrine SEO incluse", us: true, them: false },
-  { feature: "Essai gratuit sans CB", us: true, them: false },
+  { feature: "Commande QR sans friction (0 app, 0 compte)", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Temps réel WebSocket (cuisine + salle)", us: "✓", starter: "Partiel", dino: "✕" },
+  { feature: "Dashboard individuel par serveur (PIN)", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Tables assignées par serveur", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Planning de service par employé", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "IA Vision (Magic Scan plats)", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Planning hebdomadaire IA", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Descriptions de plats IA", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Avis vérifiés anti-fraude", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Réservations + arrhes Stripe", us: "✓", starter: "✓", dino: "✕" },
+  { feature: "Allergènes EU (14) automatiques", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Analytics de précision", us: "✓", starter: "Basique", dino: "✕" },
+  { feature: "Page vitrine SEO incluse", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Réseau social culinaire (Nova Match)", us: "Bientôt", starter: "✕", dino: "✕" },
+  { feature: "Essai gratuit sans CB", us: "✓", starter: "✕", dino: "✕" },
 ];
 
 const hardware = [
@@ -372,26 +375,40 @@ export default function HomePage() {
       {/* ── Social App ──────────────────────────────────────────────────────── */}
       <section id="social" className="py-32 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 text-rose-400 text-sm mb-8">
-            ✨ Bientôt disponible
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 text-sm mb-8">
+            🚧 En cours de développement
           </div>
           <h2 className="text-4xl md:text-5xl font-black mb-6">
-            Ma Table — <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-orange-400">Le réseau social culinaire</span>
+            Ma Table RS — <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-orange-400">Le réseau social culinaire</span>
           </h2>
           <p className="text-white/50 text-lg mb-10 leading-relaxed">
-            Ne soyez plus jamais seul à table. Ma Table, c'est l'extension sociale de votre restaurant préféré. 
-            Grâce à Nova IA, connectez-vous avec des gens qui partagent vos goûts, vos passions ou vos ambitions professionnelles, 
-            directement depuis votre table. C'est la fin du dîner monotone.
+            Ne soyez plus jamais seul à table. Ma Table RS est l'extension sociale de votre restaurant préféré —
+            une plateforme indépendante <strong className="text-white/70">actuellement en développement actif</strong>.
+            Grâce à Nova IA, vos clients se connectent avec des gens qui partagent leurs goûts, leurs passions ou leurs ambitions professionnelles,
+            directement depuis leur table. Business, Date ou Fun — l'IA s'occupe de tout.
           </p>
-          <div className="rounded-3xl border border-white/5 bg-white/[0.02] p-10">
-            <div className="text-5xl mb-6">🥂</div>
-            <h3 className="text-2xl font-bold mb-4">La magie du matching IA</h3>
-            <p className="text-white/50 max-w-xl mx-auto">
-              Nova IA analyse les profils (Business, Date, Fun) et crée des connexions fluides. 
-              Que vous cherchiez un associé, une rencontre ou juste un quiz endiablé entre tables, 
-              l'IA s'occupe de tout. Vous n'avez qu'à savourer.
-            </p>
+          <div className="grid md:grid-cols-3 gap-4 mb-10">
+            {[
+              { icon: "💼", title: "Mode Business", desc: "Networking intelligent. L'IA connecte les profils stratégiques assis à côté." },
+              { icon: "❤️", title: "Mode Date", desc: "Brisez la glace avec élégance. Icebreakers basés sur les goûts communs." },
+              { icon: "🎉", title: "Mode Fun", desc: "Quiz, jeux et défis entre tables. Le dîner devient un moment de pur plaisir." },
+            ].map((m, i) => (
+              <div key={i} className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 text-left">
+                <div className="text-3xl mb-3">{m.icon}</div>
+                <h3 className="font-bold text-white mb-2">{m.title}</h3>
+                <p className="text-white/40 text-sm">{m.desc}</p>
+              </div>
+            ))}
           </div>
+          <a
+            href="https://matable.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-8 py-4 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 font-bold transition-all"
+          >
+            Découvrir matable.app →
+          </a>
+          <p className="text-white/20 text-xs mt-4">La plateforme sociale est accessible sur matable.app — intégration complète avec matable.pro prévue</p>
         </div>
       </section>
 
@@ -405,15 +422,17 @@ export default function HomePage() {
                 <tr className="text-white/40 text-sm">
                   <th className="p-4 border-b border-white/10">Fonctionnalité</th>
                   <th className="p-4 border-b border-white/10 text-center text-orange-400">Ma Table</th>
-                  <th className="p-4 border-b border-white/10 text-center">Les Dinosaures</th>
+                  <th className="p-4 border-b border-white/10 text-center">Concurrents SaaS</th>
+                  <th className="p-4 border-b border-white/10 text-center">Cahier / Papier</th>
                 </tr>
               </thead>
               <tbody className="text-sm">
                 {comparisons.map((c, i) => (
                   <tr key={i} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
                     <td className="p-4 font-medium">{c.feature}</td>
-                    <td className="p-4 text-center font-black text-orange-400">✓</td>
-                    <td className="p-4 text-center text-white/20">✕</td>
+                    <td className={`p-4 text-center font-black ${c.us === "✓" ? "text-orange-400" : c.us === "Bientôt" ? "text-amber-400 text-xs" : "text-orange-300"}`}>{c.us}</td>
+                    <td className={`p-4 text-center text-sm ${c.starter === "✓" ? "text-white/50" : c.starter === "Partiel" || c.starter === "Basique" ? "text-yellow-500/60 text-xs" : "text-white/20"}`}>{c.starter}</td>
+                    <td className="p-4 text-center text-white/20">{c.dino}</td>
                   </tr>
                 ))}
               </tbody>
