@@ -33,7 +33,8 @@ const features = [
   { icon: "📷", title: "Magic Scan : La fin de la saisie", desc: "Photographiez un plat. Nova extrait les ingrédients, les allergènes et rédige une description gastronomique. C'est de la magie pure.", highlight: false },
   { icon: "🗓️", title: "Planning IA Intelligent", desc: "Générez vos plats du jour pour la semaine en un clic. L'IA gère la cohérence, les thèmes et vos stocks. Brillant.", highlight: false },
   { icon: "✍️", title: "Descriptions de génie", desc: "Transformez 'Poulet riz' en une expérience sensorielle inoubliable. 3 variantes, un seul but : faire saliver le client.", highlight: false },
-  { icon: "👤", title: "Portail Serveur : La maîtrise", desc: "Chaque serveur a son espace PIN. Tables, plannings, défis. C'est l'outil ultime pour une équipe qui veut gagner.", highlight: false },
+            { icon: "👤", title: "Portail Serveur : La maîtrise", desc: "Chaque serveur a son espace PIN. Tables, plannings, défis. C'est l'outil ultime pour une équipe qui veut gagner.", highlight: false },
+            { icon: "🌐", title: "Ma Table Social : En dev", desc: "Le réseau social culinaire. Connectez vos tables, partagez vos coups de cœur. L'IA Nova Match fait le pont entre vos envies et les bonnes personnes.", highlight: true },
   { icon: "📅", title: "Réservations de fer", desc: "Créneaux dynamiques et arrhes Stripe. Les no-shows sont désormais un mauvais souvenir du passé.", highlight: false },
   { icon: "🌿", title: "Allergènes : Conformité totale", desc: "14 allergènes EU affichés automatiquement. Vous êtes en règle, vos clients sont en sécurité. Sans lever le petit doigt.", highlight: false },
   { icon: "⭐", title: "Avis vérifiés et réels", desc: "Seuls ceux qui ont payé peuvent noter. C'est la fin des faux avis et le début de la vérité.", highlight: false },
@@ -166,6 +167,7 @@ export default function HomePage() {
           <div className="hidden md:flex items-center gap-8 text-sm text-white/60">
             <a href="#demo" className="hover:text-white transition-colors">Comment ça marche</a>
             <a href="#nova-ia" className="hover:text-white transition-colors">Nova IA</a>
+            <a href="#social" className="hover:text-white transition-colors">Réseau Social</a>
             <a href="#pricing" className="hover:text-white transition-colors">Tarifs</a>
             <a href="#compare" className="hover:text-white transition-colors">Comparatif</a>
           </div>
@@ -363,6 +365,59 @@ export default function HomePage() {
                 <p className="text-white/50 text-sm leading-relaxed">{f.desc}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Social App ──────────────────────────────────────────────────────── */}
+      <section id="social" className="py-32 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 text-rose-400 text-sm mb-8">
+            ✨ Bientôt disponible
+          </div>
+          <h2 className="text-4xl md:text-5xl font-black mb-6">
+            Ma Table — <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-orange-400">Le réseau social culinaire</span>
+          </h2>
+          <p className="text-white/50 text-lg mb-10 leading-relaxed">
+            Ne soyez plus jamais seul à table. Ma Table, c'est l'extension sociale de votre restaurant préféré. 
+            Grâce à Nova IA, connectez-vous avec des gens qui partagent vos goûts, vos passions ou vos ambitions professionnelles, 
+            directement depuis votre table. C'est la fin du dîner monotone.
+          </p>
+          <div className="rounded-3xl border border-white/5 bg-white/[0.02] p-10">
+            <div className="text-5xl mb-6">🥂</div>
+            <h3 className="text-2xl font-bold mb-4">La magie du matching IA</h3>
+            <p className="text-white/50 max-w-xl mx-auto">
+              Nova IA analyse les profils (Business, Date, Fun) et crée des connexions fluides. 
+              Que vous cherchiez un associé, une rencontre ou juste un quiz endiablé entre tables, 
+              l'IA s'occupe de tout. Vous n'avez qu'à savourer.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Compare ─────────────────────────────────────────────────────────── */}
+      <section id="compare" className="py-32 px-6 bg-[#0f0f0f]">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-4xl font-black text-center mb-16">Pourquoi nous ? Et pas les dinosaures ?</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="text-white/40 text-sm">
+                  <th className="p-4 border-b border-white/10">Fonctionnalité</th>
+                  <th className="p-4 border-b border-white/10 text-center text-orange-400">Ma Table</th>
+                  <th className="p-4 border-b border-white/10 text-center">Les Dinosaures</th>
+                </tr>
+              </thead>
+              <tbody className="text-sm">
+                {comparisons.map((c, i) => (
+                  <tr key={i} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                    <td className="p-4 font-medium">{c.feature}</td>
+                    <td className="p-4 text-center font-black text-orange-400">✓</td>
+                    <td className="p-4 text-center text-white/20">✕</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
