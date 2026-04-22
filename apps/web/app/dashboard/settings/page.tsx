@@ -12,6 +12,7 @@ type Restaurant = {
   acceptReservations: boolean; depositPerGuestCents: number;
   avgPrepMinutes: number; reservationPolicy?: string | null;
   tipsEnabled: boolean; serviceCallEnabled: boolean; reviewsEnabled: boolean;
+  isPartner: boolean;
   openingHours?: OpeningHour[];
 };
 
@@ -55,6 +56,7 @@ export default function SettingsPage() {
           tipsEnabled: form.tipsEnabled ?? true,
           serviceCallEnabled: form.serviceCallEnabled ?? true,
           reviewsEnabled: form.reviewsEnabled ?? true,
+          isPartner: form.isPartner ?? false,
           openingHours: form.openingHours ?? [],
         }),
       });
@@ -290,6 +292,18 @@ export default function SettingsPage() {
               </div>
             </label>
           ))}
+        </div>
+
+        {/* Visibilité Sociale */}
+        <div className="card space-y-2">
+          <h2 className="font-semibold text-white mb-3">Visibilité Sociale</h2>
+          <label className="flex items-start gap-3 cursor-pointer py-1">
+            <input type="checkbox" className="mt-0.5" checked={form.isPartner ?? false} onChange={fBool("isPartner")} />
+            <div>
+              <span className="text-sm font-medium text-white">Partenaire public</span>
+              <p className="text-xs text-white/50">Afficher mon restaurant sur l'application sociale Ma Table</p>
+            </div>
+          </label>
         </div>
 
         <div className="flex items-center gap-3 pt-2">
