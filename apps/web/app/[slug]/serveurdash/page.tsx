@@ -94,7 +94,7 @@ export default function ServeurDashPage() {
     try {
       const [meRes, tablesRes, statsRes] = await Promise.all([
         serverFetch<{ server: any; restaurant: RestaurantInfo }>("/api/server/me"),
-        serverFetch<{ sessions: TableSession[]; allTables: TableMap[] }>("/api/server/tables"),
+        serverFetch<{ sessions: TableSession[]; allTables: TableMap[]; myEmptyTables?: EmptyTable[] }>("/api/server/tables"),
         serverFetch<Stats>("/api/server/stats"),
       ]);
       setServer({ id: meRes.server.id, name: meRes.server.name, photoUrl: meRes.server.photoUrl });
@@ -125,11 +125,11 @@ export default function ServeurDashPage() {
     if (!restaurant?.id) return;
     const socket: Socket = io(API_URL, { auth: { restaurantId: restaurant.id } });
     socket.on("order:new", () =>
-      serverFetch<{ sessions: TableSession[]; allTables: TableMap[] }>("/api/server/tables")
+      serverFetch<{ sessions: TableSession[]; allTables: TableMap[]; myEmptyTables?: EmptyTable[] }>("/api/server/tables")
         .then((r) => { setSessions(r.sessions); setAllTables(r.allTables); })
     );
     socket.on("order:paid", () =>
-      serverFetch<{ sessions: TableSession[]; allTables: TableMap[] }>("/api/server/tables")
+      serverFetch<{ sessions: TableSession[]; allTables: TableMap[]; myEmptyTables?: EmptyTable[] }>("/api/server/tables")
         .then((r) => { setSessions(r.sessions); setAllTables(r.allTables); })
     );
     return () => void socket.disconnect();
@@ -363,7 +363,7 @@ export default function ServeurDashPage() {
                     </div>
                   )}
                 </div>
-              ))
+              ))}
             </>
             )}
 
