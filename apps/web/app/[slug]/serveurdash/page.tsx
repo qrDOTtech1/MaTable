@@ -120,20 +120,61 @@ export default function ServeurDashPage() {
     loadAll();
   }, [loadAll, router, slug]);
 
-  // ── Socket.io for live order updates ─────────────────────────────────────
+  // ── Socket.io for live updates ───────────────────────────────────────────
   useEffect(() => {
     if (!restaurant?.id) return;
     const socket: Socket = io(API_URL, { auth: { restaurantId: restaurant.id } });
-    socket.on("order:new", () =>
+    
+    // Demander la permission pour les notifications
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+
+    const refreshData = () => {
       serverFetch<{ sessions: TableSession[]; allTables: TableMap[]; myEmptyTables?: EmptyTable[] }>("/api/server/tables")
-        .then((r) => { setSessions(r.sessions); setAllTables(r.allTables); })
-    );
-    socket.on("order:paid", () =>
-      serverFetch<{ sessions: TableSession[]; allTables: TableMap[]; myEmptyTables?: EmptyTable[] }>("/api/server/tables")
-        .then((r) => { setSessions(r.sessions); setAllTables(r.allTables); })
-    );
+        .then((r) => { setSessions(r.sessions); setAllTables(r.allTables); });
+      serverFetch<Stats>("/api/server/stats").then(setStats);
+    };
+
+    socket.on("order:new", (data: any) => {
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Nouvelle commande !", { body: `Table ${data.tableNumber} - ${data.items?.length || 1} article(s)` });
+      }
+      try { new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3").play(); } catch(e){}
+      refreshData();
+    });
+
+    socket.on("order:paid", () => {
+      refreshData();
+    });
+
+    socket.on("bill:requested", (data: any) => {
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Addition demandée", { body: `Table ${data.tableNumber} - Paiement: ${data.mode}` });
+      }
+      try { new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3").play(); } catch(e){}
+      refreshData();
+    });
+
+    socket.on("service:called", (data: any) => {
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Appel Serveur 🛎️", { body: `Table ${data.tableNumber} vous appelle` });
+      }
+      try { new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3").play(); } catch(e){}
+      refreshData();
+    });
+
+    socket.on("tip:received", (data: any) => {
+      if (data.serverId === server?.id) {
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("Nouveau pourboire ! 💝", { body: `Vous avez reçu ${(data.amountCents / 100).toFixed(2)}€` });
+        }
+      }
+      refreshData();
+    });
+
     return () => void socket.disconnect();
-  }, [restaurant?.id]);
+  }, [restaurant?.id, server?.id]);
 
   // ── Note actions ──────────────────────────────────────────────────────────
   async function addNote() {
