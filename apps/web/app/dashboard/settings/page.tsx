@@ -9,7 +9,7 @@ type ServerSchedule = { id: string; dayOfWeek: number; openMin: number; closeMin
 type Restaurant = {
   id: string; name: string; slug?: string | null;
   description?: string | null; address?: string | null; city?: string | null;
-  phone?: string | null; email?: string | null; coverImageUrl?: string | null;
+  phone?: string | null; email?: string | null;
   acceptReservations: boolean; depositPerGuestCents: number;
   avgPrepMinutes: number; reservationPolicy?: string | null;
   tipsEnabled: boolean; serviceCallEnabled: boolean; reviewsEnabled: boolean;
@@ -48,8 +48,6 @@ export default function SettingsPage() {
           phone: form.phone?.trim() || undefined,
           // email vide → on ne l'envoie pas (évite l'erreur Zod email)
           email: form.email?.trim() || undefined,
-          // URL vide → on ne l'envoie pas (évite l'erreur Zod url)
-          coverImageUrl: form.coverImageUrl?.trim() || undefined,
           acceptReservations: form.acceptReservations ?? false,
           depositPerGuestCents: form.depositPerGuestCents ?? 0,
           avgPrepMinutes: form.avgPrepMinutes ?? 90,
@@ -215,10 +213,6 @@ export default function SettingsPage() {
           <div>
             <label className="label">Description (affichée sur votre page publique)</label>
             <textarea className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30" rows={3} value={form.description ?? ""} onChange={f("description")} />
-          </div>
-          <div>
-            <label className="label">URL photo de couverture</label>
-            <input className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30" placeholder="https://…" value={form.coverImageUrl ?? ""} onChange={f("coverImageUrl")} />
           </div>
         </div>
 

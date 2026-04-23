@@ -5,44 +5,48 @@ import type { Metadata } from "next";
 import { ImageLightbox } from "./ImageLightbox";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type OpeningHour = { dayOfWeek: number; openMin: number; closeMin: number; service?: string };
-type ModifierGroup = {
-  id: string; name: string; required: boolean; multiple: boolean;
-  options: Array<{ id: string; name: string; priceDeltaCents: number }>;
-};
+type Photo = { id: string; url: string };
+type OpeningHour = { dayOfWeek: number; openMin: number; closeMin: number; service?: string | null };
 type MenuItem = {
-  id: string; name: string; description?: string; priceCents: number;
-  imageUrl?: string; allergens: string[]; diets: string[]; category?: string;
-  avgRating?: number; reviewsCount?: number;
-  modifierGroups?: ModifierGroup[];
+  id: string; name: string; description?: string | null; priceCents: number;
+  imageUrl?: string | null; allergens?: string[]; diets?: string[];
+  category?: string | null; avgRating?: number; reviewsCount?: number;
+  photos?: Photo[];
 };
 type Restaurant = {
   id: string; name: string; slug: string;
-  description?: string; address?: string; city?: string; phone?: string;
-  email?: string; website?: string; coverImageUrl?: string; logoUrl?: string;
+  description?: string | null; address?: string | null; city?: string | null;
+  phone?: string | null; email?: string | null; website?: string | null;
+  coverImageUrl?: string | null; logoUrl?: string | null;
   acceptReservations: boolean; depositPerGuestCents: number;
   menuItems: MenuItem[];
   openingHours: OpeningHour[];
+  photos?: Photo[];
 };
-type Review = { rating: number; comment?: string; menuItem: { name: string }; createdAt: string };
+type Review = { rating: number; comment?: string | null; menuItem: { name: string }; createdAt: string };
 type PageData = {
   restaurant: Restaurant;
   reviews: { avgRating: number | null; count: number; latest: Review[] };
 };
 
 const ALLERGEN_LABELS: Record<string, string> = {
-  GLUTEN:"Gluten", CRUSTACEANS:"Crustacés", EGGS:"Œufs", FISH:"Poisson",
-  PEANUTS:"Arachides", SOYBEANS:"Soja", MILK:"Lait", NUTS:"Fruits à coque",
-  CELERY:"Céleri", MUSTARD:"Moutarde", SESAME:"Sésame", SULPHITES:"Sulfites",
-  LUPIN:"Lupin", MOLLUSCS:"Mollusques",
+  GLUTEN: "Gluten", CRUSTACEANS: "Crustacés", EGGS: "Œufs", FISH: "Poisson",
+  PEANUTS: "Arachides", SOYBEANS: "Soja", MILK: "Lait", NUTS: "Fruits à coque",
+  CELERY: "Céleri", MUSTARD: "Moutarde", SESAME: "Sésame", SULPHITES: "Sulfites",
+  LUPIN: "Lupin", MOLLUSCS: "Mollusques",
 };
 const DIET_LABELS: Record<string, string> = {
-  VEGETARIAN:"🌿 Végétarien", VEGAN:"🌱 Vegan", GLUTEN_FREE:"🌾 Sans gluten",
-  LACTOSE_FREE:"🥛 Sans lactose", HALAL:"☪️ Halal", KOSHER:"✡️ Casher", SPICY:"🌶️ Épicé",
+  VEGETARIAN: "🌿 Végé", VEGAN: "🌱 Vegan", GLUTEN_FREE: "🌾 Sans gluten",
+  LACTOSE_FREE: "🥛 Sans lactose", HALAL: "☪️ Halal", KOSHER: "✡️ Casher", SPICY: "🌶️ Épicé",
 };
-const DAYS = ["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
+const DAYS = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 const minToTime = (m: number) =>
   `${String(Math.floor(m / 60)).padStart(2, "0")}h${String(m % 60).padStart(2, "0")}`;
+
+function abs(url: string | null | undefined) {
+  if (!url) return null;
+  return url.startsWith("http") ? url : `${API_URL}${url}`;
+}
 
 // ─── Fetch ─────────────────────────────────────────────────────────────────────
 async function getPageData(slug: string): Promise<PageData | null> {
@@ -56,264 +60,311 @@ async function getPageData(slug: string): Promise<PageData | null> {
 }
 
 // ─── Metadata ──────────────────────────────────────────────────────────────────
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const data = await getPageData(params.slug);
-  if (!data || !data.restaurant) return { title: "Restaurant introuvable — A table !" };
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const data = await getPageData(slug);
+  if (!data?.restaurant) return { title: "Restaurant introuvable — Ma Table" };
   const { restaurant, reviews } = data;
   const desc = restaurant.description
     ?? `Retrouvez le menu de ${restaurant.name}${restaurant.city ? ` à ${restaurant.city}` : ""}. Commandez en ligne via QR code.`;
-
   return {
-    title: `${restaurant.name} — A table !`,
+    title: `${restaurant.name} — Ma Table`,
     description: desc,
     openGraph: {
       title: restaurant.name,
       description: desc,
-      images: restaurant.coverImageUrl ? [{ url: restaurant.coverImageUrl }] : [],
+      images: abs(restaurant.coverImageUrl) ? [{ url: abs(restaurant.coverImageUrl)! }] : [],
       type: "website",
-    },
-    other: {
-      "schema:type": "Restaurant",
-      "schema:name": restaurant.name,
-      ...(restaurant.address ? { "schema:address": restaurant.address } : {}),
-      ...(reviews.avgRating ? { "schema:ratingValue": String(reviews.avgRating.toFixed(1)) } : {}),
     },
   };
 }
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
-export default async function RestaurantPublicPage({ params }: { params: { slug: string } }) {
-  const data = await getPageData(params.slug);
-  if (!data || !data.restaurant) notFound();
+export default async function RestaurantPublicPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const data = await getPageData(slug);
+  if (!data?.restaurant) notFound();
 
   const { restaurant, reviews } = data;
   const menu = restaurant.menuItems ?? [];
 
-  // Group menu by category
   const byCat = menu.reduce<Record<string, MenuItem[]>>((acc, m) => {
     const k = m.category || "Menu";
     (acc[k] ||= []).push(m);
     return acc;
   }, {});
 
-  // Group opening hours by day
-  const hoursByDay = restaurant.openingHours.reduce<Record<number, OpeningHour[]>>((acc, h) => {
+  const hoursByDay = (restaurant.openingHours ?? []).reduce<Record<number, OpeningHour[]>>((acc, h) => {
     (acc[h.dayOfWeek] ||= []).push(h);
     return acc;
   }, {});
 
   const stars = (n: number) => "★".repeat(Math.round(n)) + "☆".repeat(5 - Math.round(n));
+  const coverUrl = abs(restaurant.coverImageUrl);
+  const logoUrl = abs(restaurant.logoUrl);
+  const restaurantPhotos = (restaurant.photos ?? []).map((p) => ({ ...p, url: abs(p.url)! }));
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#0a0a0b] text-white">
       {/* ── Nav ── */}
-      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-slate-100">
+      <nav className="sticky top-0 z-50 bg-[#0a0a0b]/90 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/" className="text-brand font-bold text-lg">A table !</Link>
+          <Link href="/" className="text-orange-500 font-black text-lg tracking-tight">
+            MA <span className="text-white">TABLE</span>
+          </Link>
           {restaurant.acceptReservations && (
-            <Link href={`/${restaurant.slug}/reserve`} className="btn-primary text-sm py-1.5 px-4">
+            <Link
+              href={`/${restaurant.slug}/reserve`}
+              className="bg-orange-600 hover:bg-orange-500 transition-colors text-white text-sm font-bold px-4 py-2 rounded-xl"
+            >
               📅 Réserver
             </Link>
           )}
         </div>
       </nav>
 
-      {/* ── Hero ── */}
-      <div className="relative">
-        {restaurant.coverImageUrl ? (
-          <div className="h-56 md:h-80 overflow-hidden">
-            <img src={restaurant.coverImageUrl} alt={restaurant.name}
-              className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          </div>
+      {/* ── Hero Cover ── */}
+      <div className="relative w-full h-64 md:h-96 overflow-hidden">
+        {coverUrl ? (
+          <img src={coverUrl} alt={restaurant.name} className="w-full h-full object-cover" />
         ) : (
-          <div className="h-40 bg-gradient-to-br from-brand to-orange-400" />
+          <div className="w-full h-full bg-gradient-to-br from-orange-900/30 via-slate-900 to-black" />
         )}
-        <div className={`max-w-5xl mx-auto px-4 pb-4 ${restaurant.coverImageUrl ? "absolute bottom-0 left-0 right-0 text-white" : "pt-6"}`}>
-          <h1 className={`text-3xl md:text-5xl font-extrabold ${restaurant.coverImageUrl ? "drop-shadow" : "text-slate-900"}`}>
-            {restaurant.name}
-          </h1>
-          {restaurant.description && (
-            <p className={`mt-1 text-sm md:text-base max-w-xl ${restaurant.coverImageUrl ? "text-white/80 drop-shadow" : "text-slate-600"}`}>
-              {restaurant.description}
-            </p>
-          )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0b] via-[#0a0a0b]/30 to-transparent" />
+
+        {/* Info overlay */}
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-6 max-w-5xl mx-auto">
+          <div className="flex items-end gap-4">
+            {logoUrl && (
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl border-2 border-white/10 overflow-hidden bg-slate-800 shrink-0 shadow-2xl">
+                <img src={logoUrl} alt="" className="w-full h-full object-cover" />
+              </div>
+            )}
+            <div className="pb-1">
+              <h1 className="text-2xl md:text-4xl font-black drop-shadow-lg">{restaurant.name}</h1>
+              <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-white/60">
+                {restaurant.city && <span className="flex items-center gap-1">📍 {restaurant.city}</span>}
+                {reviews.count > 0 && (
+                  <span className="flex items-center gap-1 text-amber-400 font-bold">
+                    ★ {reviews.avgRating!.toFixed(1)} <span className="text-white/40 font-normal">({reviews.count} avis)</span>
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-6 grid md:grid-cols-3 gap-6">
+      <div className="max-w-5xl mx-auto px-4 py-8 grid md:grid-cols-3 gap-8">
 
         {/* ── Main column ── */}
-        <div className="md:col-span-2 space-y-8">
+        <div className="md:col-span-2 space-y-10">
 
-          {/* Rating bar */}
-          {reviews.count > 0 && (
-            <div className="card flex items-center gap-4">
-              <div className="text-center">
-                <div className="text-4xl font-extrabold text-brand">{reviews.avgRating!.toFixed(1)}</div>
-                <div className="text-amber-400 text-lg">{stars(reviews.avgRating!)}</div>
-                <div className="text-xs text-slate-500">{reviews.count} avis vérifiés</div>
-              </div>
-              <div className="flex-1 space-y-1">
-                {reviews.latest.slice(0, 2).map((r, i) => (
-                  <div key={i} className="text-sm bg-slate-50 rounded p-2">
-                    <span className="font-medium">{r.menuItem.name}</span>
-                    <span className="text-amber-400 ml-2 text-xs">{stars(r.rating)}</span>
-                    {r.comment && <p className="text-slate-600 italic text-xs mt-0.5">"{r.comment}"</p>}
-                  </div>
-                ))}
-              </div>
-            </div>
+          {/* Description */}
+          {restaurant.description && (
+            <p className="text-white/60 leading-relaxed">{restaurant.description}</p>
           )}
 
           {/* CTA Réservation */}
           {restaurant.acceptReservations && (
-            <div className="card bg-brand/5 border-brand/20 border-2 flex items-center justify-between gap-4">
+            <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-5 flex items-center justify-between gap-4">
               <div>
-                <div className="font-bold text-brand text-lg">Réservez votre table</div>
-                <div className="text-sm text-slate-600">
+                <div className="font-bold text-orange-400 text-base">Réservez votre table</div>
+                <div className="text-sm text-white/50 mt-0.5">
                   {restaurant.depositPerGuestCents > 0
-                    ? `${(restaurant.depositPerGuestCents / 100).toFixed(0)} € d'arrhes par couvert · annulation gratuite`
-                    : "Réservation gratuite, annulation flexible"}
+                    ? `${(restaurant.depositPerGuestCents / 100).toFixed(0)} € d'arrhes par couvert`
+                    : "Réservation gratuite · annulation flexible"}
                 </div>
               </div>
-              <Link href={`/${restaurant.slug}/reserve`} className="btn-primary whitespace-nowrap">
+              <Link
+                href={`/${restaurant.slug}/reserve`}
+                className="shrink-0 bg-orange-600 hover:bg-orange-500 transition-colors text-white font-bold text-sm px-5 py-2.5 rounded-xl"
+              >
                 📅 Réserver
               </Link>
             </div>
           )}
 
+          {/* Photos galerie restaurant */}
+          {restaurantPhotos.length > 0 && (
+            <section>
+              <h2 className="text-lg font-black mb-4 text-white/80">
+                📸 Galerie
+              </h2>
+              <div className="grid grid-cols-3 gap-2">
+                {restaurantPhotos.map((p, i) => (
+                  <ImageLightbox
+                    key={p.id}
+                    src={p.url}
+                    alt={`Photo ${i + 1}`}
+                    className={`w-full rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity ${i === 0 ? "col-span-3 h-52" : "h-28"}`}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Menu */}
           {Object.entries(byCat).map(([cat, items]) => (
             <section key={cat}>
-              <h2 className="text-xl font-bold mb-3 border-b border-slate-200 pb-2">{cat}</h2>
+              <h2 className="text-base font-black uppercase tracking-widest text-orange-400 mb-4 flex items-center gap-2">
+                <span className="w-6 h-px bg-orange-500/50 inline-block" />
+                {cat}
+              </h2>
               <div className="space-y-3">
-                {items.map((item) => (
-                  <div key={item.id} className="card flex gap-4">
-                    {item.imageUrl && (
-                      <ImageLightbox
-                        src={item.imageUrl}
-                        alt={item.name}
-                        className="w-24 h-24 rounded-xl object-cover"
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-semibold">{item.name}</h3>
-                        <span className="font-bold text-brand shrink-0">
-                          {(item.priceCents / 100).toFixed(2)} €
-                        </span>
-                      </div>
-                      {item.description && (
-                        <p className="text-sm text-slate-600 mt-0.5">{item.description}</p>
-                      )}
-                      {item.reviewsCount && item.reviewsCount > 0 && (
-                        <div className="text-xs text-amber-500 mt-1">
-                          {stars(item.avgRating!)} {item.avgRating!.toFixed(1)} ({item.reviewsCount})
+                {items.map((item) => {
+                  const dishPhotos = (item.photos ?? []).map((p) => ({ ...p, url: abs(p.url)! }));
+                  const primaryPhoto = dishPhotos[0]?.url ?? (item.imageUrl ? abs(item.imageUrl) : null);
+                  return (
+                    <div key={item.id} className="bg-white/[0.03] border border-white/5 rounded-2xl overflow-hidden hover:bg-white/[0.05] transition-colors">
+                      <div className="flex gap-4 p-4">
+                        {primaryPhoto && (
+                          <ImageLightbox
+                            src={primaryPhoto}
+                            alt={item.name}
+                            className="w-24 h-24 rounded-xl object-cover shrink-0 cursor-pointer"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="font-bold text-sm text-white">{item.name}</h3>
+                            <span className="font-black text-orange-400 shrink-0 text-sm">
+                              {(item.priceCents / 100).toFixed(2)} €
+                            </span>
+                          </div>
+                          {item.description && (
+                            <p className="text-xs text-white/40 mt-1 leading-relaxed line-clamp-2">
+                              {item.description}
+                            </p>
+                          )}
+                          {item.reviewsCount && item.reviewsCount > 0 ? (
+                            <div className="text-xs text-amber-400 mt-1">
+                              {stars(item.avgRating!)} {item.avgRating!.toFixed(1)}
+                              <span className="text-white/30 ml-1">({item.reviewsCount})</span>
+                            </div>
+                          ) : null}
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {item.diets?.map((d) => (
+                              <span key={d} className="text-[10px] px-1.5 py-0.5 bg-green-500/10 text-green-400 rounded border border-green-500/20">
+                                {DIET_LABELS[d] ?? d}
+                              </span>
+                            ))}
+                            {item.allergens?.map((a) => (
+                              <span key={a} className="text-[10px] px-1.5 py-0.5 bg-red-500/10 text-red-400 rounded border border-red-500/20">
+                                ⚠️ {ALLERGEN_LABELS[a] ?? a}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      )}
-                      {/* Diet badges */}
-                      {(item.diets?.length > 0 || item.allergens?.length > 0) && (
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {item.diets?.map((d) => (
-                            <span key={d} className="text-[10px] px-1.5 py-0.5 bg-green-50 text-green-700 rounded border border-green-200">
-                              {DIET_LABELS[d] ?? d}
-                            </span>
-                          ))}
-                          {item.allergens?.map((a) => (
-                            <span key={a} className="text-[10px] px-1.5 py-0.5 bg-red-50 text-red-600 rounded border border-red-200">
-                              ⚠️ {ALLERGEN_LABELS[a] ?? a}
-                            </span>
+                      </div>
+                      {/* Photos supplémentaires du plat */}
+                      {dishPhotos.length > 1 && (
+                        <div className="flex gap-2 px-4 pb-4">
+                          {dishPhotos.slice(1).map((p) => (
+                            <ImageLightbox
+                              key={p.id}
+                              src={p.url}
+                              alt={item.name}
+                              className="w-16 h-16 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                            />
                           ))}
                         </div>
                       )}
                     </div>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+
+          {/* Avis */}
+          {reviews.latest.length > 0 && (
+            <section>
+              <h2 className="text-lg font-black mb-4 text-white/80">⭐ Avis clients</h2>
+              <div className="space-y-3">
+                {reviews.latest.map((r, i) => (
+                  <div key={i} className="bg-white/[0.03] border border-white/5 rounded-2xl p-4">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="font-bold text-sm text-orange-400">{r.menuItem.name}</span>
+                      <span className="text-amber-400 text-xs">{stars(r.rating)}</span>
+                    </div>
+                    {r.comment && <p className="text-xs text-white/50 italic">"{r.comment}"</p>}
                   </div>
                 ))}
               </div>
             </section>
-          ))}
+          )}
         </div>
 
         {/* ── Sidebar ── */}
         <aside className="space-y-4">
 
           {/* Infos pratiques */}
-          <div className="card space-y-3">
-            <h3 className="font-bold text-slate-700">Infos pratiques</h3>
+          <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-5 space-y-3">
+            <h3 className="font-bold text-white/80 text-sm uppercase tracking-widest">Infos pratiques</h3>
             {restaurant.address && (
-              <div className="text-sm flex gap-2">
+              <div className="text-sm flex gap-2 text-white/60">
                 <span>📍</span>
                 <span>{restaurant.address}{restaurant.city ? `, ${restaurant.city}` : ""}</span>
               </div>
             )}
             {restaurant.phone && (
-              <a href={`tel:${restaurant.phone}`} className="text-sm flex gap-2 text-brand hover:underline">
+              <a href={`tel:${restaurant.phone}`} className="text-sm flex gap-2 text-orange-400 hover:text-orange-300 transition-colors">
                 <span>📞</span><span>{restaurant.phone}</span>
               </a>
             )}
             {restaurant.email && (
-              <a href={`mailto:${restaurant.email}`} className="text-sm flex gap-2 text-brand hover:underline">
-                <span>✉️</span><span>{restaurant.email}</span>
+              <a href={`mailto:${restaurant.email}`} className="text-sm flex gap-2 text-orange-400 hover:text-orange-300 transition-colors">
+                <span>✉️</span><span className="break-all">{restaurant.email}</span>
               </a>
             )}
             {restaurant.website && (
-              <a href={restaurant.website} target="_blank" rel="noopener" className="text-sm flex gap-2 text-brand hover:underline">
-                <span>🌐</span><span>Site web</span>
+              <a href={restaurant.website} target="_blank" rel="noopener" className="text-sm flex gap-2 text-orange-400 hover:text-orange-300 transition-colors">
+                <span>🌐</span><span>Site web ↗</span>
               </a>
             )}
           </div>
 
           {/* Horaires */}
           {Object.keys(hoursByDay).length > 0 && (
-            <div className="card space-y-1.5">
-              <h3 className="font-bold text-slate-700 mb-2">Horaires</h3>
-              {[1,2,3,4,5,6,0].map((dow) => {
-                const slots = hoursByDay[dow];
-                const isToday = new Date().getDay() === dow;
-                return (
-                  <div key={dow} className={`text-sm flex justify-between gap-2 ${isToday ? "font-semibold text-brand" : "text-slate-600"}`}>
-                    <span>{DAYS[dow]}{isToday && " ←"}</span>
-                    <span>
-                      {slots
-                        ? slots.map((h) => `${minToTime(h.openMin)}–${minToTime(h.closeMin)}`).join(", ")
-                        : <span className="text-slate-400">Fermé</span>}
-                    </span>
-                  </div>
-                );
-              })}
+            <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
+              <h3 className="font-bold text-white/80 text-sm uppercase tracking-widest mb-3">🕐 Horaires</h3>
+              <div className="space-y-1.5">
+                {[1, 2, 3, 4, 5, 6, 0].map((dow) => {
+                  const slots = hoursByDay[dow];
+                  const isToday = new Date().getDay() === dow;
+                  return (
+                    <div key={dow} className={`text-sm flex justify-between gap-2 ${isToday ? "text-orange-400 font-bold" : "text-white/50"}`}>
+                      <span>{DAYS[dow]}{isToday && " ·"}</span>
+                      <span>
+                        {slots
+                          ? slots.map((h) => `${minToTime(h.openMin)}–${minToTime(h.closeMin)}`).join(", ")
+                          : <span className="text-white/20">Fermé</span>}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
-          {/* Tous les avis */}
-          {reviews.latest.length > 2 && (
-            <div className="card space-y-2">
-              <h3 className="font-bold text-slate-700 mb-2">Avis récents</h3>
-              {reviews.latest.slice(2).map((r, i) => (
-                <div key={i} className="text-xs border-b border-slate-100 pb-2 last:border-0">
-                  <div className="flex justify-between">
-                    <span className="font-medium">{r.menuItem.name}</span>
-                    <span className="text-amber-400">{stars(r.rating)}</span>
-                  </div>
-                  {r.comment && <p className="text-slate-500 italic mt-0.5">"{r.comment}"</p>}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Badge A table! */}
-          <div className="card text-center py-3 bg-slate-50 border-slate-200">
-            <p className="text-xs text-slate-400">Propulsé par</p>
-            <Link href="/" className="text-brand font-bold">A table !</Link>
-            <p className="text-xs text-slate-400 mt-1">Commandez depuis votre table en 15s</p>
+          {/* Badge Ma Table */}
+          <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 text-center">
+            <p className="text-xs text-white/30 mb-1">Propulsé par</p>
+            <Link href="/" className="text-orange-500 font-black text-sm tracking-tight">
+              MA TABLE
+            </Link>
+            <p className="text-xs text-white/20 mt-1">Commandez depuis votre table en 15s</p>
           </div>
         </aside>
       </div>
 
       {/* ── Footer ── */}
-      <footer className="border-t border-slate-200 mt-8 py-6 text-center text-xs text-slate-400">
-        {restaurant.name} · Commande et paiement par QR code ·{" "}
-        <Link href="/" className="text-brand hover:underline">A table !</Link>
+      <footer className="border-t border-white/5 mt-8 py-8 text-center">
+        <p className="text-xs text-white/20">
+          {restaurant.name} · Commande et paiement par QR code ·{" "}
+          <Link href="/" className="text-orange-400 hover:text-orange-300">Ma Table</Link>
+        </p>
       </footer>
     </div>
   );
