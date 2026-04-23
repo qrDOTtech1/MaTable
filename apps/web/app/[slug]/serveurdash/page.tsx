@@ -262,6 +262,7 @@ export default function ServeurDashPage() {
   }
 
   const pendingOrders = sessions.flatMap((s) => s.orders.filter((o) => o.status === "PENDING"));
+  const servedOrders = sessions.flatMap((s) => s.orders.filter((o) => o.status === "SERVED"));
   const myTables = sessions.length + myEmptyTables.length;
   const todayDow = new Date().getDay();
   const todaySchedule = schedules.filter((s) => s.dayOfWeek === todayDow);
@@ -337,7 +338,7 @@ export default function ServeurDashPage() {
                 <p className="text-xs text-white/40 mt-1">À préparer</p>
               </div>
               <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4 text-center">
-                <p className="text-2xl font-black text-emerald-400">{sessions.flatMap((s) => s.orders.filter((o) => o.status === "SERVED")).length}</p>
+                <p className="text-2xl font-black text-emerald-400">{servedOrders.length}</p>
                 <p className="text-xs text-white/40 mt-1">À servir</p>
               </div>
             </div>
@@ -346,13 +347,14 @@ export default function ServeurDashPage() {
             {sessions.length === 0 && myEmptyTables.length === 0 ? (
               <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-10 text-center">
                 <p className="text-4xl mb-3">🪑</p>
-                <p className="text-white/50">Aucune table assignée pour le moment</p>
+                <p className="text-white/50">Aucune table active en ce moment</p>
+                <p className="text-xs text-white/25 mt-1">Les commandes apparaîtront ici dès qu'un client scanne un QR code</p>
               </div>
             ) : (<>
               {/* Empty tables assigned to me */}
               {myEmptyTables.length > 0 && (
                 <div>
-                  <p className="text-xs text-white/30 uppercase tracking-wider font-bold mb-2 px-1">Tables assignées — en attente</p>
+                  <p className="text-xs text-white/30 uppercase tracking-wider font-bold mb-2 px-1">Mes tables — en attente</p>
                   <div className="grid grid-cols-3 gap-2 mb-4">
                     {myEmptyTables.map((t) => (
                       <div key={t.id} className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4 text-center">
@@ -363,48 +365,85 @@ export default function ServeurDashPage() {
                   </div>
                 </div>
               )}
-              {sessions.length > 0 && <p className="text-xs text-white/30 uppercase tracking-wider font-bold mb-2 px-1">Tables actives</p>}
-              {sessions.map((session) => (
-                <div key={session.id} className="rounded-2xl bg-white/[0.02] border border-white/[0.06] overflow-hidden">
-                  <div className="px-5 py-3 bg-white/[0.03] border-b border-white/[0.06] flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-black text-white">Table {session.table.number}</span>
-                      <span className="text-xs text-white/30">{session.table.seats} couverts</span>
+              {/* Sessions: mine first (orange), unassigned (yellow — claimable), others (dim) */}
+              {sessions.length > 0 && (
+                <p className="text-xs text-white/30 uppercase tracking-wider font-bold mb-2 px-1">
+                  Tables actives · {sessions.length}
+                </p>
+              )}
+              {sessions.map((session) => {
+                const isMine = (session as any).serverId === server?.id;
+                const isUnassigned = !(session as any).serverId;
+                return (
+                  <div
+                    key={session.id}
+                    className={`rounded-2xl border overflow-hidden transition-all ${
+                      isMine
+                        ? "bg-orange-500/5 border-orange-500/20"
+                        : isUnassigned
+                        ? "bg-yellow-500/5 border-yellow-500/20"
+                        : "bg-white/[0.02] border-white/[0.06]"
+                    }`}
+                  >
+                    <div className={`px-5 py-3 border-b flex items-center justify-between ${
+                      isMine ? "bg-orange-500/[0.06] border-orange-500/10" : isUnassigned ? "bg-yellow-500/[0.06] border-yellow-500/10" : "bg-white/[0.03] border-white/[0.06]"
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-lg font-black ${isMine ? "text-orange-400" : isUnassigned ? "text-yellow-400" : "text-white/60"}`}>
+                          Table {session.table.number}
+                        </span>
+                        <span className="text-xs text-white/30">{session.table.seats} couverts</span>
+                        {isMine && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-300 font-semibold">Ma table</span>}
+                        {isUnassigned && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 font-semibold">Libre</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-white/30">{session.orders.length} commande{session.orders.length !== 1 ? "s" : ""}</span>
+                        {isUnassigned && (
+                          <button
+                            onClick={async () => {
+                              await serverFetch(`/api/server/tables/${session.id}/claim`, { method: "POST" });
+                              loadAll();
+                            }}
+                            className="text-xs px-2.5 py-1 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 font-semibold transition-all"
+                          >
+                            Prendre en charge
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-xs text-white/30">{session.orders.length} commande{session.orders.length !== 1 ? "s" : ""}</span>
-                  </div>
-                  {session.orders.length === 0 ? (
-                    <p className="px-5 py-4 text-sm text-white/30 italic">Aucune commande en cours</p>
-                  ) : (
-                    <div className="divide-y divide-white/[0.04]">
-                      {session.orders.map((order) => (
-                        <div key={order.id} className="px-5 py-4 flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className={`text-xs font-semibold ${STATUS_COLOR[order.status] ?? "text-white/60"}`}>
-                                {STATUS_LABEL[order.status] ?? order.status}
-                              </span>
-                              <span className="text-xs text-white/20">
-                                {new Date(order.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                              </span>
+                    {session.orders.length === 0 ? (
+                      <p className="px-5 py-4 text-sm text-white/30 italic">Aucune commande en cours</p>
+                    ) : (
+                      <div className="divide-y divide-white/[0.04]">
+                        {session.orders.map((order) => (
+                          <div key={order.id} className="px-5 py-4 flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className={`text-xs font-semibold ${STATUS_COLOR[order.status] ?? "text-white/60"}`}>
+                                  {STATUS_LABEL[order.status] ?? order.status}
+                                </span>
+                                <span className="text-xs text-white/20">
+                                  {new Date(order.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                              </div>
+                              <div className="space-y-0.5">
+                                {(order.items as any[]).map((item: any, i: number) => (
+                                  <p key={i} className="text-sm text-white/70">
+                                    {item.quantity}× {item.name}
+                                  </p>
+                                ))}
+                              </div>
                             </div>
-                            <div className="space-y-0.5">
-                              {(order.items as any[]).map((item: any, i: number) => (
-                                <p key={i} className="text-sm text-white/70">
-                                  {item.quantity}× {item.name}
-                                </p>
-                              ))}
-                            </div>
+                            <span className="text-sm font-bold text-white/80 shrink-0">
+                              {(order.totalCents / 100).toFixed(2)}€
+                            </span>
                           </div>
-                          <span className="text-sm font-bold text-white/80 shrink-0">
-                            {(order.totalCents / 100).toFixed(2)}€
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </>
             )}
 
