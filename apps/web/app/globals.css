@@ -2,8 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+html { color-scheme: dark; }
 html, body { height: 100%; }
-body { @apply bg-[#0a0a0a] text-white; }
+body { @apply bg-[#0a0a0a] text-white; -webkit-font-smoothing: antialiased; }
+
+/* ── Native select — dark theme global fix ────────────────────────────────── */
+select {
+  background-color: #0f0f0f !important;
+  color: white !important;
+  color-scheme: dark;
+}
+select option, select optgroup {
+  background-color: #1a1a1a !important;
+  color: white !important;
+}
+
+/* ── Scrollbar dark ───────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+::selection { background: rgba(249,115,22,0.3); color: white; }
 
 .btn { @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold transition-all duration-150; }
 .btn-primary { @apply btn bg-orange-500 text-white hover:bg-orange-400 shadow-md hover:shadow-lg hover:-translate-y-0.5; }
