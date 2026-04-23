@@ -17,9 +17,10 @@ type TableSession = {
   orders: Order[];
 };
 type TableMap = {
-  id: string; number: number; seats: number;
+  id: string; number: number; seats: number; assignedServerId?: string | null;
   sessions: { server: { id: string; name: string } | null }[];
 };
+type EmptyTable = { id: string; number: number; seats: number };
 type Stats = { ordersToday: number; avgRating: number | null; totalReviews: number; tipsToday: number };
 
 const DAYS = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
@@ -65,6 +66,9 @@ export default function ServeurDashPage() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [sessions, setSessions] = useState<TableSession[]>([]);
   const [allTables, setAllTables] = useState<TableMap[]>([]);
+  const [myEmptyTables, setMyEmptyTables] = useState<EmptyTable[]>([]);
+  const [globalChallenges, setGlobalChallenges] = useState<Challenge[]>([]);
+  const [generatingChallenges, setGeneratingChallenges] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
   const [tab, setTab] = useState<Tab>("tables");
   const [loading, setLoading] = useState(true);
@@ -98,8 +102,10 @@ export default function ServeurDashPage() {
       setSchedules(meRes.server.schedules ?? []);
       setNotes(meRes.server.notes ?? []);
       setChallenges(meRes.server.challenges ?? []);
+      setGlobalChallenges(meRes.server.globalChallenges ?? []);
       setSessions(tablesRes.sessions);
       setAllTables(tablesRes.allTables);
+      setMyEmptyTables(tablesRes.myEmptyTables ?? []);
       setStats(statsRes);
     } catch {
       // token invalid → redirect handled in serverFetch
@@ -162,6 +168,14 @@ export default function ServeurDashPage() {
     setNewChallenge("");
   }
 
+  async function generateDailyChallenges() {
+    setGeneratingChallenges(true);
+    try {
+      const res = await serverFetch<{ challenges: Challenge[]; alreadyGenerated: boolean }>("/api/server/challenges/generate-daily", { method: "POST" });
+      setGlobalChallenges(res.challenges);
+    } catch { } finally { setGeneratingChallenges(false); }
+  }
+
   async function toggleChallenge(id: string) {
     const res = await serverFetch<{ challenge: Challenge }>(`/api/server/challenges/${id}/toggle`, { method: "PATCH" });
     setChallenges((c) => c.map((ch) => ch.id === id ? res.challenge : ch));
@@ -207,7 +221,7 @@ export default function ServeurDashPage() {
   }
 
   const pendingOrders = sessions.flatMap((s) => s.orders.filter((o) => o.status === "PENDING"));
-  const myTables = sessions.length;
+  const myTables = sessions.length + myEmptyTables.length;
   const todayDow = new Date().getDay();
   const todaySchedule = schedules.filter((s) => s.dayOfWeek === todayDow);
 
@@ -215,7 +229,7 @@ export default function ServeurDashPage() {
     { id: "tables", icon: "🪑", label: "Mes tables", badge: pendingOrders.length || undefined },
     { id: "planning", icon: "🗓️", label: "Planning" },
     { id: "notes", icon: "📝", label: "Notes", badge: notes.length || undefined },
-    { id: "defis", icon: "🏆", label: "Défis", badge: challenges.filter((c) => !c.done).length || undefined },
+    { id: "defis", icon: "🏆", label: "Défis", badge: (challenges.filter((c) => !c.done).length + globalChallenges.filter((c) => !c.done).length) || undefined },
     { id: "stats", icon: "📊", label: "Stats" },
   ];
 
@@ -288,13 +302,28 @@ export default function ServeurDashPage() {
             </div>
 
             {/* My assigned tables */}
-            {sessions.length === 0 ? (
+            {sessions.length === 0 && myEmptyTables.length === 0 ? (
               <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-10 text-center">
                 <p className="text-4xl mb-3">🪑</p>
                 <p className="text-white/50">Aucune table assignée pour le moment</p>
               </div>
-            ) : (
-              sessions.map((session) => (
+            ) : (<>
+              {/* Empty tables assigned to me */}
+              {myEmptyTables.length > 0 && (
+                <div>
+                  <p className="text-xs text-white/30 uppercase tracking-wider font-bold mb-2 px-1">Tables assignées — en attente</p>
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    {myEmptyTables.map((t) => (
+                      <div key={t.id} className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4 text-center">
+                        <p className="text-xl font-black text-white/40">Table {t.number}</p>
+                        <p className="text-xs text-white/20 mt-0.5">{t.seats} couverts · libre</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {sessions.length > 0 && <p className="text-xs text-white/30 uppercase tracking-wider font-bold mb-2 px-1">Tables actives</p>}
+              {sessions.map((session) => (
                 <div key={session.id} className="rounded-2xl bg-white/[0.02] border border-white/[0.06] overflow-hidden">
                   <div className="px-5 py-3 bg-white/[0.03] border-b border-white/[0.06] flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -335,6 +364,7 @@ export default function ServeurDashPage() {
                   )}
                 </div>
               ))
+            </>
             )}
 
             {/* All restaurant tables overview */}
@@ -532,16 +562,65 @@ export default function ServeurDashPage() {
               </button>
             </div>
 
+            {/* ── AI Global Challenges (PRO_IA) ─────────────────── */}
+            {hasIA && (
+              <div className="rounded-2xl bg-purple-500/5 border border-purple-500/20 overflow-hidden">
+                <div className="px-5 py-4 border-b border-purple-500/10 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-purple-300 text-base">✨</span>
+                    <div>
+                      <p className="text-sm font-bold text-white">Défis Nova IA du jour</p>
+                      <p className="text-xs text-white/40">Compétition entre tous les serveurs</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={generateDailyChallenges}
+                    disabled={generatingChallenges}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-purple-500 hover:bg-purple-400 disabled:opacity-40 text-white font-semibold transition-all flex items-center gap-1.5"
+                  >
+                    {generatingChallenges
+                      ? <><span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" /> Génération…</>
+                      : "🎲 Générer"}
+                  </button>
+                </div>
+                {globalChallenges.length === 0 ? (
+                  <p className="px-5 py-5 text-sm text-white/30 text-center">
+                    Appuyez sur "Générer" pour créer les défis du jour
+                  </p>
+                ) : (
+                  <div className="divide-y divide-purple-500/10">
+                    {globalChallenges.map((ch) => (
+                      <div key={ch.id} className={`px-5 py-4 flex items-center gap-4 ${ch.done ? "opacity-60" : ""}`}>
+                        <button
+                          onClick={() => {
+                            serverFetch<{ challenge: Challenge }>(`/api/server/challenges/${ch.id}/toggle`, { method: "PATCH" })
+                              .then((r) => setGlobalChallenges((g) => g.map((c) => c.id === ch.id ? r.challenge : c)));
+                          }}
+                          className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                            ch.done
+                              ? "bg-emerald-500 border-emerald-500 text-white text-xs"
+                              : "border-purple-400/40 hover:border-purple-400"
+                          }`}
+                        >
+                          {ch.done ? "✓" : ""}
+                        </button>
+                        <p className={`text-sm flex-1 ${ch.done ? "line-through text-white/30" : "text-white/80"}`}>{ch.title}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Personal Challenges ───────────────────────────── */}
             {challenges.length === 0 ? (
               <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-8 text-center">
                 <p className="text-3xl mb-2">🏆</p>
-                <p className="text-white/40 text-sm">Aucun défi défini · Créez-en un pour vous motiver !</p>
+                <p className="text-white/40 text-sm">Aucun défi personnel · Créez-en un pour vous motiver !</p>
               </div>
             ) : (
               <>
-                {challenges.filter((c) => !c.done).length > 0 && (
-                  <p className="text-xs text-white/30 uppercase tracking-wider font-bold px-1">En cours ({challenges.filter((c) => !c.done).length})</p>
-                )}
+                <p className="text-xs text-white/30 uppercase tracking-wider font-bold px-1">Défis personnels</p>
                 {challenges.map((ch) => (
                   <div key={ch.id} className={`rounded-2xl border p-4 flex items-center gap-4 transition-all ${
                     ch.done
