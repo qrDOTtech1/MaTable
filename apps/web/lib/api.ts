@@ -67,3 +67,30 @@ export function redirectOn401(err: unknown) {
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
+
+// Upload de fichiers (multipart) — ne met PAS Content-Type (le navigateur ajoute le boundary)
+export async function apiUpload<T>(
+  path: string,
+  files: File[],
+  opts: { query?: Record<string, string | undefined> } = {}
+): Promise<T> {
+  const token = getProToken();
+  const form = new FormData();
+  files.forEach((f) => form.append("files", f, f.name));
+
+  const qs = new URLSearchParams();
+  Object.entries(opts.query ?? {}).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") qs.set(k, v);
+  });
+  const url = `${API_URL}${path}${qs.toString() ? `?${qs}` : ""}`;
+
+  const headers = new Headers();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const res = await fetch(url, { method: "POST", body: form, headers });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new ApiError(res.status, `${res.status}: ${body}`);
+  }
+  return res.json() as Promise<T>;
+}

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { API_URL, api, getProToken, redirectOn401 } from "@/lib/api";
 import { chatWithNova } from "@/lib/ai";
+import PhotoUploader from "@/components/PhotoUploader";
 
 const ALLERGENS = [
   "GLUTEN","CRUSTACEANS","EGGS","FISH","PEANUTS","SOYBEANS","MILK","NUTS",
@@ -401,9 +402,14 @@ export default function MenuPage() {
                     </div>
                   </div>
 
-                  {/* Panneau expansible : stock + modifiers */}
+                  {/* Panneau expansible : photos + stock + modifiers */}
                   {expandedId === it.id && (
                     <div className="mt-3 pt-3 border-t border-white/10 space-y-4">
+                      {/* Galerie photos du plat */}
+                      <div className="bg-white/[0.03] border border-white/10 rounded-xl p-3">
+                        <PhotoUploader menuItemId={it.id} label="Photos du plat" max={8} />
+                      </div>
+
                       {/* Réassort */}
                       {it.stockEnabled && (
                         <div>

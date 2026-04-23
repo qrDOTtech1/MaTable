@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, redirectOn401 } from "@/lib/api";
+import PhotoUploader from "@/components/PhotoUploader";
 
 type OpeningHour = { id?: string; dayOfWeek: number; openMin: number; closeMin: number; service?: string };
 type Server = { id: string; name: string; schedules: ServerSchedule[] };
@@ -321,6 +322,15 @@ export default function SettingsPage() {
           )}
         </div>
       </form>
+
+      {/* Galerie photos du restaurant */}
+      <section className="mt-10 max-w-4xl bg-white/[0.03] border border-white/10 rounded-2xl p-6">
+        <h2 className="text-lg font-bold text-white mb-1">Galerie du restaurant</h2>
+        <p className="text-xs text-white/50 mb-4">
+          Importez plusieurs images (façade, salle, ambiance). Elles apparaissent sur la page publique et dans l'app sociale.
+        </p>
+        <PhotoUploader label="Photos du restaurant" max={30} />
+      </section>
     </div>
   );
 }
