@@ -373,21 +373,9 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Caisse PIN */}
           <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-4 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">💳</span>
-                <p className="text-sm font-semibold text-white">Service Caisse</p>
-              </div>
-              {form.slug && (
-                <a
-                  href={`/${form.slug}/caisse`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] text-emerald-400 hover:text-emerald-300 font-mono bg-emerald-500/10 px-2 py-0.5 rounded-lg transition-colors flex items-center gap-1"
-                >
-                  /{form.slug}/caisse ↗
-                </a>
-              )}
+            <div className="flex items-center gap-2">
+              <span className="text-xl">💳</span>
+              <p className="text-sm font-semibold text-white">Service Caisse</p>
             </div>
             <div>
               <label className="text-xs text-white/40 block mb-1">PIN (4-8 chiffres)</label>
@@ -402,30 +390,28 @@ export default function SettingsPage() {
                 className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-white font-mono tracking-widest text-base placeholder-white/20 focus:outline-none focus:border-emerald-500/50"
               />
             </div>
-            {pins.caissePin ? (
-              <p className="text-[11px] text-emerald-400/70">✓ Caisse activée — partagez le lien ci-dessus</p>
+            {form.slug ? (
+              <a
+                href={`/${form.slug}/caisse`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-xs text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-500/40 rounded-xl px-3 py-2 transition-all font-mono w-full"
+              >
+                <span className="text-base">💳</span>
+                <span className="flex-1">matable.pro/{form.slug}/caisse</span>
+                <span className="shrink-0">↗</span>
+              </a>
             ) : (
-              <p className="text-[11px] text-white/20">Aucun PIN — service désactivé</p>
+              <p className="text-[11px] text-orange-400/60">⚠ Définissez un slug dans la section Identité pour obtenir votre lien.</p>
             )}
+            {!pins.caissePin && <p className="text-[11px] text-white/20">Aucun PIN — service désactivé</p>}
           </div>
 
           {/* Cuisine PIN */}
           <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-4 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">🍳</span>
-                <p className="text-sm font-semibold text-white">Vue Cuisine</p>
-              </div>
-              {form.slug && (
-                <a
-                  href={`/${form.slug}/cuisine`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] text-amber-400 hover:text-amber-300 font-mono bg-amber-500/10 px-2 py-0.5 rounded-lg transition-colors flex items-center gap-1"
-                >
-                  /{form.slug}/cuisine ↗
-                </a>
-              )}
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🍳</span>
+              <p className="text-sm font-semibold text-white">Vue Cuisine</p>
             </div>
             <div>
               <label className="text-xs text-white/40 block mb-1">PIN (4-8 chiffres)</label>
@@ -440,17 +426,27 @@ export default function SettingsPage() {
                 className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-white font-mono tracking-widest text-base placeholder-white/20 focus:outline-none focus:border-amber-500/50"
               />
             </div>
-            {pins.cuisinePin ? (
-              <p className="text-[11px] text-amber-400/70">✓ Cuisine activée — partagez le lien ci-dessus</p>
+            {form.slug ? (
+              <a
+                href={`/${form.slug}/cuisine`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/20 hover:border-amber-500/40 rounded-xl px-3 py-2 transition-all font-mono w-full"
+              >
+                <span className="text-base">🍳</span>
+                <span className="flex-1">matable.pro/{form.slug}/cuisine</span>
+                <span className="shrink-0">↗</span>
+              </a>
             ) : (
-              <p className="text-[11px] text-white/20">Aucun PIN — service désactivé</p>
+              <p className="text-[11px] text-orange-400/60">⚠ Définissez un slug dans la section Identité pour obtenir votre lien.</p>
             )}
+            {!pins.cuisinePin && <p className="text-[11px] text-white/20">Aucun PIN — service désactivé</p>}
           </div>
         </div>
 
         {/* Info serveur */}
-        <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] p-3 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-start gap-3">
+        <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] p-4 space-y-3">
+          <div className="flex items-center gap-2">
             <span className="text-lg">👨‍🍳</span>
             <div>
               <p className="text-xs font-semibold text-white">Vue Serveur</p>
@@ -460,15 +456,19 @@ export default function SettingsPage() {
               </p>
             </div>
           </div>
-          {form.slug && (
+          {form.slug ? (
             <a
               href={`/${form.slug}/login`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[11px] text-orange-400 hover:text-orange-300 font-mono bg-orange-500/10 px-2 py-1 rounded-lg transition-colors flex items-center gap-1 shrink-0"
+              className="flex items-center gap-2 text-xs text-orange-400 hover:text-orange-300 bg-orange-500/10 border border-orange-500/20 hover:border-orange-500/40 rounded-xl px-3 py-2 transition-all font-mono w-full"
             >
-              /{form.slug}/login ↗
+              <span className="text-base">👨‍🍳</span>
+              <span className="flex-1">matable.pro/{form.slug}/login</span>
+              <span className="shrink-0">↗</span>
             </a>
+          ) : (
+            <p className="text-[11px] text-orange-400/60">⚠ Définissez un slug dans la section Identité pour obtenir votre lien.</p>
           )}
         </div>
 
