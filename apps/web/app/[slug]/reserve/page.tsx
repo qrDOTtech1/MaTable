@@ -20,10 +20,9 @@ export default function ReservePage() {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [step, setStep] = useState<"form" | "pay" | "done">("form");
+  const [step, setStep] = useState<"form" | "done">("form");
   const [error, setError] = useState<string | null>(null);
 
-  // Form state
   const today = new Date().toISOString().split("T")[0];
   const [date, setDate] = useState(today);
   const [guests, setGuests] = useState(2);
@@ -34,9 +33,8 @@ export default function ReservePage() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Load restaurant info
   useEffect(() => {
-    fetch(`${API_URL}/api/r/${slug}`, { next: { revalidate: 60 } } as RequestInit)
+    fetch(`${API_URL}/api/r/${slug}`)
       .then((r) => r.json())
       .then((d) => {
         setRestaurant(d.restaurant);
@@ -45,7 +43,6 @@ export default function ReservePage() {
       .catch(() => router.replace(`/${slug}`));
   }, [slug]);
 
-  // Load availability slots when date or guests change
   useEffect(() => {
     if (!restaurant) return;
     setLoadingSlots(true);
@@ -70,9 +67,7 @@ export default function ReservePage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Erreur lors de la réservation");
-
       if (json.checkoutUrl) {
-        // Deposit required — redirect to Stripe
         window.location.href = json.checkoutUrl;
       } else {
         setStep("done");
@@ -86,21 +81,23 @@ export default function ReservePage() {
 
   if (!restaurant) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-slate-400 animate-pulse">Chargement…</div>
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
       </div>
     );
   }
 
   if (step === "done") {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4 px-4 text-center">
-        <div className="text-5xl">✅</div>
-        <h1 className="text-2xl font-bold text-slate-800">Réservation confirmée !</h1>
-        <p className="text-slate-600 max-w-sm">
-          Un email de confirmation vous a été envoyé à <strong>{email}</strong>.
+      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center gap-4 px-4 text-center text-white">
+        <div className="text-6xl mb-2">✅</div>
+        <h1 className="text-2xl font-black">Réservation confirmée !</h1>
+        <p className="text-white/50 max-w-sm text-sm">
+          Un email de confirmation a été envoyé à <strong className="text-white">{email}</strong>.
         </p>
-        <Link href={`/${slug}`} className="btn-primary mt-2">← Retour au menu</Link>
+        <Link href={`/${slug}`} className="mt-4 px-6 py-3 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-xl transition-colors text-sm">
+          ← Retour au menu
+        </Link>
       </div>
     );
   }
@@ -109,33 +106,35 @@ export default function ReservePage() {
   const totalDeposit = ((restaurant.depositPerGuestCents * guests) / 100).toFixed(2);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
       {/* Nav */}
-      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-slate-100">
+      <nav className="sticky top-0 z-50 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href={`/${slug}`} className="text-slate-500 hover:text-slate-700 text-sm flex items-center gap-1">
+          <Link href={`/${slug}`} className="text-white/50 hover:text-white text-sm flex items-center gap-1 transition-colors">
             ← {restaurant.name}
           </Link>
-          <span className="text-brand font-bold">A table !</span>
+          <span className="text-xs text-white/30 font-medium">Réservation</span>
         </div>
       </nav>
 
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-slate-900 mb-1">Réserver chez {restaurant.name}</h1>
-        {restaurant.depositPerGuestCents > 0 && (
-          <p className="text-sm text-slate-500 mb-6">
-            {depositEur} € d'arrhes par couvert · annulation gratuite 24h avant
-          </p>
-        )}
+      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+        <div>
+          <h1 className="text-2xl font-black">Réserver chez <span className="text-orange-400">{restaurant.name}</span></h1>
+          {restaurant.depositPerGuestCents > 0 && (
+            <p className="text-sm text-white/40 mt-1">
+              {depositEur} € d'arrhes par couvert · annulation gratuite 24h avant
+            </p>
+          )}
+        </div>
 
-        <form onSubmit={submit} className="space-y-6">
-          {/* Date + guests */}
-          <div className="card grid grid-cols-2 gap-4">
+        <form onSubmit={submit} className="space-y-4">
+          {/* Date + couverts */}
+          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] p-4 grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Date</label>
+              <label className="text-xs text-white/50 uppercase tracking-wider font-bold block mb-2">Date</label>
               <input
                 type="date"
-                className="w-full border rounded px-3 py-2"
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-500/50"
                 min={today}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
@@ -143,26 +142,29 @@ export default function ReservePage() {
               />
             </div>
             <div>
-              <label className="label">Couverts</label>
+              <label className="text-xs text-white/50 uppercase tracking-wider font-bold block mb-2">Couverts</label>
               <select
-                className="w-full border rounded px-3 py-2"
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-500/50"
                 value={guests}
                 onChange={(e) => setGuests(Number(e.target.value))}
               >
                 {[1,2,3,4,5,6,7,8,9,10].map((n) => (
-                  <option key={n} value={n}>{n} personne{n > 1 ? "s" : ""}</option>
+                  <option key={n} value={n} className="bg-[#1a1a1a]">{n} personne{n > 1 ? "s" : ""}</option>
                 ))}
               </select>
             </div>
           </div>
 
-          {/* Time slots */}
-          <div className="card">
-            <label className="label mb-2">Créneau horaire</label>
+          {/* Créneaux */}
+          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] p-4">
+            <label className="text-xs text-white/50 uppercase tracking-wider font-bold block mb-3">Créneau horaire</label>
             {loadingSlots ? (
-              <p className="text-sm text-slate-400 animate-pulse">Chargement des disponibilités…</p>
+              <div className="flex items-center gap-2 text-sm text-white/30">
+                <div className="w-4 h-4 border border-white/20 border-t-white/60 rounded-full animate-spin" />
+                Chargement des disponibilités…
+              </div>
             ) : slots.length === 0 ? (
-              <p className="text-sm text-slate-500">Aucun créneau disponible pour cette date.</p>
+              <p className="text-sm text-white/40">Aucun créneau disponible pour cette date. Essayez un autre jour.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {slots.map((s) => (
@@ -171,12 +173,12 @@ export default function ReservePage() {
                     type="button"
                     disabled={!s.available}
                     onClick={() => setSelectedSlot(s.time)}
-                    className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
                       !s.available
-                        ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                        ? "bg-white/[0.03] text-white/20 cursor-not-allowed line-through"
                         : selectedSlot === s.time
-                        ? "bg-brand text-white"
-                        : "bg-white border border-slate-200 text-slate-700 hover:border-brand hover:text-brand"
+                        ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20"
+                        : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1] hover:text-white border border-white/[0.08]"
                     }`}
                   >
                     {s.time}
@@ -186,14 +188,14 @@ export default function ReservePage() {
             )}
           </div>
 
-          {/* Contact info */}
-          <div className="card space-y-3">
-            <label className="label">Vos coordonnées</label>
+          {/* Coordonnées */}
+          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] p-4 space-y-3">
+            <label className="text-xs text-white/50 uppercase tracking-wider font-bold block">Vos coordonnées</label>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="label">Nom complet *</label>
+                <label className="text-xs text-white/40 block mb-1">Nom complet *</label>
                 <input
-                  className="w-full border rounded px-3 py-2 text-sm"
+                  className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-orange-500/50"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Jean Dupont"
@@ -201,10 +203,10 @@ export default function ReservePage() {
                 />
               </div>
               <div>
-                <label className="label">Email *</label>
+                <label className="text-xs text-white/40 block mb-1">Email *</label>
                 <input
                   type="email"
-                  className="w-full border rounded px-3 py-2 text-sm"
+                  className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-orange-500/50"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="jean@example.com"
@@ -212,10 +214,10 @@ export default function ReservePage() {
                 />
               </div>
               <div>
-                <label className="label">Téléphone</label>
+                <label className="text-xs text-white/40 block mb-1">Téléphone</label>
                 <input
                   type="tel"
-                  className="w-full border rounded px-3 py-2 text-sm"
+                  className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-orange-500/50"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+33 6 …"
@@ -223,9 +225,9 @@ export default function ReservePage() {
               </div>
             </div>
             <div>
-              <label className="label">Demandes particulières</label>
+              <label className="text-xs text-white/40 block mb-1">Demandes particulières</label>
               <textarea
-                className="w-full border rounded px-3 py-2 text-sm"
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-orange-500/50"
                 rows={2}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -234,35 +236,36 @@ export default function ReservePage() {
             </div>
           </div>
 
-          {/* Policy */}
+          {/* Politique d'annulation */}
           {restaurant.reservationPolicy && (
-            <div className="text-xs text-slate-500 bg-slate-100 rounded p-3">
+            <div className="text-xs text-white/40 bg-white/[0.02] border border-white/[0.05] rounded-xl p-3">
               {restaurant.reservationPolicy}
             </div>
           )}
 
-          {/* Deposit summary */}
+          {/* Résumé arrhes */}
           {restaurant.depositPerGuestCents > 0 && selectedSlot && (
-            <div className="card bg-brand/5 border-brand/20 border flex items-center justify-between">
+            <div className="rounded-2xl bg-orange-500/10 border border-orange-500/20 p-4 flex items-center justify-between">
               <div className="text-sm">
-                <span className="font-semibold">{guests} couvert{guests > 1 ? "s" : ""}</span> × {depositEur} € arrhes
+                <span className="font-semibold text-white">{guests} couvert{guests > 1 ? "s" : ""}</span>
+                <span className="text-white/50"> × {depositEur} € arrhes</span>
               </div>
-              <div className="font-bold text-brand">{totalDeposit} €</div>
+              <div className="font-black text-orange-400 text-lg">{totalDeposit} €</div>
             </div>
           )}
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</p>
+            <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={submitting || !selectedSlot}
-            className="btn-primary w-full py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-4 bg-orange-600 hover:bg-orange-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-base rounded-2xl transition-all shadow-lg shadow-orange-500/10"
           >
             {submitting
               ? "Envoi en cours…"
-              : restaurant.depositPerGuestCents > 0
+              : restaurant.depositPerGuestCents > 0 && selectedSlot
               ? `Confirmer et payer ${totalDeposit} €`
               : "Confirmer la réservation"}
           </button>

@@ -16,6 +16,7 @@ type Restaurant = {
   isPartner: boolean;
   openingHours?: OpeningHour[];
 };
+type ServicePins = { caissePin: string | null; cuisinePin: string | null };
 
 const DAYS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 const minToTime = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
@@ -26,11 +27,38 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Service PINs
+  const [pins, setPins] = useState<ServicePins>({ caissePin: null, cuisinePin: null });
+  const [savingPins, setSavingPins] = useState(false);
+  const [savedPins, setSavedPins] = useState(false);
+
   useEffect(() => {
     api<{ restaurant: Restaurant }>("/api/pro/me")
       .then((r) => setForm(r.restaurant))
       .catch(redirectOn401);
+    api<ServicePins>("/api/pro/service-pins")
+      .then((r) => setPins(r))
+      .catch(() => {});
   }, []);
+
+  const savePins = async () => {
+    setSavingPins(true);
+    try {
+      await api("/api/pro/service-pins", {
+        method: "PATCH",
+        body: JSON.stringify({
+          caissePin:  pins.caissePin?.trim()  || null,
+          cuisinePin: pins.cuisinePin?.trim() || null,
+        }),
+      });
+      setSavedPins(true);
+      setTimeout(() => setSavedPins(false), 2500);
+    } catch (err: any) {
+      setError(err?.message ?? "Erreur lors de la sauvegarde des PINs");
+    } finally {
+      setSavingPins(false);
+    }
+  };
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -316,6 +344,104 @@ export default function SettingsPage() {
           )}
         </div>
       </form>
+
+      {/* Portails de Service */}
+      <section className="mt-8 max-w-2xl bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 space-y-5">
+        <div>
+          <h2 className="text-lg font-bold text-white">🔐 Portails de Service</h2>
+          <p className="text-xs text-white/40 mt-1">
+            Chaque service accède à sa vue dédiée via un code PIN. Partagez le PIN uniquement aux personnes concernées.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Caisse PIN */}
+          <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">💳</span>
+              <div>
+                <p className="text-sm font-semibold text-white">Service Caisse</p>
+                {form.slug && (
+                  <p className="text-[11px] text-white/30 font-mono">/{form.slug}/caisse</p>
+                )}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-white/40 block mb-1">PIN (4-8 chiffres)</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]{4,8}"
+                maxLength={8}
+                value={pins.caissePin ?? ""}
+                onChange={(e) => setPins((p) => ({ ...p, caissePin: e.target.value || null }))}
+                placeholder="ex : 1234"
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-white font-mono tracking-widest text-base placeholder-white/20 focus:outline-none focus:border-emerald-500/50"
+              />
+            </div>
+            {pins.caissePin ? (
+              <p className="text-[11px] text-emerald-400/70">✓ Caisse activée</p>
+            ) : (
+              <p className="text-[11px] text-white/20">Aucun PIN — service désactivé</p>
+            )}
+          </div>
+
+          {/* Cuisine PIN */}
+          <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🍳</span>
+              <div>
+                <p className="text-sm font-semibold text-white">Vue Cuisine</p>
+                {form.slug && (
+                  <p className="text-[11px] text-white/30 font-mono">/{form.slug}/cuisine</p>
+                )}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-white/40 block mb-1">PIN (4-8 chiffres)</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]{4,8}"
+                maxLength={8}
+                value={pins.cuisinePin ?? ""}
+                onChange={(e) => setPins((p) => ({ ...p, cuisinePin: e.target.value || null }))}
+                placeholder="ex : 5678"
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-white font-mono tracking-widest text-base placeholder-white/20 focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+            {pins.cuisinePin ? (
+              <p className="text-[11px] text-amber-400/70">✓ Cuisine activée</p>
+            ) : (
+              <p className="text-[11px] text-white/20">Aucun PIN — service désactivé</p>
+            )}
+          </div>
+        </div>
+
+        {/* Info serveur */}
+        <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] p-3 flex items-start gap-3">
+          <span className="text-lg">👨‍🍳</span>
+          <div>
+            <p className="text-xs font-semibold text-white">Vue Serveur</p>
+            <p className="text-[11px] text-white/40 mt-0.5">
+              Le PIN de chaque serveur est géré individuellement depuis{" "}
+              <a href="/dashboard/serveurs" className="text-orange-400 hover:underline">Gestion des Serveurs</a>.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={savePins}
+            disabled={savingPins}
+            className="px-6 py-2.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-bold rounded-xl transition-colors text-sm"
+          >
+            {savingPins ? "Enregistrement…" : "Enregistrer les PINs"}
+          </button>
+          {savedPins && <span className="text-emerald-400 text-sm font-medium">✓ PINs sauvegardés</span>}
+        </div>
+      </section>
 
       {/* Galerie photos du restaurant */}
       <section className="mt-10 max-w-4xl bg-white/[0.03] border border-white/10 rounded-2xl p-6">
