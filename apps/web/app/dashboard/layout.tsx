@@ -69,6 +69,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
         { href: "/dashboard/analytics", icon: "📊", label: "Statistiques" },
         { href: "/dashboard/reviews", icon: "⭐", label: "Avis" },
         { href: "/dashboard/reservations", icon: "📅", label: "Réservations" },
+        { href: "/dashboard/invoices", icon: "🧾", label: "Factures" },
       ],
     },
     {
