@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { io, Socket } from "socket.io-client";
@@ -11,6 +11,7 @@ type MenuItem = {
   id: string; name: string; description?: string | null;
   priceCents: number; category?: string | null; imageUrl?: string | null;
   allergens?: string[]; diets?: string[];
+  waitMinutes?: number;
 };
 type TableInfo = {
   table: { id: string; number: number; zone?: string };
@@ -27,6 +28,7 @@ type MyOrder = {
   status: "PENDING" | "COOKING" | "SERVED" | "PAID" | "CANCELLED";
   totalCents: number;
   items?: { menuItemId: string; name: string; quantity: number; priceCents: number }[];
+  expectedReadyAt?: string | null;
   createdAt: string;
 };
 
@@ -51,6 +53,66 @@ const STATUS_INFO: Record<MyOrder["status"], { label: string; icon: string; bg: 
 const tokenKey     = (id: string) => `atable_session_${id}`;
 const sessionIdKey = (id: string) => `atable_session_id_${id}`;
 const cartKey      = (id: string) => `atable_cart_${id}`;
+
+/** Countdown timer — shows remaining time or overdue message */
+function CountdownTimer({ targetIso, orderId, onOverdue }: {
+  targetIso: string;
+  orderId: string;
+  onOverdue: (id: string) => void;
+}) {
+  const [now, setNow] = useState(Date.now());
+  const firedRef = useRef(false);
+  useEffect(() => {
+    const iv = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const target = new Date(targetIso).getTime();
+  const diff = target - now;
+  const overdue = diff <= 0;
+
+  useEffect(() => {
+    if (overdue && !firedRef.current) {
+      firedRef.current = true;
+      onOverdue(orderId);
+    }
+  }, [overdue, orderId, onOverdue]);
+
+  if (overdue) {
+    const overdueMin = Math.floor(Math.abs(diff) / 60_000);
+    return (
+      <div className="mt-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-xs">
+        <p className="font-bold text-red-400">Retard de {overdueMin} min</p>
+        <p className="text-red-300/70 mt-0.5">
+          Nous nous excusons pour l'attente. La cuisine a ete alertee, votre commande arrive !
+        </p>
+      </div>
+    );
+  }
+
+  const min = Math.floor(diff / 60_000);
+  const sec = Math.floor((diff % 60_000) / 1000);
+  const pct = Math.max(0, Math.min(100, (diff / (target - (target - diff - diff))) * 100));
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center justify-between text-xs mb-1">
+        <span className="text-white/50">Temps restant</span>
+        <span className={`font-mono font-bold ${min < 2 ? "text-amber-400" : "text-white/70"}`}>
+          {min}:{String(sec).padStart(2, "0")}
+        </span>
+      </div>
+      <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-1000 ${
+            min < 2 ? "bg-amber-500" : "bg-orange-500"
+          }`}
+          style={{ width: `${Math.max(5, 100 - (diff / ((target - now + diff) || 1)) * 100)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
@@ -134,17 +196,35 @@ export default function OrderPage() {
     });
   }, [paid, tableUuid]);
 
+  // Overdue alert — POST to kitchen
+  const handleOverdue = useCallback(async (orderId: string) => {
+    try {
+      await api(`/api/cuisine/orders/${orderId}/overdue`, { method: "POST", pro: false });
+    } catch {}
+  }, []);
+
   useEffect(() => {
     if (!sessionId) return;
     const socket: Socket = io(API_URL, { auth: { sessionId } });
+
     socket.on("order:updated", (data: { id: string; status: string }) => {
       setMyOrders(prev => prev.map(o => o.id === data.id ? { ...o, status: data.status as any } : o));
       if (data.status === "SERVED") {
         try { new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3").play(); } catch {}
       }
+      if (data.status === "COOKING") {
+        try { new Audio("https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3").play(); } catch {}
+      }
     });
+
+    // Live order status refresh — session-level events
+    socket.on("order:new", () => {
+      const token = localStorage.getItem(tokenKey(tableUuid));
+      if (token) loadMyOrders(token).catch(() => {});
+    });
+
     return () => void socket.disconnect();
-  }, [sessionId]);
+  }, [sessionId, tableUuid]);
 
   const cartTotal = useMemo(() => {
     if (!info) return 0;
@@ -203,14 +283,14 @@ export default function OrderPage() {
     try {
       const token = await ensureToken();
       const items = Object.entries(cart).map(([menuItemId, quantity]) => ({ menuItemId, quantity }));
-      await api<{ orderId: string }>(`/api/orders`, { method: "POST", token, pro: false, body: JSON.stringify({ items }) });
+      const res = await api<{ orderId: string; expectedReadyAt?: string | null }>(`/api/orders`, { method: "POST", token, pro: false, body: JSON.stringify({ items }) });
       setCart({});
       localStorage.removeItem(cartKey(tableUuid));
       await loadMyOrders(token);
     } catch (e: any) {
       if (String(e.message).startsWith("401")) {
         localStorage.removeItem(tokenKey(tableUuid));
-        alert("Votre session a expiré, réessayez.");
+        alert("Votre session a expire, reessayez.");
       } else alert("Erreur : " + e.message);
     } finally { setSubmitting(false); }
   }
@@ -403,16 +483,44 @@ export default function OrderPage() {
 
       {/* Statut commandes en cours */}
       {!paid && myOrders.filter(o => o.status !== "PAID" && o.status !== "CANCELLED").length > 0 && (
-        <div className="space-y-2 mb-5">
+        <div className="space-y-3 mb-5">
           {myOrders.filter(o => o.status !== "PAID" && o.status !== "CANCELLED").map(o => {
             const s = STATUS_INFO[o.status];
+            const showTimer = o.expectedReadyAt && (o.status === "PENDING" || o.status === "COOKING");
             return (
-              <div key={o.id} className={`flex items-center justify-between px-4 py-3 rounded-xl border ${s.bg} border-white/[0.06]`}>
-                <div className="flex items-center gap-2">
-                  <span>{s.icon}</span>
-                  <span className={`text-sm font-semibold ${s.text}`}>{s.label}</span>
+              <div key={o.id} className={`px-4 py-3 rounded-xl border ${s.bg} border-white/[0.06]`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span>{s.icon}</span>
+                    <span className={`text-sm font-semibold ${s.text}`}>{s.label}</span>
+                  </div>
+                  <span className="text-xs text-white/30">{new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                 </div>
-                <span className="text-xs text-white/30">{new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                {/* Items summary */}
+                {Array.isArray(o.items) && o.items.length > 0 && (
+                  <div className="mt-2 text-xs text-white/40 space-y-0.5">
+                    {o.items.map((item, i) => (
+                      <div key={i} className="flex justify-between">
+                        <span>{item.quantity}x {item.name}</span>
+                        <span>{((item.priceCents * item.quantity) / 100).toFixed(2)} EUR</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Countdown timer */}
+                {showTimer && (
+                  <CountdownTimer
+                    targetIso={o.expectedReadyAt!}
+                    orderId={o.id}
+                    onOverdue={handleOverdue}
+                  />
+                )}
+                {/* Served confirmation */}
+                {o.status === "SERVED" && (
+                  <div className="mt-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-400 font-medium">
+                    Votre commande est servie. Bon appetit !
+                  </div>
+                )}
               </div>
             );
           })}
@@ -551,6 +659,15 @@ export default function OrderPage() {
                       <p className="text-xs text-white/65 mt-1 leading-relaxed line-clamp-2">{m.description}</p>
                     )}
                     <div className="flex flex-wrap gap-1 mt-1.5">
+                      {(m.waitMinutes ?? 0) > 0 ? (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded border border-blue-500/20">
+                          ⏱ {m.waitMinutes} min
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded border border-emerald-500/20">
+                          ⚡ Pret
+                        </span>
+                      )}
                       {m.diets?.map(d => (
                         <span key={d} className="text-[10px] px-1.5 py-0.5 bg-green-500/10 text-green-400 rounded border border-green-500/20">{DIET_LABELS[d] ?? d}</span>
                       ))}

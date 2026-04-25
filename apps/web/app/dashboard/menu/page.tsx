@@ -27,6 +27,7 @@ type Item = {
   category?: string | null; available: boolean; imageUrl?: string | null;
   allergens: string[]; diets: string[];
   stockEnabled: boolean; stockQty?: number | null; lowStockThreshold?: number | null;
+  waitMinutes: number;
   modifierGroups: ModifierGroup[];
 };
 
@@ -36,6 +37,7 @@ const emptyForm = {
   name: "", price: "", category: "", description: "", imageUrl: "",
   allergens: [] as string[], diets: [] as string[],
   stockEnabled: false, stockQty: "", lowStockThreshold: "5",
+  waitMinutes: "0",
 };
 
 export default function MenuPage() {
@@ -113,6 +115,7 @@ export default function MenuPage() {
       imageUrl: it.imageUrl ?? "", allergens: it.allergens ?? [], diets: it.diets ?? [],
       stockEnabled: it.stockEnabled, stockQty: it.stockQty?.toString() ?? "",
       lowStockThreshold: it.lowStockThreshold?.toString() ?? "5",
+      waitMinutes: (it.waitMinutes ?? 0).toString(),
     });
   };
 
@@ -131,6 +134,7 @@ export default function MenuPage() {
       stockEnabled: form.stockEnabled,
       stockQty: form.stockEnabled && form.stockQty !== "" ? parseInt(form.stockQty) : null,
       lowStockThreshold: form.stockEnabled && form.lowStockThreshold !== "" ? parseInt(form.lowStockThreshold) : null,
+      waitMinutes: parseInt(form.waitMinutes) || 0,
     };
     if (editId) {
       await api(`/api/pro/menu/${editId}`, { method: "PATCH", body: JSON.stringify(payload) });
@@ -235,10 +239,18 @@ export default function MenuPage() {
           </div>
         </div>
 
-        <div>
-          <label className="label">Description</label>
-          <input className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30" value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })} />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="col-span-2 md:col-span-3">
+            <label className="label">Description</label>
+            <input className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30" value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Temps d'attente (min)</label>
+            <input className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30" type="number" min="0" max="180" step="1"
+              value={form.waitMinutes} onChange={(e) => setForm({ ...form, waitMinutes: e.target.value })}
+              placeholder="0 = instantané" title="0 = prêt instantanément, sinon durée en minutes" />
+          </div>
         </div>
         <div>
           <label className="label">Photo</label>
@@ -363,6 +375,12 @@ export default function MenuPage() {
                           {lowStock && !outOfStock && <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded">Stock faible ({it.stockQty})</span>}
                           {it.stockEnabled && !lowStock && it.stockQty != null && (
                             <span className="text-xs text-white/50">📦 {it.stockQty}</span>
+                          )}
+                          {it.waitMinutes > 0 && (
+                            <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">⏱ {it.waitMinutes} min</span>
+                          )}
+                          {it.waitMinutes === 0 && (
+                            <span className="text-xs text-white/30">⚡ Instantané</span>
                           )}
                         </div>
                         {it.description && <div className="text-xs text-white/50 truncate">{it.description}</div>}

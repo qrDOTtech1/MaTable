@@ -1,11 +1,13 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { api, setProToken, API_URL } from "@/lib/api";
+import { api, setProToken, ApiError } from "@/lib/api";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const justRegistered = searchParams.get("registered") === "1";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -16,22 +18,23 @@ export default function LoginPage() {
     setLoading(true);
     setErr(null);
     try {
-      console.log("[login] starting request to /api/pro/login with:", { email });
       const res = await api<{ token: string }>(`/api/pro/login`, {
         method: "POST",
         body: JSON.stringify({ email, password }),
         pro: false,
       });
-      console.log("[login] success, token received");
       setProToken(res.token);
       router.push("/dashboard");
-    } catch (err: any) {
-      const msg = String(err?.message ?? err);
-      console.error("[login] error:", msg, "| API_URL:", API_URL);
-      if (msg.includes("401")) setErr("Identifiants invalides.");
-      else if (msg.includes("Failed to fetch") || msg.includes("fetch"))
-        setErr(`Impossible de contacter le serveur (${API_URL}). Vérifie la config.`);
-      else setErr(`Erreur: ${msg}`);
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        if (err.status === 401) setErr("Identifiants invalides.");
+        else setErr(`Erreur serveur (${err.status}). Réessayez.`);
+      } else {
+        const msg = String((err as any)?.message ?? err);
+        if (msg.includes("Failed to fetch") || msg.includes("fetch"))
+          setErr("Impossible de contacter le serveur. Vérifiez votre connexion.");
+        else setErr(`Erreur: ${msg}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -42,6 +45,11 @@ export default function LoginPage() {
       <form onSubmit={onSubmit} className="card w-full max-w-sm space-y-4">
         <h1 className="text-2xl font-bold">Ma <span className="text-orange-500">Table</span></h1>
         <p className="text-sm text-white/50">Connexion restaurateur</p>
+        {justRegistered && (
+          <div className="text-sm text-green-400 bg-green-500/10 border border-green-500/20 p-2 rounded">
+            Compte créé avec succès ! Connectez-vous.
+          </div>
+        )}
         <input
           className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder:text-white/30 focus:outline-none focus:border-orange-500 transition-colors"
           type="email"
@@ -68,5 +76,13 @@ export default function LoginPage() {
         </p>
       </form>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, API_URL } from "@/lib/api";
+import { api, ApiError, API_URL } from "@/lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -23,13 +23,16 @@ export default function RegisterPage() {
         pro: false,
       });
       router.push("/login?registered=1");
-    } catch (e: any) {
-      const msg = String(e?.message ?? e);
-      console.error("[register] error:", msg, "| API_URL:", API_URL);
-      if (msg.includes("409")) setErr("Email déjà utilisé.");
-      else if (msg.includes("Failed to fetch") || msg.includes("fetch"))
-        setErr(`Impossible de contacter le serveur (${API_URL}). Vérifie la config.`);
-      else setErr(`Erreur: ${msg}`);
+    } catch (e: unknown) {
+      if (e instanceof ApiError) {
+        if (e.status === 409) setErr("Email déjà utilisé.");
+        else setErr(`Erreur serveur (${e.status}). Réessayez.`);
+      } else {
+        const msg = String((e as any)?.message ?? e);
+        if (msg.includes("Failed to fetch") || msg.includes("fetch"))
+          setErr("Impossible de contacter le serveur. Vérifiez votre connexion.");
+        else setErr(`Erreur: ${msg}`);
+      }
     } finally {
       setLoading(false);
     }

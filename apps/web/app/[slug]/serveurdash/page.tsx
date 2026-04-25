@@ -184,6 +184,18 @@ export default function ServeurDashPage() {
       refreshData();
     });
 
+    socket.on("order:overdue", (data: any) => {
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("⚠️ Commande en retard !", { body: `Table ${data.tableNumber} — la cuisine dépasse le temps estimé` });
+      }
+      try { new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3").play(); } catch(e){}
+      refreshData();
+    });
+
+    socket.on("order:updated", () => {
+      refreshData();
+    });
+
     return () => void socket.disconnect();
   }, [restaurant?.id, server?.id]);
 
