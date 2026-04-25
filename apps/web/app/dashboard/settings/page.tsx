@@ -14,8 +14,32 @@ type Restaurant = {
   avgPrepMinutes: number; reservationPolicy?: string | null;
   tipsEnabled: boolean; serviceCallEnabled: boolean; reviewsEnabled: boolean;
   isPartner: boolean;
+  ollamaApiKey?: string | null;
+  ollamaLangModel?: string | null;
+  ollamaVisionModel?: string | null;
   openingHours?: OpeningHour[];
 };
+
+const CLOUD_MODELS = [
+  { group: "OpenAI", models: [
+    { value: "gpt-4o", label: "GPT-4o (recommandé)" },
+    { value: "gpt-4o-mini", label: "GPT-4o Mini (rapide, économique)" },
+    { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
+  ]},
+  { group: "Anthropic", models: [
+    { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet (meilleur)" },
+    { value: "claude-3-haiku-20240307", label: "Claude 3 Haiku (rapide)" },
+  ]},
+  { group: "Google", models: [
+    { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash (rapide)" },
+    { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
+    { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
+  ]},
+  { group: "Mistral", models: [
+    { value: "mistral-large-latest", label: "Mistral Large" },
+    { value: "mistral-small-latest", label: "Mistral Small (économique)" },
+  ]},
+];
 type ServicePins = { caissePin: string | null; cuisinePin: string | null };
 
 const DAYS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
@@ -28,6 +52,9 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Nova IA
+  const [showApiKey, setShowApiKey] = useState(false);
 
   // Service PINs
   const [pins, setPins] = useState<ServicePins>({ caissePin: null, cuisinePin: null });
@@ -102,6 +129,9 @@ export default function SettingsPage() {
           serviceCallEnabled: form.serviceCallEnabled ?? true,
           reviewsEnabled: form.reviewsEnabled ?? true,
           isPartner: form.isPartner ?? false,
+          ollamaApiKey: form.ollamaApiKey?.trim() || null,
+          ollamaLangModel: form.ollamaLangModel || null,
+          ollamaVisionModel: form.ollamaVisionModel || null,
           openingHours: form.openingHours ?? [],
         }),
       });
@@ -333,6 +363,92 @@ export default function SettingsPage() {
               </div>
             </label>
           ))}
+        </div>
+
+        {/* Nova IA */}
+        <div className="card space-y-4">
+          <div>
+            <h2 className="font-semibold text-white flex items-center gap-2">
+              <span className="text-xl">🤖</span> Nova IA
+            </h2>
+            <p className="text-xs text-white/40 mt-1">
+              Connectez votre propre clé API pour activer les défis IA, suggestions de planning et autres fonctions intelligentes.
+              Compatible OpenAI, Anthropic (Claude), Google (Gemini) et Mistral.
+            </p>
+          </div>
+
+          {/* API Key */}
+          <div>
+            <label className="label">Clé API</label>
+            <div className="relative">
+              <input
+                className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30 font-mono pr-10"
+                type={showApiKey ? "text" : "password"}
+                placeholder="sk-... / AIzaSy... / sk-ant-..."
+                value={form.ollamaApiKey ?? ""}
+                onChange={(e) => setForm(p => ({ ...p, ollamaApiKey: e.target.value }))}
+              />
+              <button
+                type="button"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
+                onClick={() => setShowApiKey(v => !v)}
+              >
+                {showApiKey ? "🙈" : "👁"}
+              </button>
+            </div>
+          </div>
+
+          {/* Lang model */}
+          <div>
+            <label className="label">Modèle texte (défis, suggestions…)</label>
+            <select
+              className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white"
+              value={form.ollamaLangModel ?? ""}
+              onChange={(e) => setForm(p => ({ ...p, ollamaLangModel: e.target.value || null }))}
+            >
+              <option value="">— Choisir un modèle —</option>
+              {CLOUD_MODELS.map(group => (
+                <optgroup key={group.group} label={group.group}>
+                  {group.models.map(m => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+
+          {/* Vision model */}
+          <div>
+            <label className="label">Modèle vision (analyse photos, menus scannés…)</label>
+            <select
+              className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white"
+              value={form.ollamaVisionModel ?? ""}
+              onChange={(e) => setForm(p => ({ ...p, ollamaVisionModel: e.target.value || null }))}
+            >
+              <option value="">— Choisir un modèle vision —</option>
+              {CLOUD_MODELS.map(group => (
+                <optgroup key={group.group} label={group.group}>
+                  {group.models.map(m => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+
+          {/* Provider hint */}
+          {form.ollamaLangModel && (
+            <div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2 text-xs text-white/50">
+              <span>Fournisseur détecté :</span>
+              <span className="font-semibold text-white/70">
+                {form.ollamaLangModel.startsWith("claude-") ? "Anthropic"
+                  : form.ollamaLangModel.startsWith("gemini-") ? "Google"
+                  : form.ollamaLangModel.startsWith("mistral") ? "Mistral"
+                  : "OpenAI"}
+              </span>
+              <span className="ml-auto text-white/30">La clé doit correspondre au fournisseur</span>
+            </div>
+          )}
         </div>
 
         {/* Visibilité Sociale */}
