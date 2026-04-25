@@ -19,7 +19,9 @@ type ServerSchedule = {
   closeMin: number;
 };
 
-const DAYS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+const DAYS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]; // index = dayOfWeek (0=Sun)
+const DAYS_ORDERED = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+const DAY_INDEX: Record<string, number> = { Lundi: 1, Mardi: 2, Mercredi: 3, Jeudi: 4, Vendredi: 5, Samedi: 6, Dimanche: 0 };
 const minToTime = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 const timeToMin = (t: string) => {
   const [h, m] = t.split(":").map(Number);
@@ -207,7 +209,7 @@ export default function ServersPage() {
                   <div key={i} className="flex items-center gap-2 p-2 bg-white/5 rounded-lg border border-white/10 group">
                     <select className="text-xs border border-white/10 rounded px-1 py-1 bg-white/5 text-white" value={s.dayOfWeek}
                       onChange={(e) => updateScheduleRow(i, "dayOfWeek", parseInt(e.target.value))}>
-                      {DAYS.map((d, idx) => <option key={idx} value={idx}>{d}</option>)}
+                      {DAYS_ORDERED.map((d) => <option key={d} value={DAY_INDEX[d]}>{d}</option>)}
                     </select>
                     <input type="time" className="text-xs border border-white/10 rounded px-1 py-1 w-20 bg-white/5 text-white" value={minToTime(s.openMin)}
                       onChange={(e) => updateScheduleRow(i, "openMin", timeToMin(e.target.value))} />

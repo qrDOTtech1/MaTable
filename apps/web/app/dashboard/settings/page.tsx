@@ -19,6 +19,8 @@ type Restaurant = {
 type ServicePins = { caissePin: string | null; cuisinePin: string | null };
 
 const DAYS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+const DAYS_ORDERED = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+const DAY_INDEX: Record<string, number> = { Lundi: 1, Mardi: 2, Mercredi: 3, Jeudi: 4, Vendredi: 5, Samedi: 6, Dimanche: 0 };
 const minToTime = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
 export default function SettingsPage() {
@@ -189,7 +191,7 @@ export default function SettingsPage() {
                     value={h.dayOfWeek}
                     onChange={(e) => updateOpeningHour(idx, "dayOfWeek", parseInt(e.target.value))}
                   >
-                    {DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+                    {DAYS_ORDERED.map((d) => <option key={d} value={DAY_INDEX[d]}>{d}</option>)}
                   </select>
                   <input
                     type="time"
