@@ -15,6 +15,16 @@ type TableSession = {
   id: string;
   table: { number: number; seats: number };
   orders: Order[];
+  billPaymentMode?: string | null;
+  billRequestedAt?: string | null;
+  billConfirmedAt?: string | null;
+  billConfirmedBy?: string | null;
+};
+
+const MODE_INFO: Record<string, { icon: string; label: string; badgeCls: string; bgCls: string; borderCls: string }> = {
+  CARD:    { icon: "💳", label: "Carte bancaire", badgeCls: "bg-blue-500/20 border-blue-500/40 text-blue-300",    bgCls: "bg-blue-500/5",    borderCls: "border-blue-500/25" },
+  CASH:    { icon: "💵", label: "Espèces",        badgeCls: "bg-emerald-500/20 border-emerald-500/40 text-emerald-300", bgCls: "bg-emerald-500/5", borderCls: "border-emerald-500/25" },
+  COUNTER: { icon: "🏪", label: "En caisse",      badgeCls: "bg-amber-500/20 border-amber-500/40 text-amber-300", bgCls: "bg-amber-500/5",   borderCls: "border-amber-500/25" },
 };
 type TableMap = {
   id: string; number: number; seats: number; assignedServerId?: string | null;
@@ -72,6 +82,7 @@ export default function ServeurDashPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [tab, setTab] = useState<Tab>("tables");
   const [loading, setLoading] = useState(true);
+  const [confirming, setConfirming] = useState<string | null>(null);
 
   // notes state
   const [newNote, setNewNote] = useState("");
@@ -246,6 +257,16 @@ export default function ServeurDashPage() {
     }
   }
 
+  async function confirmBill(sessionId: string) {
+    setConfirming(sessionId);
+    try {
+      await serverFetch(`/api/server/tables/${sessionId}/bill-confirm`, { method: "POST" });
+      loadAll();
+    } catch { } finally {
+      setConfirming(null);
+    }
+  }
+
   function logout() {
     localStorage.removeItem("server_token");
     localStorage.removeItem("server_info");
@@ -374,31 +395,63 @@ export default function ServeurDashPage() {
               {sessions.map((session) => {
                 const isMine = (session as any).serverId === server?.id;
                 const isUnassigned = !(session as any).serverId;
+                const modeInfo = session.billPaymentMode ? MODE_INFO[session.billPaymentMode] : null;
+                const billRequested = !!session.billPaymentMode;
+                const billConfirmed = !!session.billConfirmedAt;
+                const totalCents = session.orders.reduce((s, o) => s + o.totalCents, 0);
+
                 return (
                   <div
                     key={session.id}
                     className={`rounded-2xl border overflow-hidden transition-all ${
-                      isMine
+                      billConfirmed
+                        ? "bg-emerald-500/5 border-emerald-500/20"
+                        : billRequested && modeInfo
+                        ? `${modeInfo.bgCls} ${modeInfo.borderCls}`
+                        : isMine
                         ? "bg-orange-500/5 border-orange-500/20"
                         : isUnassigned
                         ? "bg-yellow-500/5 border-yellow-500/20"
                         : "bg-white/[0.02] border-white/[0.06]"
                     }`}
                   >
-                    <div className={`px-5 py-3 border-b flex items-center justify-between ${
-                      isMine ? "bg-orange-500/[0.06] border-orange-500/10" : isUnassigned ? "bg-yellow-500/[0.06] border-yellow-500/10" : "bg-white/[0.03] border-white/[0.06]"
+                    {/* ── Header ─────────────────────────────────────────── */}
+                    <div className={`px-5 py-3 border-b flex items-center justify-between flex-wrap gap-2 ${
+                      billConfirmed
+                        ? "bg-emerald-500/[0.06] border-emerald-500/10"
+                        : billRequested && modeInfo
+                        ? `${modeInfo.bgCls} border-opacity-20`
+                        : isMine ? "bg-orange-500/[0.06] border-orange-500/10"
+                        : isUnassigned ? "bg-yellow-500/[0.06] border-yellow-500/10"
+                        : "bg-white/[0.03] border-white/[0.06]"
                     }`}>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-lg font-black ${isMine ? "text-orange-400" : isUnassigned ? "text-yellow-400" : "text-white/60"}`}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-lg font-black ${
+                          billConfirmed ? "text-emerald-400"
+                          : billRequested ? "text-white"
+                          : isMine ? "text-orange-400"
+                          : isUnassigned ? "text-yellow-400"
+                          : "text-white/60"
+                        }`}>
                           Table {session.table.number}
                         </span>
                         <span className="text-xs text-white/30">{session.table.seats} couverts</span>
-                        {isMine && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-300 font-semibold">Ma table</span>}
-                        {isUnassigned && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 font-semibold">Libre</span>}
+                        {isMine && !billRequested && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-300 font-semibold">Ma table</span>}
+                        {isUnassigned && !billRequested && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 font-semibold">Libre</span>}
+                        {billRequested && modeInfo && !billConfirmed && (
+                          <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border animate-pulse ${modeInfo.badgeCls}`}>
+                            🛎 Addition demandée · {modeInfo.icon} {modeInfo.label}
+                          </span>
+                        )}
+                        {billConfirmed && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-500/20 border-emerald-500/40 text-emerald-300">
+                            ✓ Apporté par {session.billConfirmedBy} · en attente caisse
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-white/30">{session.orders.length} commande{session.orders.length !== 1 ? "s" : ""}</span>
-                        {isUnassigned && (
+                        <span className="text-sm font-bold text-white/70">{(totalCents / 100).toFixed(2)}€</span>
+                        {isUnassigned && !billRequested && (
                           <button
                             onClick={async () => {
                               await serverFetch(`/api/server/tables/${session.id}/claim`, { method: "POST" });
@@ -411,14 +464,66 @@ export default function ServeurDashPage() {
                         )}
                       </div>
                     </div>
+
+                    {/* ── Panneau Addition ───────────────────────────────── */}
+                    {billRequested && modeInfo && (
+                      <div className={`px-5 py-4 border-b border-white/[0.06] space-y-3 ${billConfirmed ? "opacity-60" : ""}`}>
+                        {/* Total & mode */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${modeInfo.badgeCls}`}>
+                              {modeInfo.icon} {modeInfo.label}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-2xl font-black text-white">{(totalCents / 100).toFixed(2)}€</p>
+                            <p className="text-[10px] text-white/30">Total à encaisser</p>
+                          </div>
+                        </div>
+
+                        {/* Items summary */}
+                        <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 space-y-1.5 max-h-40 overflow-y-auto">
+                          {session.orders.flatMap((o) => (o.items as any[]).map((item: any, i: number) => (
+                            <div key={`${o.id}-${i}`} className="flex items-center justify-between text-xs">
+                              <span className="text-white/60">{item.quantity}× {item.name}</span>
+                              <span className="text-white/50 font-mono">{((item.quantity * item.priceCents) / 100).toFixed(2)}€</span>
+                            </div>
+                          )))}
+                        </div>
+
+                        {/* Action button */}
+                        {!billConfirmed ? (
+                          <button
+                            onClick={() => confirmBill(session.id)}
+                            disabled={confirming === session.id}
+                            className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                              confirming === session.id
+                                ? "bg-white/10 text-white/40"
+                                : "bg-white text-black hover:bg-white/90 active:scale-[0.98]"
+                            }`}
+                          >
+                            {confirming === session.id
+                              ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> En cours…</>
+                              : <>{modeInfo.icon} J'apporte l'addition / TPE à la table</>
+                            }
+                          </button>
+                        ) : (
+                          <div className="w-full py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-semibold text-center">
+                            ✓ Addition remise — la caisse va encaisser
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ── Commandes ─────────────────────────────────────── */}
                     {session.orders.length === 0 ? (
                       <p className="px-5 py-4 text-sm text-white/30 italic">Aucune commande en cours</p>
                     ) : (
-                      <div className="divide-y divide-white/[0.04]">
+                      <div className={`divide-y divide-white/[0.04] ${billRequested ? "opacity-50" : ""}`}>
                         {session.orders.map((order) => (
-                          <div key={order.id} className="px-5 py-4 flex items-start justify-between gap-4">
+                          <div key={order.id} className="px-5 py-3 flex items-start justify-between gap-4">
                             <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
+                              <div className="flex items-center gap-2 mb-1.5">
                                 <span className={`text-xs font-semibold ${STATUS_COLOR[order.status] ?? "text-white/60"}`}>
                                   {STATUS_LABEL[order.status] ?? order.status}
                                 </span>
@@ -428,13 +533,13 @@ export default function ServeurDashPage() {
                               </div>
                               <div className="space-y-0.5">
                                 {(order.items as any[]).map((item: any, i: number) => (
-                                  <p key={i} className="text-sm text-white/70">
+                                  <p key={i} className="text-sm text-white/60">
                                     {item.quantity}× {item.name}
                                   </p>
                                 ))}
                               </div>
                             </div>
-                            <span className="text-sm font-bold text-white/80 shrink-0">
+                            <span className="text-sm font-bold text-white/70 shrink-0">
                               {(order.totalCents / 100).toFixed(2)}€
                             </span>
                           </div>
