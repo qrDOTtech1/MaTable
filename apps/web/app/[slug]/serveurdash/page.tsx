@@ -11,27 +11,81 @@ type Schedule = { dayOfWeek: number; openMin: number; closeMin: number };
 type Note = { id: string; content: string; updatedAt: string };
 type Challenge = { id: string; title: string; done: boolean; dueDate?: string | null };
 type Order = { id: string; status: string; totalCents: number; items: any[]; createdAt: string };
+type SplitPart = {
+  id: string; label: string; amountCents: number;
+  paid: boolean; paidAt?: string | null; paymentMode?: string | null;
+};
 type TableSession = {
   id: string;
   table: { number: number; seats: number };
   orders: Order[];
+  subtotalCents: number;
+  tipCents: number;
+  totalCents: number;
   billPaymentMode?: string | null;
   billRequestedAt?: string | null;
   billConfirmedAt?: string | null;
   billConfirmedBy?: string | null;
+  billSplits: SplitPart[];
 };
 
 const MODE_INFO: Record<string, { icon: string; label: string; badgeCls: string; bgCls: string; borderCls: string }> = {
-  CARD:    { icon: "💳", label: "Carte bancaire", badgeCls: "bg-blue-500/20 border-blue-500/40 text-blue-300",    bgCls: "bg-blue-500/5",    borderCls: "border-blue-500/25" },
-  CASH:    { icon: "💵", label: "Espèces",        badgeCls: "bg-emerald-500/20 border-emerald-500/40 text-emerald-300", bgCls: "bg-emerald-500/5", borderCls: "border-emerald-500/25" },
-  COUNTER: { icon: "🏪", label: "En caisse",      badgeCls: "bg-amber-500/20 border-amber-500/40 text-amber-300", bgCls: "bg-amber-500/5",   borderCls: "border-amber-500/25" },
+  CARD:    { icon: "💳", label: "Carte",   badgeCls: "bg-blue-500/20 border-blue-500/40 text-blue-300",    bgCls: "bg-blue-500/5",    borderCls: "border-blue-500/25" },
+  CASH:    { icon: "💵", label: "Espèces", badgeCls: "bg-emerald-500/20 border-emerald-500/40 text-emerald-300", bgCls: "bg-emerald-500/5", borderCls: "border-emerald-500/25" },
+  COUNTER: { icon: "🏪", label: "Caisse",  badgeCls: "bg-amber-500/20 border-amber-500/40 text-amber-300", bgCls: "bg-amber-500/5",   borderCls: "border-amber-500/25" },
 };
+const fmt = (c: number) => (c / 100).toFixed(2) + "€";
+const uid = () => Math.random().toString(36).slice(2);
 type TableMap = {
   id: string; number: number; seats: number; assignedServerId?: string | null;
   sessions: { server: { id: string; name: string } | null }[];
 };
 type EmptyTable = { id: string; number: number; seats: number };
 type Stats = { ordersToday: number; avgRating: number | null; totalReviews: number; tipsToday: number };
+
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+function CloseSessionButton({ sessionId, closing, defaultMode, onClose }: {
+  sessionId: string; closing: boolean; defaultMode: "CARD"|"CASH"|"COUNTER";
+  onClose: (mode: string) => void;
+}) {
+  const [mode, setMode] = useState<"CARD"|"CASH"|"COUNTER">(defaultMode);
+  return (
+    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+      <select value={mode} onChange={e => setMode(e.target.value as any)}
+        className="text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white/70">
+        <option value="CARD">💳 Carte</option>
+        <option value="CASH">💵 Espèces</option>
+        <option value="COUNTER">🏪 Caisse</option>
+      </select>
+      <button onClick={() => onClose(mode)} disabled={closing}
+        className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]">
+        {closing ? <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : "✓ Fin de session"}
+      </button>
+    </div>
+  );
+}
+
+function PartPayButton({ part, session, paying, onPay }: {
+  part: SplitPart; session: TableSession; paying: boolean;
+  onPay: (mode: string) => void;
+}) {
+  const [mode, setMode] = useState<"CARD"|"CASH"|"COUNTER">("CARD");
+  return (
+    <>
+      <select value={mode} onChange={e => setMode(e.target.value as any)}
+        className="text-[10px] bg-white/5 border border-white/10 rounded-lg px-1.5 py-1.5 text-white/60">
+        <option value="CARD">💳</option>
+        <option value="CASH">💵</option>
+        <option value="COUNTER">🏪</option>
+      </select>
+      <button onClick={() => onPay(mode)} disabled={paying}
+        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold transition-all">
+        {paying ? "…" : "Payer"}
+      </button>
+    </>
+  );
+}
 
 const DAYS = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 const STATUS_LABEL: Record<string, string> = { PENDING: "À préparer", COOKING: "En cuisine", SERVED: "À servir" };
@@ -83,6 +137,16 @@ export default function ServeurDashPage() {
   const [tab, setTab] = useState<Tab>("tables");
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [closing, setClosing] = useState<string | null>(null);
+  const [closeMode, setCloseMode] = useState<"CARD"|"CASH"|"COUNTER">("CARD");
+
+  // Split state
+  const [splitSession, setSplitSession] = useState<TableSession | null>(null);
+  const [splitMode, setSplitMode] = useState<"equal"|"custom">("equal");
+  const [splitCount, setSplitCount] = useState(2);
+  const [splitParts, setSplitParts] = useState<SplitPart[]>([]);
+  const [splitSaving, setSplitSaving] = useState(false);
+  const [payingPart, setPayingPart] = useState<string | null>(null);
 
   // notes state
   const [newNote, setNewNote] = useState("");
@@ -269,6 +333,78 @@ export default function ServeurDashPage() {
     }
   }
 
+  async function closeSession(sessionId: string, mode: string) {
+    setClosing(sessionId);
+    try {
+      await serverFetch(`/api/server/tables/${sessionId}/close`, {
+        method: "POST", body: JSON.stringify({ paymentMode: mode }),
+      });
+      loadAll();
+    } catch { } finally { setClosing(null); }
+  }
+
+  function openSplit(session: TableSession) {
+    setSplitSession(session);
+    setSplitMode("equal");
+    setSplitCount(2);
+    if (session.billSplits.length > 0) {
+      setSplitParts(session.billSplits);
+    } else {
+      buildEqualSplits(2, session.totalCents);
+    }
+  }
+
+  function buildEqualSplits(count: number, total: number) {
+    const base = Math.floor(total / count);
+    const rem  = total - base * count;
+    const parts: SplitPart[] = Array.from({ length: count }, (_, i) => ({
+      id: uid(),
+      label: `Personne ${i + 1}`,
+      amountCents: base + (i === 0 ? rem : 0),
+      paid: false,
+    }));
+    setSplitParts(parts);
+  }
+
+  function adjustSplitCount(n: number, total: number) {
+    setSplitCount(n);
+    if (splitMode === "equal") buildEqualSplits(n, total);
+    else {
+      setSplitParts(prev => {
+        const next = [...prev];
+        while (next.length < n) next.push({ id: uid(), label: `Personne ${next.length + 1}`, amountCents: 0, paid: false });
+        return next.slice(0, n);
+      });
+    }
+  }
+
+  async function saveSplits() {
+    if (!splitSession) return;
+    setSplitSaving(true);
+    try {
+      await serverFetch(`/api/server/tables/${splitSession.id}/splits`, {
+        method: "PUT", body: JSON.stringify(splitParts),
+      });
+      loadAll();
+      setSplitSession(null);
+    } catch { } finally { setSplitSaving(false); }
+  }
+
+  async function payPart(session: TableSession, partId: string, mode: string) {
+    setPayingPart(partId);
+    try {
+      const res = await serverFetch<{ splits: SplitPart[]; allPaid: boolean }>(
+        `/api/server/tables/${session.id}/splits/${partId}/pay`,
+        { method: "PATCH", body: JSON.stringify({ paymentMode: mode }) }
+      );
+      if (res.allPaid) { loadAll(); setSplitSession(null); }
+      else {
+        setSessions(prev => prev.map(s => s.id === session.id ? { ...s, billSplits: res.splits } : s));
+        if (splitSession?.id === session.id) setSplitSession(s => s ? { ...s, billSplits: res.splits } : s);
+      }
+    } catch { } finally { setPayingPart(null); }
+  }
+
   async function confirmBill(sessionId: string) {
     setConfirming(sessionId);
     try {
@@ -309,6 +445,7 @@ export default function ServeurDashPage() {
   ];
 
   return (
+    <>
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
       {/* Top bar */}
       <div className="sticky top-0 z-50 h-14 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/[0.06] px-4 flex items-center justify-between">
@@ -410,150 +547,179 @@ export default function ServeurDashPage() {
                 const modeInfo = session.billPaymentMode ? MODE_INFO[session.billPaymentMode] : null;
                 const billRequested = !!session.billPaymentMode;
                 const billConfirmed = !!session.billConfirmedAt;
-                const totalCents = session.orders.reduce((s, o) => s + o.totalCents, 0);
+                const hasSplits = session.billSplits.length > 0;
+                const paidSplits = session.billSplits.filter(s => s.paid).length;
+                const totalCents = session.totalCents;
 
                 return (
-                  <div
-                    key={session.id}
-                    className={`rounded-2xl border overflow-hidden transition-all ${
-                      billConfirmed
-                        ? "bg-emerald-500/5 border-emerald-500/20"
-                        : billRequested && modeInfo
-                        ? `${modeInfo.bgCls} ${modeInfo.borderCls}`
-                        : isMine
-                        ? "bg-orange-500/5 border-orange-500/20"
-                        : isUnassigned
-                        ? "bg-yellow-500/5 border-yellow-500/20"
-                        : "bg-white/[0.02] border-white/[0.06]"
-                    }`}
-                  >
+                  <div key={session.id} className={`rounded-2xl border overflow-hidden transition-all ${
+                    hasSplits ? "bg-violet-500/5 border-violet-500/25"
+                    : billConfirmed ? "bg-emerald-500/5 border-emerald-500/20"
+                    : billRequested && modeInfo ? `${modeInfo.bgCls} ${modeInfo.borderCls}`
+                    : isMine ? "bg-orange-500/5 border-orange-500/20"
+                    : isUnassigned ? "bg-yellow-500/5 border-yellow-500/20"
+                    : "bg-white/[0.02] border-white/[0.06]"
+                  }`}>
+
                     {/* ── Header ─────────────────────────────────────────── */}
                     <div className={`px-5 py-3 border-b flex items-center justify-between flex-wrap gap-2 ${
-                      billConfirmed
-                        ? "bg-emerald-500/[0.06] border-emerald-500/10"
-                        : billRequested && modeInfo
-                        ? `${modeInfo.bgCls} border-opacity-20`
-                        : isMine ? "bg-orange-500/[0.06] border-orange-500/10"
-                        : isUnassigned ? "bg-yellow-500/[0.06] border-yellow-500/10"
-                        : "bg-white/[0.03] border-white/[0.06]"
+                      hasSplits ? "bg-violet-500/[0.07] border-violet-500/15"
+                      : billConfirmed ? "bg-emerald-500/[0.06] border-emerald-500/10"
+                      : billRequested && modeInfo ? "bg-white/[0.04] border-white/[0.06]"
+                      : isMine ? "bg-orange-500/[0.06] border-orange-500/10"
+                      : isUnassigned ? "bg-yellow-500/[0.06] border-yellow-500/10"
+                      : "bg-white/[0.03] border-white/[0.06]"
                     }`}>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={`text-lg font-black ${
-                          billConfirmed ? "text-emerald-400"
+                          hasSplits ? "text-violet-400"
+                          : billConfirmed ? "text-emerald-400"
                           : billRequested ? "text-white"
                           : isMine ? "text-orange-400"
                           : isUnassigned ? "text-yellow-400"
                           : "text-white/60"
-                        }`}>
-                          Table {session.table.number}
-                        </span>
+                        }`}>Table {session.table.number}</span>
                         <span className="text-xs text-white/30">{session.table.seats} couverts</span>
-                        {isMine && !billRequested && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-300 font-semibold">Ma table</span>}
-                        {isUnassigned && !billRequested && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 font-semibold">Libre</span>}
-                        {billRequested && modeInfo && !billConfirmed && (
-                          <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border animate-pulse ${modeInfo.badgeCls}`}>
-                            🛎 Addition demandée · {modeInfo.icon} {modeInfo.label}
+                        {isMine && !billRequested && !hasSplits && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-300 font-semibold">Ma table</span>}
+                        {isUnassigned && !billRequested && !hasSplits && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 font-semibold">Libre</span>}
+                        {hasSplits && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full border bg-violet-500/20 border-violet-500/40 text-violet-300 font-bold">
+                            👥 {paidSplits}/{session.billSplits.length} payées
                           </span>
                         )}
-                        {billConfirmed && (
+                        {!hasSplits && billRequested && modeInfo && !billConfirmed && (
+                          <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border animate-pulse ${modeInfo.badgeCls}`}>
+                            🛎 Addition · {modeInfo.icon} {modeInfo.label}
+                          </span>
+                        )}
+                        {!hasSplits && billConfirmed && (
                           <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-500/20 border-emerald-500/40 text-emerald-300">
-                            ✓ Apporté par {session.billConfirmedBy} · en attente caisse
+                            ✓ Remis par {session.billConfirmedBy}
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-white/70">{(totalCents / 100).toFixed(2)}€</span>
-                        {isUnassigned && !billRequested && (
-                          <button
-                            onClick={async () => {
-                              await serverFetch(`/api/server/tables/${session.id}/claim`, { method: "POST" });
-                              loadAll();
-                            }}
-                            className="text-xs px-2.5 py-1 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 font-semibold transition-all"
-                          >
+                        <span className="text-sm font-bold text-white">{fmt(totalCents)}</span>
+                        {isUnassigned && !billRequested && !hasSplits && (
+                          <button onClick={async () => { await serverFetch(`/api/server/tables/${session.id}/claim`, { method: "POST" }); loadAll(); }}
+                            className="text-xs px-2.5 py-1 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 font-semibold">
                             Prendre en charge
                           </button>
                         )}
                       </div>
                     </div>
 
-                    {/* ── Panneau Addition ───────────────────────────────── */}
-                    {billRequested && modeInfo && (
-                      <div className={`px-5 py-4 border-b border-white/[0.06] space-y-3 ${billConfirmed ? "opacity-60" : ""}`}>
-                        {/* Total & mode */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${modeInfo.badgeCls}`}>
-                              {modeInfo.icon} {modeInfo.label}
-                            </span>
+                    {/* ── Splits actifs ──────────────────────────────────── */}
+                    {hasSplits && (
+                      <div className="px-5 py-4 space-y-2 border-b border-violet-500/10">
+                        {/* Progress bar */}
+                        <div className="flex items-center justify-between text-xs mb-3">
+                          <span className="text-violet-300 font-semibold">Partage de l'addition</span>
+                          <span className="text-white/40">{fmt(session.billSplits.filter(s=>s.paid).reduce((a,s)=>a+s.amountCents,0))} / {fmt(totalCents)}</span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden mb-3">
+                          <div className="h-full bg-violet-500 rounded-full transition-all"
+                            style={{ width: `${paidSplits / session.billSplits.length * 100}%` }} />
+                        </div>
+                        {session.billSplits.map((part) => (
+                          <div key={part.id} className={`rounded-xl border p-3 flex items-center justify-between gap-3 transition-all ${
+                            part.paid ? "bg-emerald-500/5 border-emerald-500/20 opacity-60" : "bg-white/[0.03] border-white/[0.06]"
+                          }`}>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-semibold truncate ${part.paid ? "text-emerald-400" : "text-white"}`}>
+                                {part.paid ? "✓ " : ""}{part.label}
+                              </p>
+                              <p className="text-xs text-white/40">
+                                {fmt(part.amountCents)}
+                                {part.paid && part.paymentMode && ` · ${MODE_INFO[part.paymentMode]?.icon} ${MODE_INFO[part.paymentMode]?.label}`}
+                              </p>
+                            </div>
+                            {!part.paid && (
+                              <div className="flex items-center gap-2 shrink-0">
+                                <PartPayButton
+                                  part={part} session={session}
+                                  paying={payingPart === part.id}
+                                  onPay={(mode) => payPart(session, part.id, mode)}
+                                />
+                              </div>
+                            )}
                           </div>
+                        ))}
+                        <button onClick={() => openSplit(session)}
+                          className="w-full py-2 rounded-xl border border-violet-500/20 text-violet-400 text-xs font-semibold hover:bg-violet-500/10 transition-all">
+                          ✏️ Modifier le partage
+                        </button>
+                      </div>
+                    )}
+
+                    {/* ── Panneau Addition (sans splits) ─────────────────── */}
+                    {!hasSplits && billRequested && modeInfo && (
+                      <div className="px-5 py-4 border-b border-white/[0.06] space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${modeInfo.badgeCls}`}>
+                            {modeInfo.icon} {modeInfo.label}
+                          </span>
                           <div className="text-right">
-                            <p className="text-2xl font-black text-white">{(totalCents / 100).toFixed(2)}€</p>
-                            <p className="text-[10px] text-white/30">Total à encaisser</p>
+                            <p className="text-2xl font-black text-white">{fmt(totalCents)}</p>
+                            {session.tipCents > 0 && <p className="text-[10px] text-orange-400/70">dont {fmt(session.tipCents)} pourboire</p>}
                           </div>
                         </div>
-
-                        {/* Items summary */}
-                        <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 space-y-1.5 max-h-40 overflow-y-auto">
+                        <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 space-y-1 max-h-36 overflow-y-auto">
                           {session.orders.flatMap((o) => (o.items as any[]).map((item: any, i: number) => (
-                            <div key={`${o.id}-${i}`} className="flex items-center justify-between text-xs">
+                            <div key={`${o.id}-${i}`} className="flex justify-between text-xs">
                               <span className="text-white/60">{item.quantity}× {item.name}</span>
-                              <span className="text-white/50 font-mono">{((item.quantity * item.priceCents) / 100).toFixed(2)}€</span>
+                              <span className="text-white/40 font-mono">{fmt(item.quantity * item.priceCents)}</span>
                             </div>
                           )))}
                         </div>
-
-                        {/* Action button */}
                         {!billConfirmed ? (
-                          <button
-                            onClick={() => confirmBill(session.id)}
-                            disabled={confirming === session.id}
-                            className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                              confirming === session.id
-                                ? "bg-white/10 text-white/40"
-                                : "bg-white text-black hover:bg-white/90 active:scale-[0.98]"
-                            }`}
-                          >
+                          <button onClick={() => confirmBill(session.id)} disabled={confirming === session.id}
+                            className="w-full py-3 rounded-xl bg-white text-black font-bold text-sm hover:bg-white/90 disabled:opacity-40 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
                             {confirming === session.id
-                              ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> En cours…</>
-                              : <>{modeInfo.icon} J'apporte l'addition / TPE à la table</>
-                            }
+                              ? <><span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"/>En cours…</>
+                              : <>{modeInfo.icon} J'apporte l'addition / TPE</>}
                           </button>
                         ) : (
-                          <div className="w-full py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-semibold text-center">
-                            ✓ Addition remise — la caisse va encaisser
-                          </div>
+                          <p className="text-center text-sm text-emerald-400 font-semibold py-2">✓ Addition remise — en attente d'encaissement</p>
                         )}
                       </div>
                     )}
 
+                    {/* ── Actions encaissement (toujours visibles) ───────── */}
+                    {!hasSplits && (
+                      <div className="px-5 py-3 flex items-center gap-2 flex-wrap">
+                        <button onClick={() => openSplit(session)}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-500/15 border border-violet-500/25 text-violet-300 text-xs font-bold hover:bg-violet-500/25 transition-all">
+                          👥 Partager
+                        </button>
+                        <CloseSessionButton
+                          sessionId={session.id}
+                          closing={closing === session.id}
+                          defaultMode={session.billPaymentMode as any ?? "CARD"}
+                          onClose={(mode) => closeSession(session.id, mode)}
+                        />
+                      </div>
+                    )}
+
                     {/* ── Commandes ─────────────────────────────────────── */}
-                    {session.orders.length === 0 ? (
-                      <p className="px-5 py-4 text-sm text-white/30 italic">Aucune commande en cours</p>
-                    ) : (
-                      <div className={`divide-y divide-white/[0.04] ${billRequested ? "opacity-50" : ""}`}>
+                    {session.orders.length > 0 && (
+                      <div className={`divide-y divide-white/[0.04] ${billRequested ? "opacity-40" : ""}`}>
                         {session.orders.map((order) => (
                           <div key={order.id} className="px-5 py-3 flex items-start justify-between gap-4">
                             <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1.5">
+                              <div className="flex items-center gap-2 mb-1">
                                 <span className={`text-xs font-semibold ${STATUS_COLOR[order.status] ?? "text-white/60"}`}>
                                   {STATUS_LABEL[order.status] ?? order.status}
                                 </span>
-                                <span className="text-xs text-white/20">
-                                  {new Date(order.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                                </span>
+                                <span className="text-xs text-white/20">{new Date(order.createdAt).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</span>
                               </div>
                               <div className="space-y-0.5">
-                                {(order.items as any[]).map((item: any, i: number) => (
-                                  <p key={i} className="text-sm text-white/60">
-                                    {item.quantity}× {item.name}
-                                  </p>
+                                {(order.items as any[]).map((item:any,i:number) => (
+                                  <p key={i} className="text-sm text-white/55">{item.quantity}× {item.name}</p>
                                 ))}
                               </div>
                             </div>
-                            <span className="text-sm font-bold text-white/70 shrink-0">
-                              {(order.totalCents / 100).toFixed(2)}€
-                            </span>
+                            <span className="text-sm font-bold text-white/60 shrink-0">{fmt(order.totalCents)}</span>
                           </div>
                         ))}
                       </div>
@@ -899,5 +1065,117 @@ export default function ServeurDashPage() {
 
       </div>
     </div>
+
+    {/* ── Split Modal ───────────────────────────────────────────────────── */}
+    {splitSession && (
+      <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+        onClick={e => e.target === e.currentTarget && setSplitSession(null)}>
+        <div className="bg-[#111] border border-white/10 rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto">
+          {/* Header */}
+          <div className="px-6 pt-6 pb-4 border-b border-white/[0.06] flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-black text-white">👥 Partager l'addition</h2>
+              <p className="text-sm text-white/40 mt-0.5">Table {splitSession.table.number} · {fmt(splitSession.totalCents)}</p>
+            </div>
+            <button onClick={() => setSplitSession(null)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-colors">✕</button>
+          </div>
+
+          <div className="px-6 py-5 space-y-5">
+            {/* Mode tabs */}
+            <div className="flex rounded-xl bg-white/[0.04] p-1 gap-1">
+              {(["equal","custom"] as const).map(m => (
+                <button key={m} onClick={() => {
+                  setSplitMode(m);
+                  if (m === "equal") buildEqualSplits(splitCount, splitSession.totalCents);
+                }}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    splitMode === m ? "bg-violet-500 text-white" : "text-white/40 hover:text-white/60"
+                  }`}>
+                  {m === "equal" ? "⚖️ Égal" : "✏️ Personnalisé"}
+                </button>
+              ))}
+            </div>
+
+            {/* Equal mode — person count slider */}
+            {splitMode === "equal" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-white/60">Nombre de personnes</span>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => adjustSplitCount(Math.max(2, splitCount - 1), splitSession.totalCents)}
+                      className="w-9 h-9 rounded-full bg-white/[0.06] border border-white/10 text-white text-lg font-bold hover:bg-white/10 transition-all active:scale-95">−</button>
+                    <span className="text-2xl font-black text-white w-8 text-center">{splitCount}</span>
+                    <button onClick={() => adjustSplitCount(Math.min(20, splitCount + 1), splitSession.totalCents)}
+                      className="w-9 h-9 rounded-full bg-violet-500 text-white text-lg font-bold hover:bg-violet-400 transition-all active:scale-95">+</button>
+                  </div>
+                </div>
+                <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 text-center">
+                  <p className="text-3xl font-black text-violet-400">{fmt(splitParts[0]?.amountCents ?? 0)}</p>
+                  <p className="text-xs text-white/30 mt-1">par personne</p>
+                  {(splitSession.totalCents % splitCount !== 0) && (
+                    <p className="text-[10px] text-white/20 mt-1">+{fmt(splitSession.totalCents % splitCount)} ajouté à la 1ère part</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Parts list — renaming */}
+            <div className="space-y-2">
+              <p className="text-xs text-white/40 uppercase tracking-wider font-bold">Parts</p>
+              {splitParts.map((part, i) => (
+                <div key={part.id} className="flex items-center gap-2">
+                  <input
+                    value={part.label}
+                    onChange={e => setSplitParts(prev => prev.map((p,j) => j === i ? { ...p, label: e.target.value } : p))}
+                    className="flex-1 bg-white/[0.04] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-violet-500"
+                    placeholder={`Personne ${i+1}`}
+                  />
+                  {splitMode === "custom" ? (
+                    <div className="relative">
+                      <input
+                        type="number" min="0" step="0.01"
+                        value={(part.amountCents / 100).toFixed(2)}
+                        onChange={e => {
+                          const v = Math.round(parseFloat(e.target.value || "0") * 100);
+                          setSplitParts(prev => prev.map((p,j) => j === i ? { ...p, amountCents: v } : p));
+                        }}
+                        className="w-24 bg-white/[0.04] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white text-right focus:outline-none focus:border-violet-500"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/30">€</span>
+                    </div>
+                  ) : (
+                    <span className="text-sm font-bold text-violet-300 w-20 text-right shrink-0">{fmt(part.amountCents)}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Custom mode — total check */}
+            {splitMode === "custom" && (() => {
+              const sum = splitParts.reduce((a,p) => a + p.amountCents, 0);
+              const diff = sum - splitSession.totalCents;
+              return (
+                <div className={`rounded-xl px-4 py-3 text-sm font-semibold flex justify-between ${
+                  diff === 0 ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
+                }`}>
+                  <span>Total des parts</span>
+                  <span>{fmt(sum)} {diff !== 0 && `(${diff > 0 ? "+" : ""}${fmt(diff)} vs ${fmt(splitSession.totalCents)})`}</span>
+                </div>
+              );
+            })()}
+
+            {/* Save */}
+            <button
+              onClick={saveSplits} disabled={splitSaving || (splitMode === "custom" && splitParts.reduce((a,p)=>a+p.amountCents,0) !== splitSession.totalCents)}
+              className="w-full py-3.5 rounded-xl bg-violet-500 hover:bg-violet-400 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+              {splitSaving
+                ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Enregistrement…</>
+                : `👥 Créer ${splitParts.length} parts · ${fmt(splitSession.totalCents)}`}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
