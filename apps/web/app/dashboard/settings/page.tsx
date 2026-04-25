@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, redirectOn401 } from "@/lib/api";
+import { api, redirectOn401, API_URL } from "@/lib/api";
 import PhotoUploader from "@/components/PhotoUploader";
 
 type OpeningHour = { id?: string; dayOfWeek: number; openMin: number; closeMin: number; service?: string };
@@ -42,15 +42,31 @@ export default function SettingsPage() {
   }, []);
 
   const savePins = async () => {
+    // Validate locally before sending
+    const cp = pins.caissePin?.trim() || undefined;
+    const kp = pins.cuisinePin?.trim() || undefined;
+    if (cp && !/^\d{4,8}$/.test(cp)) { setError("PIN Caisse invalide (4-8 chiffres)"); return; }
+    if (kp && !/^\d{4,8}$/.test(kp)) { setError("PIN Cuisine invalide (4-8 chiffres)"); return; }
+
     setSavingPins(true);
+    setError(null);
     try {
-      await api("/api/pro/service-pins", {
+      const token = typeof window !== "undefined" ? localStorage.getItem("atable_pro_token") : null;
+      const res = await fetch(`${API_URL}/api/pro/service-pins`, {
         method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
-          caissePin:  pins.caissePin?.trim()  || null,
-          cuisinePin: pins.cuisinePin?.trim() || null,
+          ...(cp !== undefined ? { caissePin: cp } : { caissePin: null }),
+          ...(kp !== undefined ? { cuisinePin: kp } : { cuisinePin: null }),
         }),
       });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`Erreur ${res.status} : ${txt}`);
+      }
       setSavedPins(true);
       setTimeout(() => setSavedPins(false), 2500);
     } catch (err: any) {
@@ -357,14 +373,21 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Caisse PIN */}
           <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">💳</span>
-              <div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">💳</span>
                 <p className="text-sm font-semibold text-white">Service Caisse</p>
-                {form.slug && (
-                  <p className="text-[11px] text-white/30 font-mono">/{form.slug}/caisse</p>
-                )}
               </div>
+              {form.slug && (
+                <a
+                  href={`/${form.slug}/caisse`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-emerald-400 hover:text-emerald-300 font-mono bg-emerald-500/10 px-2 py-0.5 rounded-lg transition-colors flex items-center gap-1"
+                >
+                  /{form.slug}/caisse ↗
+                </a>
+              )}
             </div>
             <div>
               <label className="text-xs text-white/40 block mb-1">PIN (4-8 chiffres)</label>
@@ -380,7 +403,7 @@ export default function SettingsPage() {
               />
             </div>
             {pins.caissePin ? (
-              <p className="text-[11px] text-emerald-400/70">✓ Caisse activée</p>
+              <p className="text-[11px] text-emerald-400/70">✓ Caisse activée — partagez le lien ci-dessus</p>
             ) : (
               <p className="text-[11px] text-white/20">Aucun PIN — service désactivé</p>
             )}
@@ -388,14 +411,21 @@ export default function SettingsPage() {
 
           {/* Cuisine PIN */}
           <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">🍳</span>
-              <div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🍳</span>
                 <p className="text-sm font-semibold text-white">Vue Cuisine</p>
-                {form.slug && (
-                  <p className="text-[11px] text-white/30 font-mono">/{form.slug}/cuisine</p>
-                )}
               </div>
+              {form.slug && (
+                <a
+                  href={`/${form.slug}/cuisine`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-amber-400 hover:text-amber-300 font-mono bg-amber-500/10 px-2 py-0.5 rounded-lg transition-colors flex items-center gap-1"
+                >
+                  /{form.slug}/cuisine ↗
+                </a>
+              )}
             </div>
             <div>
               <label className="text-xs text-white/40 block mb-1">PIN (4-8 chiffres)</label>
@@ -411,7 +441,7 @@ export default function SettingsPage() {
               />
             </div>
             {pins.cuisinePin ? (
-              <p className="text-[11px] text-amber-400/70">✓ Cuisine activée</p>
+              <p className="text-[11px] text-amber-400/70">✓ Cuisine activée — partagez le lien ci-dessus</p>
             ) : (
               <p className="text-[11px] text-white/20">Aucun PIN — service désactivé</p>
             )}
@@ -419,15 +449,27 @@ export default function SettingsPage() {
         </div>
 
         {/* Info serveur */}
-        <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] p-3 flex items-start gap-3">
-          <span className="text-lg">👨‍🍳</span>
-          <div>
-            <p className="text-xs font-semibold text-white">Vue Serveur</p>
-            <p className="text-[11px] text-white/40 mt-0.5">
-              Le PIN de chaque serveur est géré individuellement depuis{" "}
-              <a href="/dashboard/serveurs" className="text-orange-400 hover:underline">Gestion des Serveurs</a>.
-            </p>
+        <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] p-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-start gap-3">
+            <span className="text-lg">👨‍🍳</span>
+            <div>
+              <p className="text-xs font-semibold text-white">Vue Serveur</p>
+              <p className="text-[11px] text-white/40 mt-0.5">
+                Le PIN de chaque serveur est géré dans{" "}
+                <a href="/dashboard/serveurs" className="text-orange-400 hover:underline">Gestion des Serveurs</a>.
+              </p>
+            </div>
           </div>
+          {form.slug && (
+            <a
+              href={`/${form.slug}/login`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] text-orange-400 hover:text-orange-300 font-mono bg-orange-500/10 px-2 py-1 rounded-lg transition-colors flex items-center gap-1 shrink-0"
+            >
+              /{form.slug}/login ↗
+            </a>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
