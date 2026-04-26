@@ -1,6 +1,7 @@
 "use client";
 import { ChangeEvent, DragEvent, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { IaHistoryPanel, type HistoryEntry } from "@/components/ia/IaHistoryPanel";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type MenuItem = {
@@ -58,14 +59,25 @@ export default function NovaMenuGeneratorPage() {
   const cameraInputRef              = useRef<HTMLInputElement>(null);
 
   // Résultats
-  const [loading, setLoading]   = useState(false);
-  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
-  const [items, setItems]       = useState<MenuItem[]>([]);
-  const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [applying, setApplying] = useState(false);
-  const [applied, setApplied]   = useState(false);
-  const [error, setError]       = useState<string | null>(null);
-  const [genMode, setGenMode]   = useState<"generate" | "photo-import">("generate");
+  const [loading, setLoading]       = useState(false);
+  const [progress, setProgress]     = useState<{ current: number; total: number } | null>(null);
+  const [items, setItems]           = useState<MenuItem[]>([]);
+  const [selected, setSelected]     = useState<Set<number>>(new Set());
+  const [applying, setApplying]     = useState(false);
+  const [applied, setApplied]       = useState(false);
+  const [error, setError]           = useState<string | null>(null);
+  const [genMode, setGenMode]       = useState<"generate" | "photo-import">("generate");
+  const [historyKey, setHistoryKey] = useState(0);
+
+  const onRestoreHistory = (entry: HistoryEntry) => {
+    const list = entry.outputData?.menu?.items as MenuItem[] | undefined;
+    if (list?.length) {
+      setItems(list);
+      setSelected(new Set(list.map((_, i) => i)));
+      setGenMode(entry.outputData?.meta?.mode === "photo-import" ? "photo-import" : "generate");
+      setApplied(false);
+    }
+  };
 
   // Paste d'image depuis le presse-papiers
   useEffect(() => {
@@ -154,6 +166,7 @@ export default function NovaMenuGeneratorPage() {
 
         setItems(deduped);
         setSelected(new Set(deduped.map((_, i) => i)));
+        setHistoryKey(k => k + 1);
       } else {
         // ── Génération classique ───────────────────────────────────────────
         const r = await api<{ menu: { items: MenuItem[] }; meta: any }>("/api/pro/ia/menu-generate", {
@@ -167,6 +180,7 @@ export default function NovaMenuGeneratorPage() {
         });
         setItems(r.menu.items);
         setSelected(new Set(r.menu.items.map((_, i) => i)));
+        setHistoryKey(k => k + 1);
       }
     } catch (e: any) {
       if (e.message?.includes("403")) setError("Abonnement PRO_IA requis.");
@@ -198,13 +212,16 @@ export default function NovaMenuGeneratorPage() {
     <div className="p-8 max-w-6xl space-y-6">
 
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-          <span className="text-3xl">🍽️</span> Nova Menu IA
-        </h1>
-        <p className="text-sm text-white/40 mt-1">
-          Générez un menu complet de zéro ou importez votre carte existante depuis une photo.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+            <span className="text-3xl">🍽️</span> Nova Menu IA
+          </h1>
+          <p className="text-sm text-white/40 mt-1">
+            Générez un menu complet de zéro ou importez votre carte existante depuis une photo.
+          </p>
+        </div>
+        <IaHistoryPanel type="MENU" onRestore={onRestoreHistory} refreshKey={historyKey} />
       </div>
 
       {/* Sélecteur de mode */}

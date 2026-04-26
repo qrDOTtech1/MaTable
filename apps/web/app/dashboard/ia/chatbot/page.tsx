@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { api, redirectOn401 } from "@/lib/api";
+import { IaHistoryPanel, type HistoryEntry } from "@/components/ia/IaHistoryPanel";
 
 type Role = "user" | "assistant" | "system";
 type Message = { role: Role; content: string };
@@ -9,16 +10,29 @@ const SYSTEM_PROMPT =
   "Tu es Nova, l'assistant IA de Ma Table, spécialisé dans la restauration. Tu aides les restaurateurs à rédiger des descriptions de plats, gérer leur menu, répondre aux questions clients et optimiser leur service. Réponds toujours en français, de façon concise et professionnelle.";
 
 export default function ChatbotPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [messages, setMessages]     = useState<Message[]>([]);
+  const [input, setInput]           = useState("");
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState<string | null>(null);
+  const [saving, setSaving]         = useState(false);
+  const [saved, setSaved]           = useState(false);
+  const [historyKey, setHistoryKey] = useState(0);
+  const bottomRef                   = useRef<HTMLDivElement>(null);
+  const textareaRef                 = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  // Reset saved badge when new messages arrive
+  useEffect(() => { setSaved(false); }, [messages.length]);
+
+  const onRestoreHistory = (entry: HistoryEntry) => {
+    if (entry.outputData?.messages) {
+      setMessages(entry.outputData.messages as Message[]);
+      setSaved(true); // already saved
+    }
+  };
 
   async function send() {
     const text = input.trim();
@@ -43,10 +57,36 @@ export default function ChatbotPage() {
     } catch (e: any) {
       redirectOn401(e);
       setError("Impossible de joindre Nova IA. Vérifiez votre clé API dans les paramètres admin.");
-      setMessages(newMessages); // keep user message
+      setMessages(newMessages);
     } finally {
       setLoading(false);
     }
+  }
+
+  async function saveConversation() {
+    if (!messages.length || saving) return;
+    setSaving(true);
+    try {
+      const firstUserMsg = messages.find(m => m.role === "user")?.content ?? "Conversation";
+      const title = `${firstUserMsg.slice(0, 60)}${firstUserMsg.length > 60 ? "…" : ""}`;
+      await api("/api/pro/ia/history", {
+        method: "POST",
+        body: JSON.stringify({
+          type: "CHAT",
+          title,
+          outputData: { messages: messages.filter(m => m.role !== "system") },
+        }),
+      });
+      setSaved(true);
+      setHistoryKey(k => k + 1);
+    } catch { /* silent */ }
+    finally { setSaving(false); }
+  }
+
+  function newConversation() {
+    setMessages([]);
+    setError(null);
+    setSaved(false);
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -67,6 +107,34 @@ export default function ChatbotPage() {
             <p className="text-sm text-white/40">Assistant IA spécialisé restauration</p>
           </div>
           <span className="ml-auto px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-xs text-purple-300 font-semibold">✨ PRO IA</span>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 ml-2">
+            {messages.length > 0 && (
+              <>
+                {/* Save conversation */}
+                <button
+                  onClick={saveConversation}
+                  disabled={saving || saved}
+                  className={`text-xs px-3 py-1.5 rounded-lg border font-semibold transition-all ${
+                    saved
+                      ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                      : "bg-white/[0.04] border-white/[0.08] text-white/50 hover:text-white/80 hover:bg-white/[0.07]"
+                  }`}
+                >
+                  {saving ? "…" : saved ? "✅ Sauvé" : "💾 Sauvegarder"}
+                </button>
+                {/* New conversation */}
+                <button
+                  onClick={newConversation}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] text-white/50 hover:text-white/80 hover:bg-white/[0.07] transition-all"
+                >
+                  ✕ Nouvelle conv.
+                </button>
+              </>
+            )}
+            <IaHistoryPanel type="CHAT" onRestore={onRestoreHistory} refreshKey={historyKey} />
+          </div>
         </div>
       </div>
 

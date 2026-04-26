@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { downloadShoppingListPdf } from "@/lib/downloadShoppingListPdf";
+import { IaHistoryPanel, type HistoryEntry } from "@/components/ia/IaHistoryPanel";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type StockItem = {
@@ -84,9 +85,18 @@ export default function NovaStockPage() {
   const [constraints, setConstraints] = useState("");
 
   // Step 3
-  const [analysis, setAnalysis] = useState<Analysis | null>(null);
-  const [meta, setMeta]         = useState<{ ordersAnalyzed: number; menuItemsCount: number; period: string; restaurantName?: string } | null>(null);
-  const [copied, setCopied]     = useState(false);
+  const [analysis, setAnalysis]   = useState<Analysis | null>(null);
+  const [meta, setMeta]           = useState<{ ordersAnalyzed: number; menuItemsCount: number; period: string; restaurantName?: string } | null>(null);
+  const [copied, setCopied]       = useState(false);
+  const [historyKey, setHistoryKey] = useState(0);
+
+  const onRestoreHistory = (entry: HistoryEntry) => {
+    if (entry.outputData?.analysis) {
+      setAnalysis(entry.outputData.analysis as Analysis);
+      setMeta(entry.outputData.meta ?? null);
+      setStep("results");
+    }
+  };
 
   // ── Étape 1 : IA identifie les articles ──────────────────────────────────────
   const detectItems = async () => {
@@ -135,6 +145,7 @@ export default function NovaStockPage() {
       setAnalysis(r.analysis);
       setMeta(r.meta);
       setStep("results");
+      setHistoryKey(k => k + 1);
     } catch (e: any) {
       setError("Erreur lors de l'analyse : " + e.message);
       setStep("fill-qty");
@@ -158,13 +169,16 @@ export default function NovaStockPage() {
   // ═══════════════════════════════════════════════════════════════════════════
   if (step === "idle") return (
     <div className="p-8 max-w-3xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-          <span className="text-3xl">📦</span> Nova Stock IA
-        </h1>
-        <p className="text-sm text-white/40 mt-1">
-          Gestion intelligente · Liste de courses · Promos excédents · Alertes produits frais
-        </p>
+      <div className="flex items-start justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+            <span className="text-3xl">📦</span> Nova Stock IA
+          </h1>
+          <p className="text-sm text-white/40 mt-1">
+            Gestion intelligente · Liste de courses · Promos excédents · Alertes produits frais
+          </p>
+        </div>
+        <IaHistoryPanel type="STOCK" onRestore={onRestoreHistory} refreshKey={historyKey} />
       </div>
 
       {error && (
@@ -390,12 +404,15 @@ export default function NovaStockPage() {
             {meta && `${meta.ordersAnalyzed} commandes analysées · ${meta.menuItemsCount} plats`}
           </p>
         </div>
-        <button
-          onClick={() => { setStep("fill-qty"); setAnalysis(null); }}
-          className="text-xs px-4 py-2 bg-white/10 hover:bg-white/20 text-white/60 rounded-lg transition-colors"
-        >
-          ✏️ Modifier le stock
-        </button>
+        <div className="flex gap-2 flex-wrap">
+          <IaHistoryPanel type="STOCK" onRestore={onRestoreHistory} refreshKey={historyKey} />
+          <button
+            onClick={() => { setStep("fill-qty"); setAnalysis(null); }}
+            className="text-xs px-4 py-2 bg-white/10 hover:bg-white/20 text-white/60 rounded-lg transition-colors"
+          >
+            ✏️ Modifier le stock
+          </button>
+        </div>
       </div>
 
       {error && (

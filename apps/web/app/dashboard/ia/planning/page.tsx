@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { api, redirectOn401 } from "@/lib/api";
+import { IaHistoryPanel, type HistoryEntry } from "@/components/ia/IaHistoryPanel";
 
 type Day = { date: string; label: string; dishes: string[]; theme?: string; notes?: string };
 type PlanningResult = { week: Day[]; intro?: string };
@@ -19,21 +20,32 @@ function getNextWeekDates(): string[] {
 }
 
 export default function PlanningIAPage() {
-  const [cuisine, setCuisine] = useState("");
+  const [cuisine, setCuisine]       = useState("");
   const [constraints, setConstraints] = useState("");
-  const [budget, setBudget] = useState("moyen");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<PlanningResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [budget, setBudget]         = useState("moyen");
+  const [loading, setLoading]       = useState(false);
+  const [result, setResult]         = useState<PlanningResult | null>(null);
+  const [error, setError]           = useState<string | null>(null);
+  const [copied, setCopied]         = useState(false);
+  const [saving, setSaving]         = useState(false);
+  const [saved, setSaved]           = useState(false);
+  const [historyKey, setHistoryKey] = useState(0);
 
   const dates = getNextWeekDates();
+
+  const onRestoreHistory = (entry: HistoryEntry) => {
+    if (entry.outputData?.result) {
+      setResult(entry.outputData.result as PlanningResult);
+      setSaved(false);
+    }
+  };
 
   async function generate() {
     if (loading) return;
     setLoading(true);
     setError(null);
     setResult(null);
+    setSaved(false);
 
     const prompt = `Génère un planning de plats du jour pour une semaine (lundi à dimanche) pour un restaurant ${cuisine || "français"}.
 Budget : ${budget}. ${constraints ? `Contraintes : ${constraints}.` : ""}
@@ -68,6 +80,26 @@ Réponds en JSON strict avec ce format :
     }
   }
 
+  async function saveToHistory() {
+    if (!result || saving) return;
+    setSaving(true);
+    try {
+      const label = cuisine || "français";
+      const weekRange = dates.length >= 7 ? `${dates[0]} – ${dates[6]}` : "";
+      await api("/api/pro/ia/history", {
+        method: "POST",
+        body: JSON.stringify({
+          type: "PLANNING",
+          title: `Planning ${label} · ${weekRange}`,
+          outputData: { result, cuisine, constraints, budget },
+        }),
+      });
+      setSaved(true);
+      setHistoryKey(k => k + 1);
+    } catch { /* silent */ }
+    finally { setSaving(false); }
+  }
+
   function exportText() {
     if (!result) return;
     const lines = result.week.map((day, i) =>
@@ -89,6 +121,7 @@ Réponds en JSON strict avec ce format :
           <p className="text-sm text-white/40">Générez votre planning de plats du jour pour la semaine</p>
         </div>
         <span className="ml-auto px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-xs text-purple-300 font-semibold">✨ PRO IA</span>
+        <IaHistoryPanel type="PLANNING" onRestore={onRestoreHistory} refreshKey={historyKey} />
       </div>
 
       {/* Config */}
@@ -150,14 +183,32 @@ Réponds en JSON strict avec ce format :
             <p className="text-white/60 text-sm italic mb-6">💡 {result.intro}</p>
           )}
 
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
             <h2 className="text-lg font-bold text-white">Semaine du {dates[0]} au {dates[6]}</h2>
-            <button
-              onClick={exportText}
-              className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-sm text-white/60 hover:text-white"
-            >
-              {copied ? "✅ Copié !" : "📋 Copier le planning"}
-            </button>
+            <div className="flex gap-2">
+              {/* Sauvegarder dans l'historique */}
+              <button
+                onClick={saveToHistory}
+                disabled={saving || saved}
+                className={`px-4 py-2 rounded-xl border text-sm font-semibold transition-all flex items-center gap-2 ${
+                  saved
+                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                    : "bg-white/5 border-white/10 hover:bg-white/10 text-white/60 hover:text-white"
+                }`}
+              >
+                {saving
+                  ? <><span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" /> Sauvegarde…</>
+                  : saved
+                    ? "✅ Sauvegardé"
+                    : "💾 Sauvegarder"}
+              </button>
+              <button
+                onClick={exportText}
+                className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-sm text-white/60 hover:text-white"
+              >
+                {copied ? "✅ Copié !" : "📋 Copier le planning"}
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
