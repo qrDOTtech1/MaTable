@@ -1,8 +1,48 @@
 "use client";
-import { ChangeEvent, DragEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, DragEvent, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { IaHistoryPanel, type HistoryEntry } from "@/components/ia/IaHistoryPanel";
 import { resizeImageToBase64 } from "@/lib/resizeImage";
+
+// ── Messages dynamiques pendant le chargement ─────────────────────────────────
+const LOADING_MESSAGES = [
+  { icon: "🧑‍🍳", text: "Nova lit votre carte... patience, un bon plat se prépare !" },
+  { icon: "🔥", text: "Saviez-vous ? Un chef cuisinier parcourt en moyenne 8 km par service dans sa cuisine." },
+  { icon: "📖", text: "Le mot 'restaurant' vient du français 'restaurer' — nourrir le corps et l'esprit." },
+  { icon: "🍳", text: "Auguste Escoffier a inventé la brigade de cuisine en 1903. Chaque poste, une mission." },
+  { icon: "⏱️", text: "Dans un restaurant étoilé, une assiette est dressée en 47 secondes en moyenne." },
+  { icon: "🧈", text: "Le beurre, c'est la vie. Un restaurant français moyen utilise 20 kg de beurre par semaine." },
+  { icon: "📋", text: "Nova analyse chaque plat, prix et ingrédient visible sur votre photo..." },
+  { icon: "🌍", text: "La France compte plus de 175 000 restaurants. Et chacun a sa carte unique." },
+  { icon: "🍷", text: "Un sommelier goûte en moyenne 100 vins par semaine. Dur métier." },
+  { icon: "🎯", text: "Le 'coup de feu' en cuisine désigne le rush du service — adrénaline pure." },
+  { icon: "👨‍🍳", text: "Paul Bocuse a été élu 'Chef du siècle' par le Gault et Millau en 1989." },
+  { icon: "🥘", text: "La mise en place, c'est 80% du travail d'un chef. Le reste, c'est de l'exécution." },
+  { icon: "📸", text: "Nova extrait les noms, descriptions et prix de chaque plat visible..." },
+  { icon: "🍕", text: "La pizza Margherita a été créée en 1889 en l'honneur de la reine Marguerite d'Italie." },
+  { icon: "🧊", text: "Le premier restaurant avec un menu imprimé date de 1765 à Paris." },
+  { icon: "🔪", text: "Un couteau de chef japonais est aiguisé à un angle de 15° — une précision chirurgicale." },
+  { icon: "🍽️", text: "Encore quelques secondes... Nova prépare un résultat aux petits oignons." },
+  { icon: "🌶️", text: "Le piment le plus fort du monde (Carolina Reaper) atteint 2,2 millions d'unités Scoville." },
+  { icon: "🥐", text: "Le croissant n'est pas français. Il vient de Vienne, en Autriche. Oui, vraiment." },
+  { icon: "💡", text: "Dernière ligne droite... Nova met les plats dans les bonnes catégories." },
+];
+
+function useLoadingMessages(isLoading: boolean) {
+  const [msgIdx, setMsgIdx] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!isLoading) { setMsgIdx(0); setElapsed(0); return; }
+    // Rotate messages every 6 seconds
+    const msgTimer = setInterval(() => setMsgIdx(i => (i + 1) % LOADING_MESSAGES.length), 6000);
+    // Tick elapsed every second
+    const tickTimer = setInterval(() => setElapsed(e => e + 1), 1000);
+    return () => { clearInterval(msgTimer); clearInterval(tickTimer); };
+  }, [isLoading]);
+
+  return { msg: LOADING_MESSAGES[msgIdx], elapsed };
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type MenuItem = {
@@ -53,6 +93,7 @@ export default function NovaMenuGeneratorPage() {
   // Résultats
   const [loading, setLoading]       = useState(false);
   const [progress, setProgress]     = useState<{ current: number; total: number } | null>(null);
+  const { msg: loadingMsg, elapsed: loadingElapsed } = useLoadingMessages(loading);
   const [items, setItems]           = useState<MenuItem[]>([]);
   const [selected, setSelected]     = useState<Set<number>>(new Set());
   const [applying, setApplying]     = useState(false);
@@ -348,7 +389,7 @@ export default function NovaMenuGeneratorPage() {
             className="w-full py-4 bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white font-bold rounded-xl transition-colors text-base flex items-center justify-center gap-3"
           >
             {loading
-              ? <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Génération en cours (20–30s)...</>
+              ? <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Nova IA travaille, regardez ci-dessous...</>
               : "✨ Générer le menu avec Nova IA"}
           </button>
         </div>
@@ -480,19 +521,68 @@ export default function NovaMenuGeneratorPage() {
                 {/* Bouton analyser */}
                 <button onClick={generate} disabled={loading}
                   className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2">
-                  {loading && progress ? (
+                  {loading ? (
                     <>
                       <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Analyse photo {progress.current}/{progress.total} en cours...
+                      Nova analyse vos photos, regardez ci-dessous...
                     </>
-                  ) : loading ? (
-                    <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Extraction en cours...</>
                   ) : (
                     `📸 Analyser ${images.length} photo${images.length > 1 ? "s" : ""} et importer ma carte`
                   )}
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Barre de chargement dynamique ──────────────────────────────────── */}
+      {loading && (
+        <div className="bg-gradient-to-r from-purple-500/5 via-blue-500/5 to-orange-500/5 border border-white/[0.08] rounded-2xl p-6 space-y-4">
+          {/* Barre de progression animée */}
+          <div className="relative h-2 bg-white/[0.06] rounded-full overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-blue-500 to-orange-500 rounded-full animate-loading-bar" />
+          </div>
+
+          {/* Temps écoulé + indicateur */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+              <span className="text-xs text-white/50 font-mono">
+                {Math.floor(loadingElapsed / 60)}:{String(loadingElapsed % 60).padStart(2, "0")}
+              </span>
+              {progress && (
+                <span className="text-xs text-blue-400 font-semibold">
+                  Photo {progress.current}/{progress.total}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] text-white/30">
+              Ne fermez pas cette page
+            </span>
+          </div>
+
+          {/* Message dynamique */}
+          <div className="flex items-start gap-3 min-h-[48px]" key={loadingMsg.text}>
+            <span className="text-2xl shrink-0 animate-bounce-slow">{loadingMsg.icon}</span>
+            <p className="text-sm text-white/60 leading-relaxed animate-fade-in">{loadingMsg.text}</p>
+          </div>
+
+          {/* Barre de phases */}
+          <div className="grid grid-cols-4 gap-1.5">
+            {["Compression image", "Envoi au serveur", "Analyse IA vision", "Extraction des plats"].map((phase, i) => {
+              const phaseActive = loadingElapsed >= i * 15;
+              const phaseDone = loadingElapsed >= (i + 1) * 15;
+              return (
+                <div key={phase} className={`text-center py-1.5 rounded-lg text-[10px] font-semibold transition-all duration-500 ${
+                  phaseDone ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  : phaseActive ? "bg-blue-500/15 text-blue-400 border border-blue-500/25 animate-pulse"
+                  : "bg-white/[0.03] text-white/25 border border-white/[0.05]"
+                }`}>
+                  {phaseDone ? "✓ " : phaseActive ? "⏳ " : ""}{phase}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

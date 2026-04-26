@@ -23,9 +23,9 @@ export class ApiError extends Error {
   get isAuthError() { return this.status === 401; }
 }
 
-// IA routes need long timeout (vision can take 3-4min) and NO retries
+// IA routes need long timeout (vision can take 5-7min) and NO retries
 const IA_PATHS = ["/ia/", "/ia-"];
-const IA_TIMEOUT_MS = 270_000;     // 4min30
+const IA_TIMEOUT_MS = 480_000;     // 8 min
 const DEFAULT_TIMEOUT_MS = 30_000; // 30s
 
 export async function api<T>(
