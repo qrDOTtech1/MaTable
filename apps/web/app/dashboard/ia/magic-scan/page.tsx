@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import { api, redirectOn401 } from "@/lib/api";
+import { resizeImageToBase64 } from "@/lib/resizeImage";
 
 type ScanResult = {
   description: string;
@@ -38,10 +39,11 @@ export default function MagicScanPage() {
     setResult(null);
 
     try {
-      const base64 = image!.split(",")[1];
+      // Resize to max 800px + JPEG 0.7 to avoid vision model timeout
+      const base64 = await resizeImageToBase64(imageFile);
       const res = await api<{ result: ScanResult }>("/api/pro/ia/magic-scan", {
         method: "POST",
-        body: JSON.stringify({ imageBase64: base64, mimeType: imageFile.type }),
+        body: JSON.stringify({ imageBase64: base64, mimeType: "image/jpeg" }),
       });
       setResult(res.result);
     } catch (e: any) {

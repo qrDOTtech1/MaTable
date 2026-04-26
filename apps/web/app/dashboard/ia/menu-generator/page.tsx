@@ -2,6 +2,7 @@
 import { ChangeEvent, DragEvent, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { IaHistoryPanel, type HistoryEntry } from "@/components/ia/IaHistoryPanel";
+import { resizeImageToBase64 } from "@/lib/resizeImage";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type MenuItem = {
@@ -14,7 +15,7 @@ type MenuItem = {
   waitMinutes?: number;
 };
 
-type ImageEntry = { base64: string; name: string; preview: string };
+type ImageEntry = { file: File; name: string; preview: string };
 
 const MAX_IMAGES = 5;
 
@@ -31,15 +32,6 @@ const CUISINE_PRESETS = [
   "Mexicain", "Indien", "Brasserie", "Crêperie bretonne", "Fruits de mer",
   "Végétarien / Vegan", "Street food fusion",
 ];
-
-async function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 // ── Composant principal ───────────────────────────────────────────────────────
 export default function NovaMenuGeneratorPage() {
@@ -108,11 +100,11 @@ export default function NovaMenuGeneratorPage() {
     const remaining = MAX_IMAGES - images.length;
     if (remaining <= 0) { setError(`Maximum ${MAX_IMAGES} images. Supprimez-en une pour en ajouter une autre.`); return; }
     const toAdd = arr.slice(0, remaining);
-    const entries = await Promise.all(toAdd.map(async f => ({
-      base64: await fileToBase64(f),
+    const entries: ImageEntry[] = toAdd.map(f => ({
+      file: f,
       name: f.name,
       preview: URL.createObjectURL(f),
-    })));
+    }));
     setImages(prev => [...prev, ...entries]);
     if (mode !== "import") setMode("import");
   };
@@ -142,6 +134,8 @@ export default function NovaMenuGeneratorPage() {
         for (let i = 0; i < total; i++) {
           setProgress({ current: i + 1, total });
           const img = images[i];
+          // Resize + compress to max 800px JPEG 0.7 before sending — prevents vision timeout
+          const base64 = await resizeImageToBase64(img.file);
           const r = await api<{ menu: { items: MenuItem[] }; meta: any }>("/api/pro/ia/menu-generate", {
             method: "POST",
             body: JSON.stringify({
@@ -149,7 +143,7 @@ export default function NovaMenuGeneratorPage() {
               priceRange,
               itemCount,
               style:       style || undefined,
-              imageBase64: img.base64,
+              imageBase64: base64,
             }),
           });
           allItems.push(...(r.menu?.items ?? []));
