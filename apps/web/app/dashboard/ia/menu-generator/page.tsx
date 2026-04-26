@@ -136,7 +136,9 @@ export default function NovaMenuGeneratorPage() {
           const img = images[i];
           // Resize + compress to max 1536px JPEG 0.85 before sending
           const base64 = await resizeImageToBase64(img.file);
-          const r = await api<{ menu: { items: MenuItem[] }; meta: any }>("/api/pro/ia/menu-generate", {
+          console.log(`[menu-gen] image ${i + 1}/${total} — base64 length=${base64.length}`);
+
+          const r = await api<any>("/api/pro/ia/menu-generate", {
             method: "POST",
             body: JSON.stringify({
               cuisineType: cuisineType || undefined,
@@ -146,7 +148,12 @@ export default function NovaMenuGeneratorPage() {
               imageBase64: base64,
             }),
           });
-          allItems.push(...(r.menu?.items ?? []));
+
+          console.log("[menu-gen] response:", JSON.stringify(r).slice(0, 300));
+
+          // API returns { menu: { items: [...] }, meta: {...} }
+          const parsed: MenuItem[] = r?.menu?.items ?? r?.items ?? [];
+          allItems.push(...parsed);
         }
 
         // Déduplique par nom (insensible à la casse)
@@ -158,12 +165,13 @@ export default function NovaMenuGeneratorPage() {
           return true;
         });
 
+        console.log(`[menu-gen] total items after dedup: ${deduped.length}`);
         setItems(deduped);
         setSelected(new Set(deduped.map((_, i) => i)));
         setHistoryKey(k => k + 1);
       } else {
         // ── Génération classique ───────────────────────────────────────────
-        const r = await api<{ menu: { items: MenuItem[] }; meta: any }>("/api/pro/ia/menu-generate", {
+        const r = await api<any>("/api/pro/ia/menu-generate", {
           method: "POST",
           body: JSON.stringify({
             cuisineType: cuisineType || undefined,
@@ -172,13 +180,19 @@ export default function NovaMenuGeneratorPage() {
             style: style || undefined,
           }),
         });
-        setItems(r.menu.items);
-        setSelected(new Set(r.menu.items.map((_, i) => i)));
+
+        console.log("[menu-gen] response:", JSON.stringify(r).slice(0, 300));
+        const parsed: MenuItem[] = r?.menu?.items ?? r?.items ?? [];
+        setItems(parsed);
+        setSelected(new Set(parsed.map((_, i) => i)));
         setHistoryKey(k => k + 1);
       }
     } catch (e: any) {
+      console.error("[menu-gen] ERROR:", e);
       if (e.message?.includes("403")) setError("Abonnement PRO_IA requis.");
       else if (e.message?.includes("503")) setError("Clé API IA non configurée. Contactez l'admin.");
+      else if (e.message?.includes("502")) setError("L'IA n'a pas pu parser le menu de l'image. Réessayez ou utilisez une photo plus nette.");
+      else if (e.message?.includes("504") || e.message?.includes("expiré")) setError("Timeout — l'IA met trop de temps. Essayez avec une seule image.");
       else if (e.message?.includes("400")) setError("Ajoutez un type de cuisine ou une photo du menu.");
       else setError("Erreur : " + e.message);
     } finally {
