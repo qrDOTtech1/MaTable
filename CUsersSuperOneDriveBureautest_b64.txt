@@ -1,0 +1,11 @@
+Au caractère Ligne:1 : 126
++ ... ing.Bitmap(100,100);  = [System.Drawing.Graphics]::FromImage(); .Clea ...
++                                                                  ~
+Une expression est attendue après « ( ».
+Au caractère Ligne:1 : 504
++ ... e(, [System.Drawing.Imaging.ImageFormat]::Jpeg);  = .ToArray(); [Conv ...
++                                                                  ~
+Une expression est attendue après « ( ».
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : ExpectedExpression
+ 

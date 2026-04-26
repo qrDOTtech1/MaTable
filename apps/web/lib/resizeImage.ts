@@ -1,12 +1,14 @@
 /**
- * Resize + compress an image File/Blob to max 800px wide/tall, JPEG quality 0.7.
+ * Resize + compress an image File/Blob for Ollama vision API.
+ * - Max 800px on longest side (avoids 180s timeout on large images)
+ * - Min 100px on shortest side (qwen3-vl rejects tiny images)
+ * - JPEG quality 0.7
  * Returns a base64 string WITHOUT the data: prefix (ready for Ollama vision API).
- *
- * This is critical to avoid the 180s vision timeout on large images.
  */
 export async function resizeImageToBase64(
   file: File | Blob,
   maxPx = 800,
+  minPx = 100,
   quality = 0.7,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -18,7 +20,7 @@ export async function resizeImageToBase64(
 
       let { width, height } = img;
 
-      // Scale down so the longest side is maxPx
+      // Scale DOWN so the longest side is maxPx
       if (width > maxPx || height > maxPx) {
         if (width >= height) {
           height = Math.round((height * maxPx) / width);
@@ -26,6 +28,17 @@ export async function resizeImageToBase64(
         } else {
           width = Math.round((width * maxPx) / height);
           height = maxPx;
+        }
+      }
+
+      // Scale UP if too small (qwen3-vl rejects images below ~28px)
+      if (width < minPx && height < minPx) {
+        if (width >= height) {
+          height = Math.round((height * minPx) / width);
+          width = minPx;
+        } else {
+          width = Math.round((width * minPx) / height);
+          height = minPx;
         }
       }
 
