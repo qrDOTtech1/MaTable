@@ -1,5 +1,5 @@
 "use client";
-import { ChangeEvent, DragEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, DragEvent, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -12,6 +12,10 @@ type MenuItem = {
   diets?: string[];
   waitMinutes?: number;
 };
+
+type ImageEntry = { base64: string; name: string; preview: string };
+
+const MAX_IMAGES = 5;
 
 const PRICE_RANGES = [
   { id: "budget",        label: "Budget",        range: "5–12€" },
@@ -47,15 +51,15 @@ export default function NovaMenuGeneratorPage() {
   const [itemCount, setItemCount]     = useState(12);
   const [style, setStyle]             = useState("");
 
-  // Photo import
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
-  const [imageName, setImageName]     = useState<string | null>(null);
-  const [isDragging, setIsDragging]   = useState(false);
-  const fileInputRef                  = useRef<HTMLInputElement>(null);
-  const cameraInputRef                = useRef<HTMLInputElement>(null);
+  // Photo import — jusqu'à 5 images
+  const [images, setImages]         = useState<ImageEntry[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef                = useRef<HTMLInputElement>(null);
+  const cameraInputRef              = useRef<HTMLInputElement>(null);
 
   // Résultats
   const [loading, setLoading]   = useState(false);
+  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
   const [items, setItems]       = useState<MenuItem[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [applying, setApplying] = useState(false);
@@ -63,78 +67,121 @@ export default function NovaMenuGeneratorPage() {
   const [error, setError]       = useState<string | null>(null);
   const [genMode, setGenMode]   = useState<"generate" | "photo-import">("generate");
 
-  const isPhotoMode = mode === "import" && !!imageBase64;
-
   // Paste d'image depuis le presse-papiers
   useEffect(() => {
     const handler = async (e: ClipboardEvent) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      for (const item of Array.from(items)) {
+      const clipItems = e.clipboardData?.items;
+      if (!clipItems) return;
+      const imageFiles: File[] = [];
+      for (const item of Array.from(clipItems)) {
         if (item.type.startsWith("image/")) {
           const file = item.getAsFile();
-          if (file) {
-            const base64 = await fileToBase64(file);
-            setImageBase64(base64);
-            setImageName("image collée");
-            setMode("import");
-          }
-          break;
+          if (file) imageFiles.push(file);
         }
+      }
+      if (imageFiles.length > 0) {
+        await addFiles(imageFiles);
+        setMode("import");
       }
     };
     window.addEventListener("paste", handler as any);
     return () => window.removeEventListener("paste", handler as any);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [images]);
 
-  const handleFile = async (file: File) => {
-    if (!file.type.startsWith("image/")) { setError("Veuillez importer une image."); return; }
+  const addFiles = async (files: FileList | File[]) => {
     setError(null);
-    const base64 = await fileToBase64(file);
-    setImageBase64(base64);
-    setImageName(file.name);
+    const arr = Array.from(files).filter(f => f.type.startsWith("image/"));
+    if (!arr.length) { setError("Veuillez importer des images (JPG, PNG, WebP)."); return; }
+    const remaining = MAX_IMAGES - images.length;
+    if (remaining <= 0) { setError(`Maximum ${MAX_IMAGES} images. Supprimez-en une pour en ajouter une autre.`); return; }
+    const toAdd = arr.slice(0, remaining);
+    const entries = await Promise.all(toAdd.map(async f => ({
+      base64: await fileToBase64(f),
+      name: f.name,
+      preview: URL.createObjectURL(f),
+    })));
+    setImages(prev => [...prev, ...entries]);
+    if (mode !== "import") setMode("import");
   };
 
-  const onFileChange  = (e: ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); };
-  const onDragOver    = (e: DragEvent) => { e.preventDefault(); setIsDragging(true); };
-  const onDragLeave   = () => setIsDragging(false);
-  const onDrop        = (e: DragEvent) => {
-    e.preventDefault(); setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleFile(file);
-  };
+  const removeImage  = (idx: number) => setImages(prev => prev.filter((_, i) => i !== idx));
+  const clearAllImages = () => { setImages([]); };
 
-  const clearImage = () => { setImageBase64(null); setImageName(null); };
+  const onFileChange = (e: ChangeEvent<HTMLInputElement>) => { if (e.target.files?.length) addFiles(e.target.files); e.target.value = ""; };
+  const onDragOver   = (e: DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const onDragLeave  = () => setIsDragging(false);
+  const onDrop       = (e: DragEvent) => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files); };
 
+  // ── Génération ──────────────────────────────────────────────────────────────
   const generate = async () => {
     if (mode === "generate" && !cuisineType.trim()) return;
-    if (mode === "import" && !imageBase64) return;
-    setLoading(true); setError(null); setItems([]); setSelected(new Set()); setApplied(false);
+    if (mode === "import" && images.length === 0) return;
+
+    setLoading(true); setError(null); setItems([]); setSelected(new Set()); setApplied(false); setProgress(null);
     setGenMode(mode === "import" ? "photo-import" : "generate");
+
     try {
-      const r = await api<{ menu: { items: MenuItem[] }; meta: any }>("/api/pro/ia/menu-generate", {
-        method: "POST",
-        body: JSON.stringify({
-          cuisineType: cuisineType || undefined,
-          priceRange,
-          itemCount,
-          style:       style || undefined,
-          imageBase64: mode === "import" ? imageBase64 : undefined,
-        }),
-      });
-      setItems(r.menu.items);
-      setSelected(new Set(r.menu.items.map((_, i) => i)));
+      if (mode === "import") {
+        // ── Traitement séquentiel de chaque image ──────────────────────────
+        const total = images.length;
+        const allItems: MenuItem[] = [];
+
+        for (let i = 0; i < total; i++) {
+          setProgress({ current: i + 1, total });
+          const img = images[i];
+          const r = await api<{ menu: { items: MenuItem[] }; meta: any }>("/api/pro/ia/menu-generate", {
+            method: "POST",
+            body: JSON.stringify({
+              cuisineType: cuisineType || undefined,
+              priceRange,
+              itemCount,
+              style:       style || undefined,
+              imageBase64: img.base64,
+            }),
+          });
+          allItems.push(...(r.menu?.items ?? []));
+        }
+
+        // Déduplique par nom (insensible à la casse)
+        const seen = new Set<string>();
+        const deduped = allItems.filter(it => {
+          const key = it.name.trim().toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        setItems(deduped);
+        setSelected(new Set(deduped.map((_, i) => i)));
+      } else {
+        // ── Génération classique ───────────────────────────────────────────
+        const r = await api<{ menu: { items: MenuItem[] }; meta: any }>("/api/pro/ia/menu-generate", {
+          method: "POST",
+          body: JSON.stringify({
+            cuisineType: cuisineType || undefined,
+            priceRange,
+            itemCount,
+            style: style || undefined,
+          }),
+        });
+        setItems(r.menu.items);
+        setSelected(new Set(r.menu.items.map((_, i) => i)));
+      }
     } catch (e: any) {
       if (e.message?.includes("403")) setError("Abonnement PRO_IA requis.");
       else if (e.message?.includes("503")) setError("Clé API IA non configurée. Contactez l'admin.");
       else if (e.message?.includes("400")) setError("Ajoutez un type de cuisine ou une photo du menu.");
       else setError("Erreur : " + e.message);
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+      setProgress(null);
+    }
   };
 
-  const toggleItem  = (i: number) => setSelected(prev => { const s = new Set(prev); s.has(i) ? s.delete(i) : s.add(i); return s; });
-  const selectAll   = () => setSelected(new Set(items.map((_, i) => i)));
-  const selectNone  = () => setSelected(new Set());
+  const toggleItem = (i: number) => setSelected(prev => { const s = new Set(prev); s.has(i) ? s.delete(i) : s.add(i); return s; });
+  const selectAll  = () => setSelected(new Set(items.map((_, i) => i)));
+  const selectNone = () => setSelected(new Set());
 
   const applyMenu = async () => {
     const toApply = items.filter((_, i) => selected.has(i));
@@ -189,7 +236,9 @@ export default function NovaMenuGeneratorPage() {
           <h2 className={`font-bold text-sm ${mode === "import" ? "text-blue-400" : "text-white"}`}>
             Importer ma carte existante
           </h2>
-          <p className="text-xs text-white/40 mt-1">Photographiez votre carte papier, ardoise ou menu PDF — l'IA extrait tout</p>
+          <p className="text-xs text-white/40 mt-1">
+            Photographiez votre carte papier, ardoise ou menu PDF — jusqu'à 5 photos
+          </p>
         </button>
       </div>
 
@@ -283,64 +332,98 @@ export default function NovaMenuGeneratorPage() {
       {/* ── Mode Import Photo ─────────────────────────────────────────────────── */}
       {mode === "import" && (
         <div className="space-y-4">
-          {!imageBase64 ? (
-            // Zone de drop
-            <div
-              onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
-              className={`rounded-2xl border-2 border-dashed transition-all p-12 text-center ${
-                isDragging ? "border-blue-400/60 bg-blue-500/10" : "border-white/20 bg-white/[0.02]"
-              }`}
-            >
-              <div className="text-5xl mb-4">📋</div>
-              <h2 className="text-xl font-bold text-white mb-2">Importez votre carte actuelle</h2>
-              <p className="text-sm text-white/40 mb-6 max-w-md mx-auto">
-                Photographiez votre carte papier, menu ardoise, ou convertissez votre PDF en image.
-                Nova IA extrait automatiquement tous les plats visibles.
-              </p>
 
-              {/* Boutons d'import */}
-              <div className="flex items-center justify-center gap-4 flex-wrap">
-                {/* Prise de photo directe (mobile) */}
-                <label className="cursor-pointer flex flex-col items-center gap-2 px-6 py-4 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 rounded-2xl transition-colors">
-                  <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={onFileChange} className="hidden" />
-                  <span className="text-3xl">📷</span>
-                  <span className="text-sm font-bold">Prendre une photo</span>
-                  <span className="text-xs opacity-60">Appareil photo</span>
-                </label>
-
-                {/* Import depuis bibliothèque/ordinateur */}
-                <label className="cursor-pointer flex flex-col items-center gap-2 px-6 py-4 bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.12] text-white/70 rounded-2xl transition-colors">
-                  <input ref={fileInputRef} type="file" accept="image/*" onChange={onFileChange} className="hidden" />
-                  <span className="text-3xl">🖼️</span>
-                  <span className="text-sm font-bold">Importer une image</span>
-                  <span className="text-xs opacity-50">JPG, PNG, WebP</span>
-                </label>
-              </div>
-
-              <p className="text-xs text-white/20 mt-6">
-                Glissez-déposez une image ici · ou collez avec Ctrl+V
-              </p>
-            </div>
-          ) : (
-            // Prévisualisation image
-            <div className="bg-white/[0.03] border border-blue-500/20 rounded-2xl overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">📸</span>
-                  <div>
-                    <p className="text-sm font-bold text-white">{imageName || "Image importée"}</p>
-                    <p className="text-xs text-white/40">Nova IA va analyser et extraire tous les plats visibles</p>
+          {/* Zone de drop (toujours visible, plus compacte si images présentes) */}
+          <div
+            onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
+            className={`rounded-2xl border-2 border-dashed transition-all ${
+              images.length === 0 ? "p-12 text-center" : "p-5"
+            } ${isDragging ? "border-blue-400/60 bg-blue-500/10" : "border-white/20 bg-white/[0.02]"}`}
+          >
+            {images.length === 0 ? (
+              /* ── Aucune image — affichage complet ── */
+              <>
+                <div className="text-5xl mb-4">📋</div>
+                <h2 className="text-xl font-bold text-white mb-2">Importez votre carte actuelle</h2>
+                <p className="text-sm text-white/40 mb-6 max-w-md mx-auto">
+                  Photographiez votre carte papier, menu ardoise, ou convertissez votre PDF en image.
+                  Nova IA extrait automatiquement tous les plats visibles. Jusqu'à <strong className="text-white/60">5 photos</strong> par analyse.
+                </p>
+                <div className="flex items-center justify-center gap-4 flex-wrap">
+                  <label className="cursor-pointer flex flex-col items-center gap-2 px-6 py-4 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 rounded-2xl transition-colors">
+                    <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={onFileChange} className="hidden" />
+                    <span className="text-3xl">📷</span>
+                    <span className="text-sm font-bold">Prendre une photo</span>
+                    <span className="text-xs opacity-60">Appareil photo</span>
+                  </label>
+                  <label className="cursor-pointer flex flex-col items-center gap-2 px-6 py-4 bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.12] text-white/70 rounded-2xl transition-colors">
+                    <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={onFileChange} className="hidden" />
+                    <span className="text-3xl">🖼️</span>
+                    <span className="text-sm font-bold">Importer des images</span>
+                    <span className="text-xs opacity-50">JPG, PNG, WebP · jusqu'à {MAX_IMAGES}</span>
+                  </label>
+                </div>
+                <p className="text-xs text-white/20 mt-6">
+                  Glissez-déposez ici · ou collez avec Ctrl+V
+                </p>
+              </>
+            ) : (
+              /* ── Images sélectionnées — grille compacte ── */
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-white/60">
+                    {images.length} photo{images.length > 1 ? "s" : ""} sélectionnée{images.length > 1 ? "s" : ""}
+                    {images.length < MAX_IMAGES && <span className="text-white/30 ml-1">(max {MAX_IMAGES})</span>}
+                  </p>
+                  <div className="flex gap-2">
+                    {images.length < MAX_IMAGES && (
+                      <label className="cursor-pointer text-xs px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 text-blue-400 rounded-lg transition-colors">
+                        <input type="file" accept="image/*" multiple onChange={onFileChange} className="hidden" />
+                        + Ajouter
+                      </label>
+                    )}
+                    <button onClick={clearAllImages} className="text-xs px-3 py-1.5 bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] text-white/40 rounded-lg transition-colors">
+                      Tout supprimer
+                    </button>
                   </div>
                 </div>
-                <button onClick={clearImage} className="text-xs px-3 py-1.5 bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.08] text-white/60 rounded-lg transition-colors">
-                  ✕ Changer
-                </button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-0">
-                <img src={imageBase64} alt="Aperçu menu" className="w-full max-h-80 object-contain bg-black/30 p-4" />
-                <div className="p-5 border-t md:border-t-0 md:border-l border-white/[0.07] space-y-4">
+
+                {/* Grille thumbnails */}
+                <div className="flex flex-wrap gap-3">
+                  {images.map((img, idx) => (
+                    <div key={idx} className="relative group w-24 h-24 rounded-xl overflow-hidden border border-white/10 bg-black/20 shrink-0">
+                      <img src={img.preview} alt={img.name} className="w-full h-full object-cover" />
+                      {/* Badge numéro */}
+                      <div className="absolute top-1 left-1 w-5 h-5 bg-blue-600 text-white text-[10px] font-black rounded-full flex items-center justify-center">
+                        {idx + 1}
+                      </div>
+                      {/* Bouton suppression */}
+                      <button
+                        onClick={() => removeImage(idx)}
+                        className="absolute top-1 right-1 w-5 h-5 bg-black/70 hover:bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        ✕
+                      </button>
+                      {/* Tooltip nom */}
+                      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent px-1.5 pb-1 pt-3">
+                        <p className="text-[9px] text-white/60 truncate leading-tight">{img.name}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {/* Slot "ajouter" si place restante */}
+                  {images.length < MAX_IMAGES && (
+                    <label className="cursor-pointer w-24 h-24 rounded-xl border-2 border-dashed border-white/20 hover:border-blue-400/40 hover:bg-blue-500/5 flex flex-col items-center justify-center gap-1 shrink-0 transition-all">
+                      <input type="file" accept="image/*" multiple onChange={onFileChange} className="hidden" />
+                      <span className="text-xl text-white/30">+</span>
+                      <span className="text-[9px] text-white/30">Ajouter</span>
+                    </label>
+                  )}
+                </div>
+
+                {/* Options supplémentaires */}
+                <div className="grid grid-cols-2 gap-3 pt-2">
                   <div>
-                    <label className="block text-xs font-semibold text-white/50 mb-2">Type de cuisine <span className="text-white/30">(optionnel)</span></label>
+                    <label className="block text-xs font-semibold text-white/40 mb-1">Type de cuisine <span className="text-white/20">(optionnel)</span></label>
                     <input
                       value={cuisineType}
                       onChange={e => setCuisineType(e.target.value)}
@@ -349,33 +432,43 @@ export default function NovaMenuGeneratorPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-white/50 mb-2">Gamme de prix</label>
+                    <label className="block text-xs font-semibold text-white/40 mb-1">Gamme de prix</label>
                     <select value={priceRange} onChange={e => setPriceRange(e.target.value as any)}
                       className="w-full bg-black/20 border border-white/[0.08] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50">
                       {PRICE_RANGES.map(p => <option key={p.id} value={p.id}>{p.label} ({p.range})</option>)}
                     </select>
                   </div>
-                  <div className="bg-blue-500/5 border border-blue-500/15 rounded-xl p-3">
-                    <p className="text-xs text-blue-400/80 font-medium">Ce que Nova va faire :</p>
-                    <ul className="text-xs text-white/40 mt-1.5 space-y-1">
-                      <li>• Lire les noms de plats sur la photo</li>
-                      <li>• Récupérer les prix visibles</li>
-                      <li>• Écrire des descriptions vendeuses</li>
-                      <li>• Détecter les allergènes probables</li>
-                    </ul>
-                  </div>
                 </div>
-              </div>
-              <div className="px-5 py-4 border-t border-white/[0.07]">
+
+                <div className="bg-blue-500/5 border border-blue-500/15 rounded-xl p-3">
+                  <p className="text-xs text-blue-400/80 font-medium mb-1">
+                    🤖 Nova va analyser {images.length} photo{images.length > 1 ? "s" : ""} en {images.length} requête{images.length > 1 ? "s" : ""} séparée{images.length > 1 ? "s" : ""} :
+                  </p>
+                  <ul className="text-xs text-white/40 space-y-0.5">
+                    <li>• Lire les noms de plats sur chaque photo</li>
+                    <li>• Récupérer les prix visibles</li>
+                    <li>• Écrire des descriptions vendeuses</li>
+                    <li>• Fusionner et dédupliquer les résultats</li>
+                  </ul>
+                </div>
+
+                {/* Bouton analyser */}
                 <button onClick={generate} disabled={loading}
                   className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2">
-                  {loading
-                    ? <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Extraction en cours (20–40s)...</>
-                    : "📸 Importer et améliorer ma carte"}
+                  {loading && progress ? (
+                    <>
+                      <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Analyse photo {progress.current}/{progress.total} en cours...
+                    </>
+                  ) : loading ? (
+                    <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Extraction en cours...</>
+                  ) : (
+                    `📸 Analyser ${images.length} photo${images.length > 1 ? "s" : ""} et importer ma carte`
+                  )}
                 </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
@@ -398,8 +491,8 @@ export default function NovaMenuGeneratorPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <button onClick={selectAll}   className="text-xs px-3 py-1.5 bg-white/[0.05] border border-white/[0.08] text-white/50 hover:text-white/80 rounded-lg">Tout sélectionner</button>
-              <button onClick={selectNone}  className="text-xs px-3 py-1.5 bg-white/[0.05] border border-white/[0.08] text-white/50 hover:text-white/80 rounded-lg">Tout désélectionner</button>
+              <button onClick={selectAll}  className="text-xs px-3 py-1.5 bg-white/[0.05] border border-white/[0.08] text-white/50 hover:text-white/80 rounded-lg">Tout sélectionner</button>
+              <button onClick={selectNone} className="text-xs px-3 py-1.5 bg-white/[0.05] border border-white/[0.08] text-white/50 hover:text-white/80 rounded-lg">Tout désélectionner</button>
             </div>
           </div>
 
@@ -474,7 +567,7 @@ export default function NovaMenuGeneratorPage() {
               <h3 className="text-xl font-bold text-emerald-400">{selected.size} plats ajoutés au menu !</h3>
               <p className="text-sm text-white/40 mt-1">Retrouvez-les dans l'onglet Menu pour les personnaliser.</p>
               <button
-                onClick={() => { setItems([]); setApplied(false); setImageBase64(null); }}
+                onClick={() => { setItems([]); setApplied(false); clearAllImages(); setMode("generate"); }}
                 className="mt-4 px-6 py-2 bg-white/10 hover:bg-white/20 text-white/60 rounded-xl text-sm transition-colors"
               >
                 Importer d'autres plats
@@ -490,7 +583,7 @@ export default function NovaMenuGeneratorPage() {
           <div className="text-5xl mb-3">{mode === "import" ? "📸" : "✨"}</div>
           <p className="text-sm">
             {mode === "import"
-              ? "Importez une photo de votre carte pour commencer"
+              ? "Importez jusqu'à 5 photos de votre carte pour commencer"
               : "Choisissez un type de cuisine et générez votre menu"}
           </p>
         </div>
