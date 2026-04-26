@@ -86,8 +86,33 @@ export default function NovaFinancePage() {
     }
   };
 
+  // Deploy offers
+  const [deployingOffer, setDeployingOffer] = useState<number | null>(null);
+  const [deployedOffers, setDeployedOffers] = useState<Set<number>>(new Set());
+
+  const deployOffer = async (idx: number, offer: Offer) => {
+    setDeployingOffer(idx);
+    try {
+      await api("/api/pro/ia/offers/deploy", {
+        method: "POST",
+        body: JSON.stringify({
+          dish: offer.dish,
+          type: offer.type,
+          description: offer.description,
+          discountPercent: offer.discountPercent,
+          rationale: offer.rationale,
+        }),
+      });
+      setDeployedOffers(prev => new Set(prev).add(idx));
+    } catch (e: any) {
+      setError("Erreur déploiement offre : " + e.message);
+    } finally {
+      setDeployingOffer(null);
+    }
+  };
+
   const runAnalysis = async () => {
-    setLoading(true); setError(null); setAdvice(null);
+    setLoading(true); setError(null); setAdvice(null); setDeployedOffers(new Set());
     try {
       const r = await api<{ advice: FinanceAdvice; meta: Meta }>("/api/pro/ia/financial-advice", {
         method: "POST",
@@ -309,23 +334,44 @@ export default function NovaFinancePage() {
             <div>
               <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
                 🏷️ Offres recommandées par Nova
-                <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full">À activer dans Menu</span>
+                <a href="/dashboard/ia/offers" className="text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full hover:bg-purple-500/30 transition-colors">
+                  Voir les offres actives →
+                </a>
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {advice.offersProposed.map((o, i) => (
-                  <div key={i} className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-4">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">{OFFER_ICON[o.type] ?? "🎯"}</span>
-                        <span className="font-bold text-white text-sm">{o.dish}</span>
+                {advice.offersProposed.map((o, i) => {
+                  const isDeployed = deployedOffers.has(i);
+                  return (
+                    <div key={i} className={`border rounded-xl p-4 transition-all ${isDeployed ? "bg-emerald-500/10 border-emerald-500/30" : "bg-purple-500/5 border-purple-500/20"}`}>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{OFFER_ICON[o.type] ?? "🎯"}</span>
+                          <span className="font-bold text-white text-sm">{o.dish}</span>
+                        </div>
+                        <span className="text-xl font-black text-emerald-400">-{o.discountPercent}%</span>
                       </div>
-                      <span className="text-xl font-black text-emerald-400">-{o.discountPercent}%</span>
+                      <p className="text-sm text-white/70 mb-2">{o.description}</p>
+                      <p className="text-xs text-white/40 mb-1">{o.rationale}</p>
+                      <p className="text-xs text-emerald-400 font-semibold mb-3">📈 Impact estimé : {o.estimatedRevenueBoost}</p>
+
+                      {isDeployed ? (
+                        <div className="flex items-center gap-2 text-xs text-emerald-400 font-bold">
+                          <span>✅</span> Offre déployée !
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => deployOffer(i, o)}
+                          disabled={deployingOffer === i}
+                          className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                          {deployingOffer === i
+                            ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Déploiement...</>
+                            : "🚀 Déployer cette offre (7 jours)"}
+                        </button>
+                      )}
                     </div>
-                    <p className="text-sm text-white/70 mb-2">{o.description}</p>
-                    <p className="text-xs text-white/40 mb-1">{o.rationale}</p>
-                    <p className="text-xs text-emerald-400 font-semibold">📈 Impact estimé : {o.estimatedRevenueBoost}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

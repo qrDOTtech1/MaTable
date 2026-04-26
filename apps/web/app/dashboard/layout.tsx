@@ -91,6 +91,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
             { href: "/dashboard/ia/stock", icon: "📦", label: "Nova Stock" },
             { href: "/dashboard/ia/menu-generator", icon: "🍽️", label: "Nova Menu" },
             { href: "/dashboard/ia/finance", icon: "💹", label: "Nova Finance" },
+            { href: "/dashboard/ia/offers", icon: "🏷️", label: "Offres actives" },
             { href: "/dashboard/ia/chatbot", icon: "🤖", label: "Chatbot IA" },
             { href: "/dashboard/ia/magic-scan", icon: "📷", label: "Magic Scan" },
             { href: "/dashboard/ia/planning", icon: "🗓️", label: "Planning IA" },
