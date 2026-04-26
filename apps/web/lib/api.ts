@@ -90,6 +90,82 @@ function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/**
+ * SSE streaming request — returns an async generator of parsed events.
+ * The connection stays alive as the server streams chunks,
+ * preventing timeout issues on long-running AI requests.
+ */
+export async function apiStream(
+  path: string,
+  body: unknown,
+  opts: { timeoutMs?: number } = {},
+): Promise<AsyncGenerator<{ type: string; [key: string]: unknown }>> {
+  const token = getProToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  // Long timeout for initial connection — once streaming starts, the connection stays alive
+  const timeout = opts.timeoutMs ?? 600_000; // 10min max
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    signal: controller.signal,
+  });
+
+  if (!res.ok) {
+    clearTimeout(timer);
+    const text = await res.text();
+    throw new ApiError(res.status, `${res.status}: ${text}`);
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) {
+    clearTimeout(timer);
+    throw new Error("No response body for SSE stream");
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  async function* generate(): AsyncGenerator<{ type: string; [key: string]: unknown }> {
+    try {
+      while (true) {
+        const { done, value } = await reader!.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const event = JSON.parse(line.slice(6));
+              yield event;
+            } catch { /* skip malformed event */ }
+          }
+        }
+      }
+      // Process any remaining buffer
+      if (buffer.startsWith("data: ")) {
+        try {
+          const event = JSON.parse(buffer.slice(6));
+          yield event;
+        } catch { /* skip */ }
+      }
+    } finally {
+      clearTimeout(timer);
+      reader!.releaseLock();
+    }
+  }
+
+  return generate();
+}
+
 // Upload de fichiers (multipart) — ne met PAS Content-Type (le navigateur ajoute le boundary)
 export async function apiUpload<T>(
   path: string,

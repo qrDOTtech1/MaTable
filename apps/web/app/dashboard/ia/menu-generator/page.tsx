@@ -1,6 +1,6 @@
 "use client";
 import { ChangeEvent, DragEvent, useCallback, useEffect, useRef, useState } from "react";
-import { api } from "@/lib/api";
+import { api, apiStream } from "@/lib/api";
 import { IaHistoryPanel, type HistoryEntry } from "@/components/ia/IaHistoryPanel";
 import { resizeImageToBase64 } from "@/lib/resizeImage";
 
@@ -158,6 +158,27 @@ export default function NovaMenuGeneratorPage() {
   const onDragLeave  = () => setIsDragging(false);
   const onDrop       = (e: DragEvent) => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files); };
 
+  // ── Helper: process one image/generation via SSE stream ──────────────────
+  const generateOneStream = async (
+    payload: Record<string, unknown>,
+  ): Promise<MenuItem[]> => {
+    const stream = await apiStream("/api/pro/ia/menu-generate/stream", payload);
+
+    let result: MenuItem[] = [];
+    for await (const event of stream) {
+      if (event.type === "progress") {
+        // keep-alive progress — nothing to render per-item
+      } else if (event.type === "chunk") {
+        // streaming chunk — chars received so far (keep-alive)
+      } else if (event.type === "result") {
+        result = (event.menu as any)?.items ?? [];
+      } else if (event.type === "error") {
+        throw new Error((event.message as string) || "Erreur IA");
+      }
+    }
+    return result;
+  };
+
   // ── Génération ──────────────────────────────────────────────────────────────
   const generate = async () => {
     if (mode === "generate" && !cuisineType.trim()) return;
@@ -168,7 +189,7 @@ export default function NovaMenuGeneratorPage() {
 
     try {
       if (mode === "import") {
-        // ── Traitement séquentiel de chaque image ──────────────────────────
+        // ── Traitement séquentiel de chaque image via SSE stream ────────────
         const total = images.length;
         const allItems: MenuItem[] = [];
 
@@ -179,21 +200,15 @@ export default function NovaMenuGeneratorPage() {
           const base64 = await resizeImageToBase64(img.file);
           console.log(`[menu-gen] image ${i + 1}/${total} — base64 length=${base64.length}`);
 
-          const r = await api<any>("/api/pro/ia/menu-generate", {
-            method: "POST",
-            body: JSON.stringify({
-              cuisineType: cuisineType || undefined,
-              priceRange,
-              itemCount,
-              style:       style || undefined,
-              imageBase64: base64,
-            }),
+          const parsed = await generateOneStream({
+            cuisineType: cuisineType || undefined,
+            priceRange,
+            itemCount,
+            style:       style || undefined,
+            imageBase64: base64,
           });
 
-          console.log("[menu-gen] response:", JSON.stringify(r).slice(0, 300));
-
-          // API returns { menu: { items: [...] }, meta: {...} }
-          const parsed: MenuItem[] = r?.menu?.items ?? r?.items ?? [];
+          console.log(`[menu-gen] image ${i + 1} → ${parsed.length} items`);
           allItems.push(...parsed);
         }
 
@@ -211,19 +226,15 @@ export default function NovaMenuGeneratorPage() {
         setSelected(new Set(deduped.map((_, i) => i)));
         setHistoryKey(k => k + 1);
       } else {
-        // ── Génération classique ───────────────────────────────────────────
-        const r = await api<any>("/api/pro/ia/menu-generate", {
-          method: "POST",
-          body: JSON.stringify({
-            cuisineType: cuisineType || undefined,
-            priceRange,
-            itemCount,
-            style: style || undefined,
-          }),
+        // ── Génération classique via SSE stream ────────────────────────────
+        const parsed = await generateOneStream({
+          cuisineType: cuisineType || undefined,
+          priceRange,
+          itemCount,
+          style: style || undefined,
         });
 
-        console.log("[menu-gen] response:", JSON.stringify(r).slice(0, 300));
-        const parsed: MenuItem[] = r?.menu?.items ?? r?.items ?? [];
+        console.log(`[menu-gen] generated ${parsed.length} items`);
         setItems(parsed);
         setSelected(new Set(parsed.map((_, i) => i)));
         setHistoryKey(k => k + 1);

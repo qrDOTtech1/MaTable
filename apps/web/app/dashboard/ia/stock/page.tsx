@@ -503,11 +503,14 @@ export default function NovaStockPage() {
             </div>
           )}
 
-          {/* 🛒 Liste de courses */}
+          {/* 🛒 Liste de courses — groupée par catégorie */}
           {analysis.shoppingList?.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                <h2 className="text-lg font-bold text-white">🛒 Liste de courses</h2>
+                <h2 className="text-lg font-bold text-white">
+                  🛒 Liste de courses
+                  <span className="text-xs text-white/30 font-normal ml-2">{analysis.shoppingList.length} articles</span>
+                </h2>
                 <div className="flex items-center gap-2">
                   {/* Télécharger PDF */}
                   <button
@@ -532,41 +535,96 @@ export default function NovaStockPage() {
                   </button>
                 </div>
               </div>
-              <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-white/[0.07] text-left">
-                      <th className="px-4 py-3 text-xs text-white/40 font-semibold">Ingrédient</th>
-                      <th className="px-4 py-3 text-xs text-white/40 font-semibold text-center">En stock</th>
-                      <th className="px-4 py-3 text-xs text-white/40 font-semibold text-center">Besoin</th>
-                      <th className="px-4 py-3 text-xs text-white/40 font-semibold text-center">À acheter</th>
-                      <th className="px-4 py-3 text-xs text-white/40 font-semibold text-center">Priorité</th>
-                      <th className="px-4 py-3 text-xs text-white/40 font-semibold hidden md:table-cell">Pour</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {analysis.shoppingList.map((s, i) => (
-                      <tr key={i} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                        <td className="px-4 py-3 text-white font-medium">
-                          {s.ingredient}
-                          {s.estimatedCost ? <span className="ml-2 text-xs text-emerald-400">~{s.estimatedCost}€</span> : null}
-                        </td>
-                        <td className="px-4 py-3 text-center text-white/50">{s.alreadyHave} {s.unit}</td>
-                        <td className="px-4 py-3 text-center text-white/50">{s.estimatedNeeded} {s.unit}</td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="font-black text-orange-400">{s.toBuy} {s.unit}</span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${PRIORITY_CLS[s.priority] ?? PRIORITY_CLS.LOW}`}>
-                            {s.priority}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-white/40 max-w-[180px] truncate hidden md:table-cell">{s.reason}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+
+              {/* Group shopping list by category */}
+              {(() => {
+                const SHOP_CAT_COLORS: Record<string, string> = {
+                  "Alcools":             "text-purple-400 border-purple-500/30 bg-purple-500/5",
+                  "Dilutants & Mixers":  "text-sky-400 border-sky-500/30 bg-sky-500/5",
+                  "Sirops & Liqueurs":   "text-pink-400 border-pink-500/30 bg-pink-500/5",
+                  "Fruits & Garnitures": "text-yellow-400 border-yellow-500/30 bg-yellow-500/5",
+                  "Viandes":             "text-red-400 border-red-500/30 bg-red-500/5",
+                  "Poissons":            "text-blue-400 border-blue-500/30 bg-blue-500/5",
+                  "Légumes":             "text-emerald-400 border-emerald-500/30 bg-emerald-500/5",
+                  "Épicerie":            "text-orange-400 border-orange-500/30 bg-orange-500/5",
+                  "Produits laitiers":   "text-cyan-400 border-cyan-500/30 bg-cyan-500/5",
+                  "Consommables":        "text-gray-400 border-gray-500/30 bg-gray-500/5",
+                  "Boulangerie":         "text-amber-400 border-amber-500/30 bg-amber-500/5",
+                  "Boissons":            "text-indigo-400 border-indigo-500/30 bg-indigo-500/5",
+                };
+                const DEFAULT_CAT_COLOR = "text-white/60 border-white/10 bg-white/[0.03]";
+
+                // Group items by their category field
+                const shopCats: Record<string, ShopItem[]> = {};
+                for (const s of analysis.shoppingList) {
+                  const cat = (s as any).category || "Autres";
+                  (shopCats[cat] ||= []).push(s);
+                }
+
+                // Sort categories: prioritize ones with HIGH items first
+                const catOrder = Object.entries(shopCats).sort(([, a], [, b]) => {
+                  const highA = a.filter(i => i.priority === "HIGH").length;
+                  const highB = b.filter(i => i.priority === "HIGH").length;
+                  return highB - highA;
+                });
+
+                return (
+                  <div className="space-y-4">
+                    {catOrder.map(([cat, catItems]) => {
+                      const colorCls = SHOP_CAT_COLORS[cat] ?? DEFAULT_CAT_COLOR;
+                      const catCost = catItems.reduce((sum, s) => sum + (s.estimatedCost ?? 0), 0);
+                      return (
+                        <div key={cat} className="bg-white/[0.03] border border-white/[0.07] rounded-2xl overflow-hidden">
+                          {/* Category header */}
+                          <div className={`px-5 py-3 border-b border-white/[0.07] flex items-center justify-between ${colorCls.split(" ").find(c => c.startsWith("bg-")) ?? ""}`}>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-sm font-bold ${colorCls.split(" ").find(c => c.startsWith("text-")) ?? "text-white/60"}`}>{cat}</span>
+                              <span className="text-xs text-white/30">{catItems.length} article{catItems.length > 1 ? "s" : ""}</span>
+                            </div>
+                            {catCost > 0 && (
+                              <span className="text-xs text-emerald-400 font-semibold">~{catCost.toFixed(0)}€</span>
+                            )}
+                          </div>
+                          {/* Items table */}
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-white/[0.05] text-left">
+                                <th className="px-4 py-2 text-[10px] text-white/30 font-semibold">Ingrédient</th>
+                                <th className="px-4 py-2 text-[10px] text-white/30 font-semibold text-center">Stock</th>
+                                <th className="px-4 py-2 text-[10px] text-white/30 font-semibold text-center">Besoin</th>
+                                <th className="px-4 py-2 text-[10px] text-white/30 font-semibold text-center">À acheter</th>
+                                <th className="px-4 py-2 text-[10px] text-white/30 font-semibold text-center">Priorité</th>
+                                <th className="px-4 py-2 text-[10px] text-white/30 font-semibold hidden md:table-cell">Pour</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {catItems.map((s, i) => (
+                                <tr key={i} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                                  <td className="px-4 py-2.5 text-white font-medium">
+                                    {s.ingredient}
+                                    {s.estimatedCost ? <span className="ml-2 text-xs text-emerald-400">~{s.estimatedCost}€</span> : null}
+                                  </td>
+                                  <td className="px-4 py-2.5 text-center text-white/50 text-xs">{s.alreadyHave} {s.unit}</td>
+                                  <td className="px-4 py-2.5 text-center text-white/50 text-xs">{s.estimatedNeeded} {s.unit}</td>
+                                  <td className="px-4 py-2.5 text-center">
+                                    <span className="font-black text-orange-400">{s.toBuy} {s.unit}</span>
+                                  </td>
+                                  <td className="px-4 py-2.5 text-center">
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${PRIORITY_CLS[s.priority] ?? PRIORITY_CLS.LOW}`}>
+                                      {s.priority}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-2.5 text-xs text-white/40 max-w-[180px] truncate hidden md:table-cell">{s.reason}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
