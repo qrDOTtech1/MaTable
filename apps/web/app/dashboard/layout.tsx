@@ -76,6 +76,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
       label: "CONFIG",
       items: [
         { href: "/dashboard/settings", icon: "⚙️", label: "Paramètres" },
+        { href: "/dashboard/support", icon: "🎧", label: "Support / SAV" },
         { href: "/dashboard/testimonial", icon: "💬", label: "Témoignage" },
       ],
     },
@@ -87,6 +88,8 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
           label: "NOVA IA",
           accent: true,
           items: [
+            { href: "/dashboard/ia/stock", icon: "📦", label: "Nova Stock" },
+            { href: "/dashboard/ia/menu-generator", icon: "🍽️", label: "Nova Menu" },
             { href: "/dashboard/ia/chatbot", icon: "🤖", label: "Chatbot IA" },
             { href: "/dashboard/ia/magic-scan", icon: "📷", label: "Magic Scan" },
             { href: "/dashboard/ia/planning", icon: "🗓️", label: "Planning IA" },
@@ -201,7 +204,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
             <div className="mt-6 mx-1 p-3 rounded-xl bg-gradient-to-br from-purple-500/10 to-violet-500/5 border border-purple-500/20">
               <p className="text-xs font-bold text-purple-300 mb-1">✨ Nova IA</p>
               <p className="text-[11px] text-white/40 mb-2 leading-relaxed">
-                Chatbot, Magic Scan, Planning IA & descriptions auto.
+                Stock IA, Menu Generator, Chatbot, Magic Scan & plus.
               </p>
               <a
                 href="mailto:contact@novavivo.online?subject=Upgrade PRO_IA"

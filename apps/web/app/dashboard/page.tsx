@@ -85,8 +85,9 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!restaurantId) return;
     const socket: Socket = io(API_URL, { auth: { restaurantId } });
-    socket.on("order:new",  () => loadOrders());
-    socket.on("order:paid", () => loadOrders());
+    socket.on("order:new",     () => loadOrders());
+    socket.on("order:updated", () => loadOrders());
+    socket.on("order:paid",    () => loadOrders());
     return () => void socket.disconnect();
   }, [restaurantId, loadOrders]);
 
