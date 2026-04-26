@@ -1,8 +1,39 @@
 "use client";
-import { useState } from "react";
-import { api } from "@/lib/api";
+import { useEffect, useState } from "react";
+import { api, apiStream } from "@/lib/api";
 import { downloadShoppingListPdf } from "@/lib/downloadShoppingListPdf";
 import { IaHistoryPanel, type HistoryEntry } from "@/components/ia/IaHistoryPanel";
+
+// ── Messages dynamiques pendant le chargement ─────────────────────────────────
+const LOADING_MESSAGES = [
+  { icon: "📦", text: "Nova analyse votre menu plat par plat, catégorie par catégorie..." },
+  { icon: "🔍", text: "Saviez-vous ? Un restaurant moyen gaspille 15% de ses achats alimentaires." },
+  { icon: "🧊", text: "Le premier réfrigérateur commercial date de 1913. Avant, on utilisait la glace naturelle." },
+  { icon: "📋", text: "Nova décompose chaque plat en ingrédients bruts pour ne rien oublier..." },
+  { icon: "🥕", text: "La France jette 10 millions de tonnes de nourriture par an. Nova aide à réduire ce chiffre." },
+  { icon: "🧮", text: "Estimation des quantités en cours — Nova croise vos ventes avec votre menu..." },
+  { icon: "🛒", text: "Un bon chef fait ses courses 2 à 3 fois par semaine pour garantir la fraîcheur." },
+  { icon: "💡", text: "Astuce : les produits frais représentent 35% du budget courses d'un restaurant." },
+  { icon: "🏪", text: "Nova identifie les fournisseurs optimaux et les jours de livraison idéaux." },
+  { icon: "📊", text: "L'IA calcule les prévisions de demande basées sur vos 14 derniers jours de ventes." },
+  { icon: "🥬", text: "Les produits frais ont une durée de vie de 2-5 jours. Nova surveille les DLC." },
+  { icon: "💶", text: "Nova estime le coût de chaque ingrédient pour optimiser votre budget courses." },
+  { icon: "🎯", text: "Dernière ligne droite... Nova finalise votre liste de courses personnalisée." },
+];
+
+function useLoadingMessages(isLoading: boolean) {
+  const [msgIdx, setMsgIdx] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!isLoading) { setMsgIdx(0); setElapsed(0); return; }
+    const msgTimer = setInterval(() => setMsgIdx(i => (i + 1) % LOADING_MESSAGES.length), 6000);
+    const tickTimer = setInterval(() => setElapsed(e => e + 1), 1000);
+    return () => { clearInterval(msgTimer); clearInterval(tickTimer); };
+  }, [isLoading]);
+
+  return { msg: LOADING_MESSAGES[msgIdx], elapsed };
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type StockItem = {
@@ -78,6 +109,11 @@ export default function NovaStockPage() {
   // Wizard step: "idle" | "loading-items" | "fill-qty" | "loading-analysis" | "results"
   const [step, setStep]         = useState<"idle"|"loading-items"|"fill-qty"|"loading-analysis"|"results">("idle");
   const [error, setError]       = useState<string | null>(null);
+  const [streamPhase, setStreamPhase] = useState<string>("");
+
+  // Loading messages
+  const isLoading = step === "loading-items" || step === "loading-analysis";
+  const { msg: loadingMsg, elapsed: loadingElapsed } = useLoadingMessages(isLoading);
 
   // Step 2
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
@@ -98,12 +134,26 @@ export default function NovaStockPage() {
     }
   };
 
-  // ── Étape 1 : IA identifie les articles ──────────────────────────────────────
+  // ── Étape 1 : IA identifie les articles (SSE stream) ─────────────────────────
   const detectItems = async () => {
-    setStep("loading-items"); setError(null);
+    setStep("loading-items"); setError(null); setStreamPhase("");
     try {
-      const r = await api<{ items: StockItem[]; meta: any }>("/api/pro/ia/stock-items", { method: "POST" });
-      setStockItems(r.items.map(it => ({ ...it, currentQty: "", freshExpiry: "" })));
+      const stream = await apiStream("/api/pro/ia/stock-items/stream", {});
+      let items: StockItem[] = [];
+
+      for await (const event of stream) {
+        if (event.type === "progress") {
+          setStreamPhase((event.message as string) || "");
+        } else if (event.type === "chunk") {
+          // keep-alive
+        } else if (event.type === "result") {
+          items = (event.items as StockItem[]) ?? [];
+        } else if (event.type === "error") {
+          throw new Error((event.message as string) || "Erreur IA");
+        }
+      }
+
+      setStockItems(items.map(it => ({ ...it, currentQty: "", freshExpiry: "" })));
       setStep("fill-qty");
     } catch (e: any) {
       if (e.message?.includes("403")) setError("Abonnement PRO_IA requis.");
@@ -118,9 +168,9 @@ export default function NovaStockPage() {
     setStockItems(prev => prev.map(it => ({ ...it, currentQty: "0" })));
   };
 
-  // ── Étape 2 → 3 : Lancer l'analyse avec les quantités ─────────────────────
+  // ── Étape 2 → 3 : Lancer l'analyse avec les quantités (SSE stream) ────────
   const runAnalysis = async () => {
-    setStep("loading-analysis"); setError(null);
+    setStep("loading-analysis"); setError(null); setStreamPhase("");
 
     // Construire le texte de stock (0 explicite si vide = vraiment 0)
     const stockNotes = stockItems
@@ -133,19 +183,37 @@ export default function NovaStockPage() {
       .join("\n");
 
     try {
-      const r = await api<{ analysis: Analysis; meta: any }>("/api/pro/ia/stock-analysis", {
-        method: "POST",
-        body: JSON.stringify({
-          existingStockNotes:  stockNotes  || undefined,
-          freshProducts:       freshNotes  || undefined,
-          purchaseConstraints: constraints || undefined,
-          budget:              budget ? parseFloat(budget) : undefined,
-        }),
+      const stream = await apiStream("/api/pro/ia/stock-analysis/stream", {
+        existingStockNotes:  stockNotes  || undefined,
+        freshProducts:       freshNotes  || undefined,
+        purchaseConstraints: constraints || undefined,
+        budget:              budget ? parseFloat(budget) : undefined,
       });
-      setAnalysis(r.analysis);
-      setMeta(r.meta);
-      setStep("results");
-      setHistoryKey(k => k + 1);
+
+      let resultAnalysis: Analysis | null = null;
+      let resultMeta: any = null;
+
+      for await (const event of stream) {
+        if (event.type === "progress") {
+          setStreamPhase((event.message as string) || "");
+        } else if (event.type === "chunk") {
+          // keep-alive
+        } else if (event.type === "result") {
+          resultAnalysis = event.analysis as Analysis;
+          resultMeta = event.meta;
+        } else if (event.type === "error") {
+          throw new Error((event.message as string) || "Erreur IA");
+        }
+      }
+
+      if (resultAnalysis) {
+        setAnalysis(resultAnalysis);
+        setMeta(resultMeta);
+        setStep("results");
+        setHistoryKey(k => k + 1);
+      } else {
+        throw new Error("L'IA n'a pas retourné de résultat.");
+      }
     } catch (e: any) {
       setError("Erreur lors de l'analyse : " + e.message);
       setStep("fill-qty");
@@ -213,14 +281,58 @@ export default function NovaStockPage() {
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // STEP: LOADING ITEMS
+  // STEP: LOADING ITEMS (with dynamic messages)
   // ═══════════════════════════════════════════════════════════════════════════
   if (step === "loading-items") return (
-    <div className="p-8 max-w-3xl flex flex-col items-center justify-center min-h-[400px] gap-6">
-      <div className="w-16 h-16 border-4 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
-      <div className="text-center">
-        <p className="text-white font-bold text-lg">L'IA analyse votre menu...</p>
-        <p className="text-white/40 text-sm mt-1">Identification des ingrédients et articles à gérer</p>
+    <div className="p-8 max-w-3xl space-y-6">
+      <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+        <span className="text-3xl">📦</span> Nova Stock IA — Détection
+      </h1>
+
+      <div className="bg-gradient-to-r from-orange-500/5 via-amber-500/5 to-yellow-500/5 border border-white/[0.08] rounded-2xl p-6 space-y-4">
+        {/* Barre de progression animée */}
+        <div className="relative h-2 bg-white/[0.06] rounded-full overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 rounded-full animate-loading-bar" />
+        </div>
+
+        {/* Temps écoulé */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
+            <span className="text-xs text-white/50 font-mono">
+              {Math.floor(loadingElapsed / 60)}:{String(loadingElapsed % 60).padStart(2, "0")}
+            </span>
+          </div>
+          <span className="text-[10px] text-white/30">Ne fermez pas cette page</span>
+        </div>
+
+        {/* Phase courante du serveur */}
+        {streamPhase && (
+          <div className="text-xs text-orange-400/80 font-medium">{streamPhase}</div>
+        )}
+
+        {/* Message dynamique */}
+        <div className="flex items-start gap-3 min-h-[48px]" key={loadingMsg.text}>
+          <span className="text-2xl shrink-0 animate-bounce-slow">{loadingMsg.icon}</span>
+          <p className="text-sm text-white/60 leading-relaxed animate-fade-in">{loadingMsg.text}</p>
+        </div>
+
+        {/* Phases */}
+        <div className="grid grid-cols-3 gap-1.5">
+          {["Chargement menu", "Analyse IA", "Extraction articles"].map((phase, i) => {
+            const phaseActive = loadingElapsed >= i * 20;
+            const phaseDone = loadingElapsed >= (i + 1) * 20;
+            return (
+              <div key={phase} className={`text-center py-1.5 rounded-lg text-[10px] font-semibold transition-all duration-500 ${
+                phaseDone ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                : phaseActive ? "bg-orange-500/15 text-orange-400 border border-orange-500/25 animate-pulse"
+                : "bg-white/[0.03] text-white/25 border border-white/[0.05]"
+              }`}>
+                {phaseDone ? "✓ " : phaseActive ? "⏳ " : ""}{phase}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -376,14 +488,58 @@ export default function NovaStockPage() {
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // STEP: LOADING ANALYSIS
+  // STEP: LOADING ANALYSIS (with dynamic messages)
   // ═══════════════════════════════════════════════════════════════════════════
   if (step === "loading-analysis") return (
-    <div className="p-8 max-w-3xl flex flex-col items-center justify-center min-h-[400px] gap-6">
-      <div className="w-16 h-16 border-4 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
-      <div className="text-center">
-        <p className="text-white font-bold text-lg">Génération en cours...</p>
-        <p className="text-white/40 text-sm mt-1">Liste de courses · Promotions · Alertes produits frais</p>
+    <div className="p-8 max-w-3xl space-y-6">
+      <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+        <span className="text-3xl">📋</span> Nova Stock IA — Génération
+      </h1>
+
+      <div className="bg-gradient-to-r from-orange-500/5 via-amber-500/5 to-yellow-500/5 border border-white/[0.08] rounded-2xl p-6 space-y-4">
+        {/* Barre de progression animée */}
+        <div className="relative h-2 bg-white/[0.06] rounded-full overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-orange-500 via-amber-500 to-emerald-500 rounded-full animate-loading-bar" />
+        </div>
+
+        {/* Temps écoulé */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
+            <span className="text-xs text-white/50 font-mono">
+              {Math.floor(loadingElapsed / 60)}:{String(loadingElapsed % 60).padStart(2, "0")}
+            </span>
+          </div>
+          <span className="text-[10px] text-white/30">Ne fermez pas cette page</span>
+        </div>
+
+        {/* Phase courante */}
+        {streamPhase && (
+          <div className="text-xs text-orange-400/80 font-medium">{streamPhase}</div>
+        )}
+
+        {/* Message dynamique */}
+        <div className="flex items-start gap-3 min-h-[48px]" key={loadingMsg.text}>
+          <span className="text-2xl shrink-0 animate-bounce-slow">{loadingMsg.icon}</span>
+          <p className="text-sm text-white/60 leading-relaxed animate-fade-in">{loadingMsg.text}</p>
+        </div>
+
+        {/* Phases */}
+        <div className="grid grid-cols-4 gap-1.5">
+          {["Chargement données", "Analyse IA", "Liste de courses", "Recommandations"].map((phase, i) => {
+            const phaseActive = loadingElapsed >= i * 20;
+            const phaseDone = loadingElapsed >= (i + 1) * 20;
+            return (
+              <div key={phase} className={`text-center py-1.5 rounded-lg text-[10px] font-semibold transition-all duration-500 ${
+                phaseDone ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                : phaseActive ? "bg-orange-500/15 text-orange-400 border border-orange-500/25 animate-pulse"
+                : "bg-white/[0.03] text-white/25 border border-white/[0.05]"
+              }`}>
+                {phaseDone ? "✓ " : phaseActive ? "⏳ " : ""}{phase}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
