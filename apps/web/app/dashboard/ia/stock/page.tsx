@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { api } from "@/lib/api";
+import { downloadShoppingListPdf } from "@/lib/downloadShoppingListPdf";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type StockItem = {
@@ -84,7 +85,7 @@ export default function NovaStockPage() {
 
   // Step 3
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
-  const [meta, setMeta]         = useState<{ ordersAnalyzed: number; menuItemsCount: number; period: string } | null>(null);
+  const [meta, setMeta]         = useState<{ ordersAnalyzed: number; menuItemsCount: number; period: string; restaurantName?: string } | null>(null);
   const [copied, setCopied]     = useState(false);
 
   // ── Étape 1 : IA identifie les articles ──────────────────────────────────────
@@ -102,14 +103,18 @@ export default function NovaStockPage() {
     }
   };
 
+  // Mettre tout à 0 d'un coup
+  const setAllToZero = () => {
+    setStockItems(prev => prev.map(it => ({ ...it, currentQty: "0" })));
+  };
+
   // ── Étape 2 → 3 : Lancer l'analyse avec les quantités ─────────────────────
   const runAnalysis = async () => {
     setStep("loading-analysis"); setError(null);
 
-    // Construire le texte de stock à partir des quantités saisies
+    // Construire le texte de stock (0 explicite si vide = vraiment 0)
     const stockNotes = stockItems
-      .filter(it => it.currentQty?.trim())
-      .map(it => `- ${it.name}: ${it.currentQty} ${it.unit}${it.freshExpiry ? ` (DLC: ${it.freshExpiry})` : ""}`)
+      .map(it => `- ${it.name}: ${it.currentQty?.trim() || "0"} ${it.unit}${it.freshExpiry ? ` (DLC: ${it.freshExpiry})` : ""}`)
       .join("\n");
 
     const freshNotes = stockItems
@@ -212,19 +217,39 @@ export default function NovaStockPage() {
   if (step === "fill-qty") return (
     <div className="p-8 max-w-4xl space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
             <span className="text-3xl">✏️</span> Combien avez-vous en ce moment ?
           </h1>
           <p className="text-sm text-white/40 mt-1">
             L'IA a identifié <strong className="text-white">{stockItems.length} articles</strong> à suivre.
-            Renseignez vos quantités actuelles pour une analyse précise.
+            Renseignez vos quantités ou cliquez sur <span className="text-orange-400 font-semibold">Tout à 0</span> si vous partez de zéro.
           </p>
         </div>
-        <button onClick={() => setStep("idle")} className="text-xs text-white/30 hover:text-white/60 transition-colors whitespace-nowrap">
-          ← Recommencer
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={setAllToZero}
+            className="text-xs px-4 py-2 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border border-orange-500/30 rounded-lg transition-colors font-semibold"
+          >
+            📦 Tout à 0 (stock vide)
+          </button>
+          <button onClick={() => setStep("idle")} className="text-xs px-3 py-2 text-white/30 hover:text-white/60 transition-colors">
+            ← Recommencer
+          </button>
+        </div>
+      </div>
+
+      {/* Bannière si aucune quantité saisie */}
+      <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3">
+        <span className="text-xl shrink-0">💡</span>
+        <div>
+          <p className="text-sm text-amber-400 font-semibold">Astuce : stock complètement vide ?</p>
+          <p className="text-xs text-white/40 mt-0.5">
+            Cliquez sur <strong className="text-orange-400">Tout à 0</strong> puis <strong className="text-white">Générer</strong> — l'IA produira une liste de courses <strong className="text-white">complète</strong> pour repartir de zéro.
+            Vous pouvez aussi laisser les champs vides, le résultat sera identique.
+          </p>
+        </div>
       </div>
 
       {error && (
@@ -466,10 +491,29 @@ export default function NovaStockPage() {
             <div>
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <h2 className="text-lg font-bold text-white">🛒 Liste de courses</h2>
-                <button onClick={copyShoppingList}
-                  className="text-xs px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/70 rounded-lg transition-colors">
-                  {copied ? "✓ Copié !" : "📋 Copier la liste"}
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* Télécharger PDF */}
+                  <button
+                    onClick={() => downloadShoppingListPdf({
+                      restaurantName:    meta?.restaurantName,
+                      shoppingList:      analysis.shoppingList,
+                      freshProductAlerts: analysis.freshProductAlerts,
+                      promotions:        analysis.promotions,
+                      supplierOrderNote: analysis.supplierOrderNote,
+                      costSavings:       analysis.costSavings,
+                      totalShoppingBudget: analysis.totalShoppingBudget,
+                      budget,
+                    })}
+                    className="text-xs px-3 py-1.5 bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-500/30 rounded-lg transition-colors flex items-center gap-1 font-semibold"
+                  >
+                    📄 Télécharger PDF
+                  </button>
+                  {/* Copier texte */}
+                  <button onClick={copyShoppingList}
+                    className="text-xs px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/60 rounded-lg transition-colors">
+                    {copied ? "✓ Copié !" : "📋 Copier"}
+                  </button>
+                </div>
               </div>
               <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl overflow-hidden">
                 <table className="w-full text-sm">

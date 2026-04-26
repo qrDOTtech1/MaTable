@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offre Commerciale - Ma Table</title>
+    <style>
+        :root {
+            --primary: #f97316;
+            --secondary: #fb923c;
+            --dark: #0f172a;
+            --light: #f8fafc;
+            --gray: #64748b;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            margin: 0;
+            padding: 0;
+            background: #fff;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+        header {
+            border-bottom: 4px solid var(--primary);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 32px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: -1px;
+        }
+        .logo span { color: var(--primary); }
+        
+        h1, h2, h3 { color: var(--dark); margin-top: 30px; }
+        .tagline { font-style: italic; color: var(--gray); font-size: 1.1em; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            font-size: 0.95em;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+        }
+        th {
+            background-color: var(--dark);
+            color: white;
+            text-align: left;
+            padding: 12px 15px;
+        }
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:nth-of-type(even) { background-color: #f3f3f3; }
+        
+        .price { font-weight: bold; color: var(--primary); text-align: right; }
+        .unit { font-size: 0.8em; color: var(--gray); }
+        
+        .section-title {
+            background: var(--primary);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        
+        .footer {
+            margin-top: 50px;
+            font-size: 0.85em;
+            color: var(--gray);
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        
+        .highlight {
+            background: #fff7ed;
+            border-left: 5px solid var(--primary);
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        @media print {
+            .no-print { display: none; }
+            body { padding: 0; }
+            .container { width: 100%; max-width: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">MA <span>TABLE</span></div>
+            <div style="text-align: right">
+                <strong>Solution de Gestion & Réseau Social</strong><br>
+                matable.pro | matable.app
+            </div>
+        </header>
+
+        <h1>Tarification Partenaire 2026</h1>
+        <p class="tagline">L'écosystème complet pour restaurateurs visionnaires.</p>
+
+        <div class="highlight">
+            <strong>Note stratégique :</strong> Nos tarifs sont conçus pour offrir un service premium "clé en main". Avec 10 restaurants partenaires, nous garantissons un accompagnement ultra-personnalisé et une évolution constante de l'IA Nova.
+        </div>
+
+        <h2 class="section-title">1. Logiciel (SaaS)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Service</th>
+                    <th>Description</th>
+                    <th style="text-align: right">Tarif Mensuel</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Pack Starter</strong></td>
+                    <td>Dashboard Pro, Commandes QR, Gestion des serveurs de base.</td>
+                    <td class="price">49€ <span class="unit">/ mois</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Pack Business (Recommandé)</strong></td>
+                    <td>Starter + Analytics avancés, Gestion de stocks, Réservations illimitées.</td>
+                    <td class="price">149€ <span class="unit">/ mois</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Pack Nova IA</strong></td>
+                    <td>Full Business + Assistant Nova IA, Vision (Magic Scan), Rédaction auto, <strong>Visibilité prioritaire sur matable.app</strong>.</td>
+                    <td class="price">299€ <span class="unit">/ mois</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Conciergerie Digitale</strong></td>
+                    <td>Gestion complète de votre carte, shooting photo mensuel IA, réponse aux avis et pilotage des campagnes ads.</td>
+                    <td class="price">199€ <span class="unit">/ mois</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 class="section-title">2. Matériel (Location)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Équipement</th>
+                    <th>Usage</th>
+                    <th style="text-align: right">Tarif Mensuel</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Terminal "Serveur" (Phone)</strong></td>
+                    <td>Format smartphone, durci. Idéal pour chaque serveur.</td>
+                    <td class="price">6.99€ <span class="unit">/ unité</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Terminal "Manager" (Tablette)</strong></td>
+                    <td>Format 10 pouces. Vision globale de la salle & stocks.</td>
+                    <td class="price">16.99€ <span class="unit">/ unité</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Pack Support Connecté</strong></td>
+                    <td>Maintenance & Remplacement à neuf J+1.</td>
+                    <td class="price">29€ <span class="unit">/ mois</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 class="section-title">3. Consommables & Merch</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Produit</th>
+                    <th>Spécifications</th>
+                    <th style="text-align: right">Tarif Unique</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>QR Code Vinyle (Pack 20)</strong></td>
+                    <td>Haute résistance (chaleur, UV, gras), adhésif premium.</td>
+                    <td class="price">99€</td>
+                </tr>
+                <tr>
+                    <td><strong>Supports QR Design</strong></td>
+                    <td>Plexiglass ou Bois gravé personnalisé. Pack de 20.</td>
+                    <td class="price">149€</td>
+                </tr>
+                <tr>
+                    <td><strong>Displate Interactif</strong></td>
+                    <td>Grand format avec écran intégré pour menu dynamique.</td>
+                    <td class="price">Sur Devis</td>
+                </tr>
+                <tr>
+                    <td><strong>Merchandising Staff</strong></td>
+                    <td>Tabliers, t-shirts logotés "Ma Table Partner".</td>
+                    <td class="price">Sur Devis</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 class="section-title">4. Marketing & Croissance</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Service</th>
+                    <th>Objectif</th>
+                    <th style="text-align: right">Tarif</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Campagne Social Starter</strong></td>
+                    <td>Boost 30 jours (Ads + Matable.app) pour attirer 50-100 nouveaux clients.</td>
+                    <td class="price">99€ <span class="unit">/ mois</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Campagne Influence / Pro</strong></td>
+                    <td>Partenariats influenceurs locaux & stratégie Ads complexe.</td>
+                    <td class="price">Dès 399€</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="margin-top: 30px; padding: 20px; background: #0f172a; color: white; border-radius: 8px;">
+            <h3 style="color: var(--primary); margin-top: 0;">Simulation "Elite Partner" (Objectif Excellence)</h3>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Pack Nova IA (SaaS + Social Priority)</span>
+                <span>299€</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Conciergerie Digitale (Gestion complète & Shooting)</span>
+                <span>199€</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Location Hardware (5 Terminaux + 1 Tablette)</span>
+                <span>52€</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Budget Marketing Local (Piloté par Ma Table)</span>
+                <span>99€</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; border-top: 1px solid #334155; margin-top: 10px; padding-top: 10px; font-weight: bold;">
+                <span>TOTAL MENSUEL RECURRENT</span>
+                <span style="color: var(--primary); font-size: 1.4em;">649€ HT / mois</span>
+            </div>
+            <p style="font-size: 0.8em; color: #94a3b8; margin-top: 10px;">
+                * Inclus : Support prioritaire 7j/7, mise à jour illimitée de la carte, rapport de performance mensuel.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>Ma Table - SAS au capital de XXX.XXX € | Contact : partenaires@matable.pro</p>
+            <p>Offre valable jusqu'au 31/12/2026. Les tarifs s'entendent Hors Taxes (HT).</p>
+        </div>
+    </div>
+</body>
+</html>
