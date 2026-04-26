@@ -241,12 +241,14 @@ export default function NovaMenuGeneratorPage() {
       }
     } catch (e: any) {
       console.error("[menu-gen] ERROR:", e);
-      if (e.message?.includes("403")) setError("Abonnement PRO_IA requis.");
-      else if (e.message?.includes("503")) setError("Clé API IA non configurée. Contactez l'admin.");
-      else if (e.message?.includes("502")) setError("L'IA n'a pas pu parser le menu de l'image. Réessayez ou utilisez une photo plus nette.");
-      else if (e.message?.includes("504") || e.message?.includes("expiré")) setError("Timeout — l'IA met trop de temps. Essayez avec une seule image.");
-      else if (e.message?.includes("400")) setError("Ajoutez un type de cuisine ou une photo du menu.");
-      else setError("Erreur : " + e.message);
+      const msg = e?.message || String(e);
+      if (msg.includes("403")) setError("Abonnement PRO_IA requis.");
+      else if (msg.includes("503")) setError("Clé API IA non configurée. Contactez l'admin.");
+      else if (msg.includes("502")) setError("L'IA n'a pas pu parser le menu de l'image. Réessayez ou utilisez une photo plus nette.");
+      else if (msg.includes("504") || msg.includes("expiré") || msg.includes("timeout")) setError("Timeout — l'IA met trop de temps. Essayez avec une seule image.");
+      else if (msg.includes("400")) setError("Ajoutez un type de cuisine ou une photo du menu.");
+      else if (msg.includes("Failed to fetch") || msg.includes("fetch")) setError("Impossible de contacter le serveur. Vérifiez votre connexion ou réessayez.");
+      else setError("Erreur : " + msg);
     } finally {
       setLoading(false);
       setProgress(null);
