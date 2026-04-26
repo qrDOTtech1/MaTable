@@ -23,32 +23,54 @@ export class ApiError extends Error {
   get isAuthError() { return this.status === 401; }
 }
 
+// IA routes need long timeout (vision can take 3-4min) and NO retries
+const IA_PATHS = ["/ia/", "/ia-"];
+const IA_TIMEOUT_MS = 270_000;     // 4min30
+const DEFAULT_TIMEOUT_MS = 30_000; // 30s
+
 export async function api<T>(
   path: string,
-  opts: RequestInit & { token?: string; pro?: boolean; retries?: number } = {}
+  opts: RequestInit & { token?: string; pro?: boolean; retries?: number; timeoutMs?: number } = {}
 ): Promise<T> {
-  const { retries = 2, ...fetchOpts } = opts;
+  const isIA = IA_PATHS.some(p => path.includes(p));
+  const { retries = isIA ? 0 : 2, timeoutMs, ...fetchOpts } = opts;
   const headers = new Headers(fetchOpts.headers);
   headers.set("Content-Type", "application/json");
 
   const bearerToken = fetchOpts.token ?? (fetchOpts.pro !== false ? getProToken() : null);
   if (bearerToken) headers.set("Authorization", `Bearer ${bearerToken}`);
 
+  // AbortController with explicit timeout — critical for IA routes
+  const timeout = timeoutMs ?? (isIA ? IA_TIMEOUT_MS : DEFAULT_TIMEOUT_MS);
+
   let lastErr: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+
     try {
-      const res = await fetch(`${API_URL}${path}`, { ...fetchOpts, headers });
+      const res = await fetch(`${API_URL}${path}`, {
+        ...fetchOpts,
+        headers,
+        signal: controller.signal,
+      });
       if (!res.ok) {
         const body = await res.text();
         throw new ApiError(res.status, `${res.status}: ${body}`);
       }
       return res.json() as Promise<T>;
-    } catch (err) {
+    } catch (err: any) {
       lastErr = err;
+      // Timeout → surface a clear error, no retry
+      if (err?.name === "AbortError") {
+        throw new ApiError(504, "La requête a expiré. Le serveur IA met trop de temps à répondre.");
+      }
       // Ne pas réessayer sur 401/403/404 — erreur définitive
       if (err instanceof ApiError && [401, 403, 404].includes(err.status)) break;
       // Réessayer uniquement sur erreur réseau ou 5xx
       if (attempt < retries) await sleep(600 * (attempt + 1));
+    } finally {
+      clearTimeout(timer);
     }
   }
   throw lastErr;

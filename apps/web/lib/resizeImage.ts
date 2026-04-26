@@ -1,15 +1,15 @@
 /**
  * Resize + compress an image File/Blob for Ollama vision API.
- * - Max 800px on longest side (avoids 180s timeout on large images)
+ * - Max 1536px on longest side (within model limits, avoids timeout)
  * - Min 100px on shortest side (qwen3-vl rejects tiny images)
- * - JPEG quality 0.7
+ * - JPEG quality 0.85 (good quality for text/menu reading)
  * Returns a base64 string WITHOUT the data: prefix (ready for Ollama vision API).
  */
 export async function resizeImageToBase64(
   file: File | Blob,
-  maxPx = 800,
+  maxPx = 1536,
   minPx = 100,
-  quality = 0.7,
+  quality = 0.85,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);

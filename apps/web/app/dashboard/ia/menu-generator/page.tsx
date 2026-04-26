@@ -134,7 +134,7 @@ export default function NovaMenuGeneratorPage() {
         for (let i = 0; i < total; i++) {
           setProgress({ current: i + 1, total });
           const img = images[i];
-          // Resize + compress to max 800px JPEG 0.7 before sending — prevents vision timeout
+          // Resize + compress to max 1536px JPEG 0.85 before sending
           const base64 = await resizeImageToBase64(img.file);
           const r = await api<{ menu: { items: MenuItem[] }; meta: any }>("/api/pro/ia/menu-generate", {
             method: "POST",

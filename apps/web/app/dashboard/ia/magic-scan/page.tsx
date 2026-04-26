@@ -39,7 +39,7 @@ export default function MagicScanPage() {
     setResult(null);
 
     try {
-      // Resize to max 800px + JPEG 0.7 to avoid vision model timeout
+      // Resize to max 1536px + JPEG 0.85 for vision
       const base64 = await resizeImageToBase64(imageFile);
       const res = await api<{ result: ScanResult }>("/api/pro/ia/magic-scan", {
         method: "POST",
@@ -48,7 +48,10 @@ export default function MagicScanPage() {
       setResult(res.result);
     } catch (e: any) {
       redirectOn401(e);
-      setError("Analyse impossible. Vérifiez que le modèle vision est configuré dans Nova Admin.");
+      if (e.message?.includes("expiré") || e.message?.includes("504"))
+        setError("Le serveur IA met trop de temps. Réessayez avec une image plus petite.");
+      else
+        setError("Analyse impossible. Vérifiez que le modèle vision est configuré dans Nova Admin.");
     } finally {
       setLoading(false);
     }
