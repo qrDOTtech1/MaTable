@@ -158,25 +158,40 @@ export default function NovaMenuGeneratorPage() {
   const onDragLeave  = () => setIsDragging(false);
   const onDrop       = (e: DragEvent) => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files); };
 
-  // ── Helper: process one image/generation via SSE stream ──────────────────
-  const generateOneStream = async (
+  // ── Helper: try SSE stream, fallback to normal POST if stream fails ───────
+  const generateOne = async (
     payload: Record<string, unknown>,
   ): Promise<MenuItem[]> => {
-    const stream = await apiStream("/api/pro/ia/menu-generate/stream", payload);
+    // Try SSE stream first
+    try {
+      console.log("[menu-gen] trying SSE stream...");
+      const stream = await apiStream("/api/pro/ia/menu-generate/stream", payload);
 
-    let result: MenuItem[] = [];
-    for await (const event of stream) {
-      if (event.type === "progress") {
-        // keep-alive progress — nothing to render per-item
-      } else if (event.type === "chunk") {
-        // streaming chunk — chars received so far (keep-alive)
-      } else if (event.type === "result") {
-        result = (event.menu as any)?.items ?? [];
-      } else if (event.type === "error") {
-        throw new Error((event.message as string) || "Erreur IA");
+      let result: MenuItem[] = [];
+      for await (const event of stream) {
+        if (event.type === "progress") {
+          // keep-alive
+        } else if (event.type === "chunk") {
+          // streaming chunk
+        } else if (event.type === "result") {
+          result = (event.menu as any)?.items ?? [];
+        } else if (event.type === "error") {
+          throw new Error((event.message as string) || "Erreur IA");
+        }
       }
+      console.log(`[menu-gen] SSE stream success — ${result.length} items`);
+      return result;
+    } catch (streamErr: any) {
+      console.warn("[menu-gen] SSE stream failed, falling back to normal POST:", streamErr.message);
     }
-    return result;
+
+    // Fallback: normal POST (old method that worked)
+    console.log("[menu-gen] using fallback POST /ia/menu-generate...");
+    const r = await api<any>("/api/pro/ia/menu-generate", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    return r?.menu?.items ?? r?.items ?? [];
   };
 
   // ── Génération ──────────────────────────────────────────────────────────────
@@ -200,7 +215,7 @@ export default function NovaMenuGeneratorPage() {
           const base64 = await resizeImageToBase64(img.file);
           console.log(`[menu-gen] image ${i + 1}/${total} — base64 length=${base64.length}`);
 
-          const parsed = await generateOneStream({
+          const parsed = await generateOne({
             cuisineType: cuisineType || undefined,
             priceRange,
             itemCount,
@@ -227,7 +242,7 @@ export default function NovaMenuGeneratorPage() {
         setHistoryKey(k => k + 1);
       } else {
         // ── Génération classique via SSE stream ────────────────────────────
-        const parsed = await generateOneStream({
+        const parsed = await generateOne({
           cuisineType: cuisineType || undefined,
           priceRange,
           itemCount,

@@ -134,23 +134,34 @@ export default function NovaStockPage() {
     }
   };
 
-  // ── Étape 1 : IA identifie les articles (SSE stream) ─────────────────────────
+  // ── Étape 1 : IA identifie les articles (SSE stream + fallback) ─────────────
   const detectItems = async () => {
     setStep("loading-items"); setError(null); setStreamPhase("");
     try {
-      const stream = await apiStream("/api/pro/ia/stock-items/stream", {});
       let items: StockItem[] = [];
 
-      for await (const event of stream) {
-        if (event.type === "progress") {
-          setStreamPhase((event.message as string) || "");
-        } else if (event.type === "chunk") {
-          // keep-alive
-        } else if (event.type === "result") {
-          items = (event.items as StockItem[]) ?? [];
-        } else if (event.type === "error") {
-          throw new Error((event.message as string) || "Erreur IA");
+      // Try SSE stream first
+      try {
+        console.log("[stock] trying SSE stream for stock-items...");
+        const stream = await apiStream("/api/pro/ia/stock-items/stream", {});
+
+        for await (const event of stream) {
+          if (event.type === "progress") {
+            setStreamPhase((event.message as string) || "");
+          } else if (event.type === "chunk") {
+            // keep-alive
+          } else if (event.type === "result") {
+            items = (event.items as StockItem[]) ?? [];
+          } else if (event.type === "error") {
+            throw new Error((event.message as string) || "Erreur IA");
+          }
         }
+        console.log(`[stock] SSE stream success — ${items.length} items`);
+      } catch (streamErr: any) {
+        console.warn("[stock] SSE stream failed, falling back:", streamErr.message);
+        // Fallback to old POST endpoint
+        const r = await api<{ items: StockItem[]; meta: any }>("/api/pro/ia/stock-items", { method: "POST" });
+        items = r.items ?? [];
       }
 
       setStockItems(items.map(it => ({ ...it, currentQty: "", freshExpiry: "" })));
@@ -168,7 +179,7 @@ export default function NovaStockPage() {
     setStockItems(prev => prev.map(it => ({ ...it, currentQty: "0" })));
   };
 
-  // ── Étape 2 → 3 : Lancer l'analyse avec les quantités (SSE stream) ────────
+  // ── Étape 2 → 3 : Lancer l'analyse avec les quantités (SSE stream + fallback)
   const runAnalysis = async () => {
     setStep("loading-analysis"); setError(null); setStreamPhase("");
 
@@ -182,28 +193,44 @@ export default function NovaStockPage() {
       .map(it => `- ${it.name}: expire le ${it.freshExpiry}, quantité: ${it.currentQty || "??"} ${it.unit}`)
       .join("\n");
 
-    try {
-      const stream = await apiStream("/api/pro/ia/stock-analysis/stream", {
-        existingStockNotes:  stockNotes  || undefined,
-        freshProducts:       freshNotes  || undefined,
-        purchaseConstraints: constraints || undefined,
-        budget:              budget ? parseFloat(budget) : undefined,
-      });
+    const payload = {
+      existingStockNotes:  stockNotes  || undefined,
+      freshProducts:       freshNotes  || undefined,
+      purchaseConstraints: constraints || undefined,
+      budget:              budget ? parseFloat(budget) : undefined,
+    };
 
+    try {
       let resultAnalysis: Analysis | null = null;
       let resultMeta: any = null;
 
-      for await (const event of stream) {
-        if (event.type === "progress") {
-          setStreamPhase((event.message as string) || "");
-        } else if (event.type === "chunk") {
-          // keep-alive
-        } else if (event.type === "result") {
-          resultAnalysis = event.analysis as Analysis;
-          resultMeta = event.meta;
-        } else if (event.type === "error") {
-          throw new Error((event.message as string) || "Erreur IA");
+      // Try SSE stream first
+      try {
+        console.log("[stock] trying SSE stream for stock-analysis...");
+        const stream = await apiStream("/api/pro/ia/stock-analysis/stream", payload);
+
+        for await (const event of stream) {
+          if (event.type === "progress") {
+            setStreamPhase((event.message as string) || "");
+          } else if (event.type === "chunk") {
+            // keep-alive
+          } else if (event.type === "result") {
+            resultAnalysis = event.analysis as Analysis;
+            resultMeta = event.meta;
+          } else if (event.type === "error") {
+            throw new Error((event.message as string) || "Erreur IA");
+          }
         }
+        console.log("[stock] SSE stream success");
+      } catch (streamErr: any) {
+        console.warn("[stock] SSE stream failed, falling back:", streamErr.message);
+        // Fallback to old POST endpoint
+        const r = await api<{ analysis: Analysis; meta: any }>("/api/pro/ia/stock-analysis", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        resultAnalysis = r.analysis;
+        resultMeta = r.meta;
       }
 
       if (resultAnalysis) {
