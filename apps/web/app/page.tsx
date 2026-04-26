@@ -3,8 +3,8 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Ma Table — La Révolution QR, IA & Portail Serveur",
-  description: "La plateforme SaaS qui transforme votre restaurant : commande QR sans friction, temps réel absolu, Nova IA (Magic Scan, chatbot, planning), portail serveur et analytics de pointe.",
-  keywords: ["commande restaurant QR code","menu digital restaurant","SaaS restaurant France","Nova IA restaurant","Magic Scan plats","planning IA restaurant","portail serveur restaurant","réservations restaurant","analytics restaurant","Ma Table"],
+  description: "La plateforme SaaS qui transforme votre restaurant : commande QR sans friction, temps réel absolu, Nova IA (Magic Scan, Stock IA, Finance IA, chatbot, planning), portail serveur et analytics de pointe.",
+  keywords: ["commande restaurant QR code","menu digital restaurant","SaaS restaurant France","Nova IA restaurant","Magic Scan plats","stock IA restaurant","finance IA restaurant","planning IA restaurant","portail serveur restaurant","réservations restaurant","analytics restaurant","Ma Table"],
   robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 } },
   openGraph: {
     type: "website", locale: "fr_FR", url: "https://matable.pro", siteName: "Ma Table",
@@ -33,6 +33,8 @@ const features = [
   { icon: "💳", title: "Paiement fractionné intelligent", desc: "Chacun paie sa part. Répartition égale en un glissement ou montants personnalisés. Carte, espèces, TPE — par personne. La table se ferme automatiquement quand tout le monde a payé.", highlight: true },
   { icon: "🧾", title: "Flux d'addition complet", desc: "Client demande l'addition → serveur confirme qu'elle est apportée → caisse encaisse. Chaque étape en temps réel, avec socket. Zéro couac, zéro 'où en est-on ?'.", highlight: false },
   { icon: "🤖", title: "Nova IA — Votre nouveau chef adjoint", desc: "Un assistant IA qui connaît votre carte mieux que vous. Il répond, conseille et vend. Défis quotidiens pour vos serveurs, suggestions de planning terrain. Sans jamais demander d'augmentation.", highlight: false },
+  { icon: "📦", title: "Nova Stock IA : Zéro rupture, zéro gaspillage", desc: "L'IA analyse vos ventes, identifie vos ingrédients et génère une liste de courses complète. Alertes produits frais, promotions sur excédents, prévisions semaine. Tout automatiquement.", highlight: true },
+  { icon: "💹", title: "Nova Finance IA : Pilotez avec les chiffres", desc: "KPIs en temps réel, projection mensuelle et annuelle, food cost estimé, offres promotionnelles recommandées. Nova Finance analyse vos données et vous dit exactement quoi faire.", highlight: false },
   { icon: "📷", title: "Magic Scan : La fin de la saisie", desc: "Photographiez un plat. Nova extrait les ingrédients, les allergènes et rédige une description gastronomique. C'est de la magie pure.", highlight: false },
   { icon: "🗓️", title: "Planning IA Intelligent", desc: "Générez vos plats du jour pour la semaine en un clic. L'IA gère la cohérence, les thèmes et vos stocks. Brillant.", highlight: false },
   { icon: "✍️", title: "Descriptions de génie", desc: "Transformez 'Poulet riz' en une expérience sensorielle inoubliable. 3 variantes, un seul but : faire saliver le client.", highlight: false },
@@ -99,13 +101,14 @@ const plans = [
     badge: "✨ Nova IA Inclus",
     features: [
       "Tout l'offre Pro",
+      "Nova Stock IA — liste de courses & alertes",
+      "Nova Finance IA — KPIs & prévisions",
+      "Nova Menu IA — génération & import photo",
       "Chatbot Nova IA",
       "Magic Scan IA Vision",
       "Planning IA hebdomadaire",
       "Descriptions IA",
       "Défis serveurs IA quotidiens",
-      "Suggestions planning terrain IA",
-      "Multi-provider (OpenAI, Claude, Gemini, Mistral)",
       "Support IA prioritaire",
     ],
   },
@@ -121,6 +124,9 @@ const comparisons = [
   { feature: "Dashboard individuel par serveur (PIN)", us: "✓", starter: "✕", dino: "✕" },
   { feature: "Tables assignées par serveur", us: "✓", starter: "✕", dino: "✕" },
   { feature: "Planning de service par employé", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Nova Stock IA (liste de courses + alertes frais)", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Nova Finance IA (KPIs + prévisions + offres)", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Nova Menu IA (génération + import photo)", us: "✓", starter: "✕", dino: "✕" },
   { feature: "IA Vision (Magic Scan plats)", us: "✓", starter: "✕", dino: "✕" },
   { feature: "Planning hebdomadaire IA", us: "✓", starter: "✕", dino: "✕" },
   { feature: "Descriptions de plats IA", us: "✓", starter: "✕", dino: "✕" },
@@ -367,12 +373,14 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
+              { title: "Nova Stock IA", desc: "Déclarez votre stock actuel, l'IA génère une liste de courses complète, alerte sur les produits frais et propose des promos pour écouler les excédents.", icon: "📦" },
+              { title: "Nova Finance IA", desc: "KPIs en temps réel, CA, ticket moyen, food cost estimé, projection mensuelle et annuelle. Nova Finance vous dit exactement où vous gagnez et où vous perdez.", icon: "💹" },
+              { title: "Nova Menu IA", desc: "Générez un menu complet depuis votre type de cuisine ou importez votre carte existante depuis une photo. L'IA extrait tous les plats en quelques secondes.", icon: "🍽️" },
               { title: "Magic Scan : Vision du futur", desc: "Photographiez. Nova analyse. Nom, description, allergènes, prix suggéré. Dix secondes au lieu de dix heures.", icon: "📷" },
               { title: "Chatbot Nova : L'expert infatigable", desc: "Il répond aux clients, optimise votre carte et ne prend jamais de pause café.", icon: "🤖" },
               { title: "Planning IA : Stratégie pure", desc: "Générez votre semaine complète en un clic. Entrée, plat, dessert, thèmes. Orchestration parfaite.", icon: "🗓️" },
-              { title: "Descriptions de génie", desc: "Transformez vos plats en expériences littéraires. 3 variantes, du ton bistro au gastronomique.", icon: "✍️" },
             ].map((f, i) => (
               <div key={i} className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-6 hover:border-purple-500/40 transition-all">
                 <div className="flex items-center gap-4 mb-4">
