@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, apiStream } from "@/lib/api";
 import { downloadShoppingListPdf } from "@/lib/downloadShoppingListPdf";
 import { IaHistoryPanel, type HistoryEntry } from "@/components/ia/IaHistoryPanel";
 
@@ -161,16 +161,19 @@ export default function NovaStockPage() {
     }
   };
 
-  // ── Étape 1 : IA identifie les articles (POST direct, pas de stream) ─────────
+  // ── Étape 1 : IA identifie les articles via SSE (connexion persistante, pas de timeout)
   const detectItems = async () => {
     setStep("loading-items"); setError(null);
     try {
-      const r = await api<{ items: StockItem[]; meta: any }>("/api/pro/ia/stock-items", {
-        method: "POST",
-        body: JSON.stringify({}),
-        timeoutMs: 600_000, // 10 min
-      });
-      const items = r.items ?? [];
+      let items: StockItem[] = [];
+      const stream = await apiStream("/api/pro/ia/stock-items/stream", {});
+      for await (const event of stream) {
+        if (event.type === "result") {
+          items = (event.items as StockItem[]) ?? [];
+        } else if (event.type === "error") {
+          throw new Error((event.message as string) || "Erreur IA");
+        }
+      }
 
       if (items.length === 0) {
         setError("L'IA n'a retourné aucun article. Vérifiez que votre menu contient des plats.");
@@ -193,7 +196,7 @@ export default function NovaStockPage() {
     setStockItems(prev => prev.map(it => ({ ...it, currentQty: "0" })));
   };
 
-  // ── Étape 2 → 3 : Lancer l'analyse avec les quantités (POST direct, pas de stream)
+  // ── Étape 2 → 3 : Lancer l'analyse via SSE (connexion persistante, pas de timeout)
   const runAnalysis = async () => {
     setStep("loading-analysis"); setError(null);
 
@@ -214,15 +217,21 @@ export default function NovaStockPage() {
     };
 
     try {
-      const r = await api<{ analysis: Analysis; meta: any }>("/api/pro/ia/stock-analysis", {
-        method: "POST",
-        body: JSON.stringify(payload),
-        timeoutMs: 600_000, // 10 min
-      });
+      let resultAnalysis: Analysis | null = null;
+      let resultMeta: any = null;
+      const stream = await apiStream("/api/pro/ia/stock-analysis/stream", payload);
+      for await (const event of stream) {
+        if (event.type === "result") {
+          resultAnalysis = event.analysis as Analysis;
+          resultMeta = event.meta;
+        } else if (event.type === "error") {
+          throw new Error((event.message as string) || "Erreur IA");
+        }
+      }
 
-      if (r.analysis) {
-        setAnalysis(r.analysis);
-        setMeta(r.meta);
+      if (resultAnalysis) {
+        setAnalysis(resultAnalysis);
+        setMeta(resultMeta);
         setStep("results");
         setHistoryKey(k => k + 1);
       } else {
