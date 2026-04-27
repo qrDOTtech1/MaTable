@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, apiStream } from "@/lib/api";
+import { api } from "@/lib/api";
 import { downloadShoppingListPdf } from "@/lib/downloadShoppingListPdf";
 import { IaHistoryPanel, type HistoryEntry } from "@/components/ia/IaHistoryPanel";
 
@@ -109,7 +109,6 @@ export default function NovaStockPage() {
   // Wizard step: "idle" | "loading-items" | "fill-qty" | "loading-analysis" | "results"
   const [step, setStep]         = useState<"idle"|"loading-items"|"fill-qty"|"loading-analysis"|"results">("idle");
   const [error, setError]       = useState<string | null>(null);
-  const [streamPhase, setStreamPhase] = useState<string>("");
 
   // Loading messages
   const isLoading = step === "loading-items" || step === "loading-analysis";
@@ -162,58 +161,28 @@ export default function NovaStockPage() {
     }
   };
 
-  // ── Étape 1 : IA identifie les articles (SSE stream + fallback) ─────────────
+  // ── Étape 1 : IA identifie les articles (POST direct, pas de stream) ─────────
   const detectItems = async () => {
-    setStep("loading-items"); setError(null); setStreamPhase("");
+    setStep("loading-items"); setError(null);
     try {
-      let items: StockItem[] = [];
-
-      // Try SSE stream first
-      try {
-        console.log("[stock] trying SSE stream for stock-items...");
-        const stream = await apiStream("/api/pro/ia/stock-items/stream", {});
-
-        for await (const event of stream) {
-          if (event.type === "progress") {
-            setStreamPhase((event.message as string) || "");
-          } else if (event.type === "chunk") {
-            // keep-alive
-          } else if (event.type === "result") {
-            items = (event.items as StockItem[]) ?? [];
-          } else if (event.type === "error") {
-            throw new Error((event.message as string) || "Erreur IA");
-          }
-        }
-        console.log(`[stock] SSE stream success — ${items.length} items`);
-      } catch (streamErr: any) {
-        console.warn("[stock] SSE stream failed, falling back:", streamErr.message);
-        // Fallback to old POST endpoint — needs long timeout (IA can take 2-3min)
-        try {
-          const r = await api<{ items: StockItem[]; meta: any }>("/api/pro/ia/stock-items", {
-            method: "POST",
-            body: JSON.stringify({}),
-            timeoutMs: 480_000, // 8 min
-          });
-          items = r.items ?? [];
-        } catch (fallbackErr: any) {
-          console.error("[stock] fallback also failed:", fallbackErr.message);
-          throw fallbackErr;
-        }
-      }
+      const r = await api<{ items: StockItem[]; meta: any }>("/api/pro/ia/stock-items", {
+        method: "POST",
+        body: JSON.stringify({}),
+        timeoutMs: 600_000, // 10 min
+      });
+      const items = r.items ?? [];
 
       if (items.length === 0) {
-        setError("L'IA n'a retourne aucun article. Verifiez que votre menu contient des plats.");
+        setError("L'IA n'a retourné aucun article. Vérifiez que votre menu contient des plats.");
         setStep("idle");
         return;
       }
 
       setStockItems(items.map(it => ({ ...it, currentQty: "", freshExpiry: "" })));
       setStep("fill-qty");
-      setStreamPhase(""); // CLEAR it here to remove the banner
     } catch (e: any) {
       if (e.message?.includes("403")) setError("Abonnement PRO_IA requis.");
-      else if (e.message?.includes("503")) setError("Cle API IA non configuree. Contactez l'admin.");
-      else if (e.message?.includes("504") || e.message?.includes("expire")) setError("L'IA met trop de temps a repondre. Reessayez dans quelques instants.");
+      else if (e.message?.includes("503")) setError("Clé API IA non configurée. Contactez l'admin.");
       else setError("Erreur : " + e.message);
       setStep("idle");
     }
@@ -224,11 +193,10 @@ export default function NovaStockPage() {
     setStockItems(prev => prev.map(it => ({ ...it, currentQty: "0" })));
   };
 
-  // ── Étape 2 → 3 : Lancer l'analyse avec les quantités (SSE stream + fallback)
+  // ── Étape 2 → 3 : Lancer l'analyse avec les quantités (POST direct, pas de stream)
   const runAnalysis = async () => {
-    setStep("loading-analysis"); setError(null); setStreamPhase("");
+    setStep("loading-analysis"); setError(null);
 
-    // Construire le texte de stock (0 explicite si vide = vraiment 0)
     const stockNotes = stockItems
       .map(it => `- ${it.name}: ${it.currentQty?.trim() || "0"} ${it.unit}${it.freshExpiry ? ` (DLC: ${it.freshExpiry})` : ""}`)
       .join("\n");
@@ -246,41 +214,15 @@ export default function NovaStockPage() {
     };
 
     try {
-      let resultAnalysis: Analysis | null = null;
-      let resultMeta: any = null;
+      const r = await api<{ analysis: Analysis; meta: any }>("/api/pro/ia/stock-analysis", {
+        method: "POST",
+        body: JSON.stringify(payload),
+        timeoutMs: 600_000, // 10 min
+      });
 
-      // Try SSE stream first
-      try {
-        console.log("[stock] trying SSE stream for stock-analysis...");
-        const stream = await apiStream("/api/pro/ia/stock-analysis/stream", payload);
-
-        for await (const event of stream) {
-          if (event.type === "progress") {
-            setStreamPhase((event.message as string) || "");
-          } else if (event.type === "chunk") {
-            // keep-alive
-          } else if (event.type === "result") {
-            resultAnalysis = event.analysis as Analysis;
-            resultMeta = event.meta;
-          } else if (event.type === "error") {
-            throw new Error((event.message as string) || "Erreur IA");
-          }
-        }
-        console.log("[stock] SSE stream success");
-      } catch (streamErr: any) {
-        console.warn("[stock] SSE stream failed, falling back:", streamErr.message);
-        // Fallback to old POST endpoint
-        const r = await api<{ analysis: Analysis; meta: any }>("/api/pro/ia/stock-analysis", {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-        resultAnalysis = r.analysis;
-        resultMeta = r.meta;
-      }
-
-      if (resultAnalysis) {
-        setAnalysis(resultAnalysis);
-        setMeta(resultMeta);
+      if (r.analysis) {
+        setAnalysis(r.analysis);
+        setMeta(r.meta);
         setStep("results");
         setHistoryKey(k => k + 1);
       } else {
@@ -377,11 +319,6 @@ export default function NovaStockPage() {
           </div>
           <span className="text-[10px] text-white/30">Ne fermez pas cette page</span>
         </div>
-
-        {/* Phase courante du serveur */}
-        {streamPhase && (
-          <div className="text-xs text-orange-400/80 font-medium">{streamPhase}</div>
-        )}
 
         {/* Message dynamique */}
         <div className="flex items-start gap-3 min-h-[48px]" key={loadingMsg.text}>
@@ -606,11 +543,6 @@ export default function NovaStockPage() {
           </div>
           <span className="text-[10px] text-white/30">Ne fermez pas cette page</span>
         </div>
-
-        {/* Phase courante */}
-        {streamPhase && (
-          <div className="text-xs text-orange-400/80 font-medium">{streamPhase}</div>
-        )}
 
         {/* Message dynamique */}
         <div className="flex items-start gap-3 min-h-[48px]" key={loadingMsg.text}>
