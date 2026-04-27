@@ -60,6 +60,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
       items: [
         { href: "/dashboard/menu", icon: "🍽️", label: "Menu" },
         { href: "/dashboard/stock", icon: "📦", label: "Stock & Ingrédients" },
+        { href: "/dashboard/shopping", icon: "🛒", label: "Listes de courses" },
         { href: "/dashboard/servers", icon: "👤", label: "Serveurs" },
         { href: "/dashboard/print", icon: "🖨️", label: "QR Codes" },
       ],

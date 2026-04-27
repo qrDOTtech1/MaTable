@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, apiStream } from "@/lib/api";
+import Link from "next/link";
 import { downloadShoppingListPdf } from "@/lib/downloadShoppingListPdf";
 import { IaHistoryPanel, type HistoryEntry } from "@/components/ia/IaHistoryPanel";
 
@@ -126,6 +127,7 @@ export default function NovaStockPage() {
   const [historyKey, setHistoryKey] = useState(0);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
+  const [shoppingHistoryId, setShoppingHistoryId] = useState<string | null>(null);
 
   const importToStock = async () => {
     if (!stockItems.length) return;
@@ -221,11 +223,13 @@ export default function NovaStockPage() {
     try {
       let resultAnalysis: Analysis | null = null;
       let resultMeta: any = null;
+      let resultShoppingId: string | null = null;
       const stream = await apiStream("/api/pro/ia/stock-analysis", payload);
       for await (const event of stream) {
         if (event.type === "result") {
           resultAnalysis = event.analysis as Analysis;
           resultMeta = event.meta;
+          resultShoppingId = (event.shoppingHistoryId as string) ?? null;
         } else if (event.type === "error") {
           throw new Error((event.message as string) || "Erreur IA");
         }
@@ -234,6 +238,7 @@ export default function NovaStockPage() {
       if (resultAnalysis) {
         setAnalysis(resultAnalysis);
         setMeta(resultMeta);
+        setShoppingHistoryId(resultShoppingId);
         setStep("results");
         setHistoryKey(k => k + 1);
       } else {
@@ -607,6 +612,22 @@ export default function NovaStockPage() {
           </button>
         </div>
       </div>
+
+      {/* Lien direct vers la liste de courses si disponible */}
+      {shoppingHistoryId && (
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-emerald-400">Liste de courses sauvegardée</p>
+            <p className="text-xs text-white/40 mt-0.5">Confirmez les achats pour mettre à jour votre stock automatiquement.</p>
+          </div>
+          <Link
+            href={`/dashboard/shopping/${shoppingHistoryId}`}
+            className="shrink-0 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl transition-colors"
+          >
+            🛒 Voir la liste →
+          </Link>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm">{error}</div>
