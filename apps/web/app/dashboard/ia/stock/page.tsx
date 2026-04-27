@@ -212,6 +212,7 @@ export default function NovaStockPage() {
 
       setStockItems(items.map(it => ({ ...it, currentQty: "", freshExpiry: "" })));
       setStep("fill-qty");
+      setStreamPhase(""); // CLEAR it here to remove the banner
     } catch (e: any) {
       if (e.message?.includes("403")) setError("Abonnement PRO_IA requis.");
       else if (e.message?.includes("503")) setError("Cle API IA non configuree. Contactez l'admin.");
