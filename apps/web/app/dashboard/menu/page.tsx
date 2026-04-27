@@ -49,6 +49,8 @@ export default function MenuPage() {
   const [restockMap, setRestockMap] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  const [search, setSearch] = useState("");
+  const [catFilter, setCatFilter] = useState<string>("all");
 
   const magicScan = async (file: File) => {
     setAiAnalyzing(true);
@@ -207,7 +209,20 @@ export default function MenuPage() {
     reload();
   };
 
-  const byCat = items.reduce<Record<string, Item[]>>((acc, it) => {
+  // All unique categories
+  const allCategories = [...new Set(items.map(it => it.category || "Sans catégorie"))].sort();
+
+  // Filter items by search + category
+  const filteredItems = items.filter(it => {
+    if (catFilter !== "all" && (it.category || "Sans catégorie") !== catFilter) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      return it.name.toLowerCase().includes(q) || (it.description || "").toLowerCase().includes(q) || (it.category || "").toLowerCase().includes(q);
+    }
+    return true;
+  });
+
+  const byCat = filteredItems.reduce<Record<string, Item[]>>((acc, it) => {
     const k = it.category || "Sans catégorie";
     (acc[k] ||= []).push(it);
     return acc;
@@ -215,7 +230,38 @@ export default function MenuPage() {
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-bold mb-6 text-white">Menu</h1>
+      <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+        <h1 className="text-2xl font-bold text-white">Menu <span className="text-sm font-normal text-white/30">({items.length} plats)</span></h1>
+
+        {/* Search + Category filter */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <input
+            type="text"
+            placeholder="Rechercher un plat..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-56 bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-orange-500/50"
+          />
+          <select
+            value={catFilter}
+            onChange={e => setCatFilter(e.target.value)}
+            className="bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500/50"
+          >
+            <option value="all">Toutes les categories</option>
+            {allCategories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+          {(search || catFilter !== "all") && (
+            <button
+              onClick={() => { setSearch(""); setCatFilter("all"); }}
+              className="text-xs text-white/30 hover:text-white/60 transition-colors"
+            >
+              Effacer filtres
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* ── Formulaire ajout / édition ── */}
       <form onSubmit={save} className="card mb-6 space-y-3">

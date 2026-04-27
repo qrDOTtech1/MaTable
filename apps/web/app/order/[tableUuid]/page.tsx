@@ -358,6 +358,19 @@ export default function OrderPage() {
     return acc;
   }, {});
 
+  // ── Step-by-step ordering: category navigation ──
+  // Ordered phases — map restaurant categories to service phases
+  const PHASE_ORDER = ["Apéritifs", "Cocktails", "Boissons", "Entrées", "Plats", "Desserts", "Cafés", "Digestifs"];
+  const catKeys = Object.keys(byCat);
+  const sortedCats = catKeys.sort((a, b) => {
+    const ia = PHASE_ORDER.findIndex(p => a.toLowerCase().includes(p.toLowerCase()));
+    const ib = PHASE_ORDER.findIndex(p => b.toLowerCase().includes(p.toLowerCase()));
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
+  const [currentCatIdx, setCurrentCatIdx] = useState(0);
+  const [viewMode, setViewMode] = useState<"steps" | "full">("steps");
+  const currentCat = sortedCats[currentCatIdx] || sortedCats[0];
+
   const showFeedback = paid || billMode !== null || myOrders.some(o => o.status === "SERVED");
 
   const TIP_PRESETS = [100, 200, 500];
@@ -372,12 +385,20 @@ export default function OrderPage() {
             {info.table.zone && <span className="text-sm font-normal text-white/40 ml-2">· {info.table.zone}</span>}
           </h1>
         </div>
-        <Link
-          href={`https://matable.app/onboarding?restaurantId=${info.restaurant.id}&tableId=${info.table.id}`}
-          className="flex items-center gap-1.5 bg-gradient-to-r from-orange-500 to-rose-500 text-white px-3 py-1.5 rounded-full text-xs font-black shadow-lg hover:scale-105 transition-all"
-        >
-          ✨ Social
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setViewMode(viewMode === "steps" ? "full" : "steps")}
+            className="text-[10px] px-2.5 py-1 rounded-full border border-white/[0.08] text-white/40 hover:text-white/70 transition-colors"
+          >
+            {viewMode === "steps" ? "Voir tout" : "Par etape"}
+          </button>
+          <Link
+            href={`https://matable.app/onboarding?restaurantId=${info.restaurant.id}&tableId=${info.table.id}`}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-orange-500 to-rose-500 text-white px-3 py-1.5 rounded-full text-xs font-black shadow-lg hover:scale-105 transition-all"
+          >
+            Social
+          </Link>
+        </div>
       </header>
 
       {/* Serveur */}
@@ -632,8 +653,120 @@ export default function OrderPage() {
         </div>
       )}
 
-      {/* Menu */}
-      {!paid && Object.entries(byCat).map(([cat, items]) => (
+      {/* Menu — step-by-step or full view */}
+      {!paid && viewMode === "steps" && sortedCats.length > 0 && (
+        <>
+          {/* Step navigation pills */}
+          <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 scrollbar-none">
+            {sortedCats.map((cat, idx) => {
+              const hasItems = (byCat[cat] || []).some(m => cart[m.id] > 0);
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setCurrentCatIdx(idx)}
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                    idx === currentCatIdx
+                      ? "bg-orange-500/20 text-orange-400 border-orange-500/30"
+                      : hasItems
+                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                        : "bg-white/[0.04] text-white/40 border-white/[0.06] hover:text-white/60"
+                  }`}
+                >
+                  {hasItems && idx !== currentCatIdx ? "✓ " : ""}{cat}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Current category items */}
+          <section className="mb-4">
+            <h2 className="text-xs font-black uppercase tracking-widest text-orange-400 mb-4 flex items-center gap-3">
+              <span className="flex-1 h-px bg-orange-500/20" />
+              {currentCat}
+              <span className="flex-1 h-px bg-orange-500/20" />
+            </h2>
+            <div className="space-y-3">
+              {(byCat[currentCat] || []).map(m => (
+                <div key={m.id} className="bg-white/[0.03] border border-white/[0.07] rounded-2xl overflow-hidden hover:bg-white/[0.05] transition-colors">
+                  <div className="flex gap-3 p-3">
+                    {m.imageUrl && (
+                      <ImageLightbox src={m.imageUrl} alt={m.name} className="w-20 h-20 rounded-xl object-cover shrink-0 cursor-pointer" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-bold text-white text-sm leading-tight">{m.name}</h3>
+                        <span className="font-black text-orange-400 text-sm shrink-0">{(m.priceCents / 100).toFixed(2)} €</span>
+                      </div>
+                      {m.description && <p className="text-xs text-white/65 mt-1 leading-relaxed line-clamp-2">{m.description}</p>}
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {(m.waitMinutes ?? 0) > 0 ? (
+                          <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded border border-blue-500/20">⏱ {m.waitMinutes} min</span>
+                        ) : (
+                          <span className="text-[10px] px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded border border-emerald-500/20">⚡ Pret</span>
+                        )}
+                        {m.diets?.map(d => (
+                          <span key={d} className="text-[10px] px-1.5 py-0.5 bg-green-500/10 text-green-400 rounded border border-green-500/20">{DIET_LABELS[d] ?? d}</span>
+                        ))}
+                        {m.allergens?.map(a => (
+                          <span key={a} className="text-[10px] px-1.5 py-0.5 bg-red-500/10 text-red-400 rounded border border-red-500/20">⚠️ {ALLERGEN_LABELS[a] ?? a}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 shrink-0">
+                      <button onClick={() => inc(m.id, 1)} className="w-8 h-8 rounded-lg bg-orange-600/80 hover:bg-orange-500 text-white font-black text-lg flex items-center justify-center transition-colors">+</button>
+                      <span className="w-8 text-center text-sm font-black text-white py-0.5">{cart[m.id] || 0}</span>
+                      <button onClick={() => inc(m.id, -1)} disabled={!cart[m.id]} className="w-8 h-8 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-20 text-white font-black text-lg flex items-center justify-center transition-colors border border-white/[0.08]">−</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Step navigation buttons */}
+          <div className="flex items-center gap-3 mb-6">
+            {currentCatIdx > 0 && (
+              <button
+                onClick={() => setCurrentCatIdx(i => i - 1)}
+                className="flex-1 py-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white/60 font-bold text-sm transition-all"
+              >
+                ← {sortedCats[currentCatIdx - 1]}
+              </button>
+            )}
+            {currentCatIdx < sortedCats.length - 1 ? (
+              <button
+                onClick={() => setCurrentCatIdx(i => i + 1)}
+                className="flex-1 py-3 rounded-xl bg-orange-600/20 hover:bg-orange-600/30 border border-orange-500/30 text-orange-400 font-bold text-sm transition-all"
+              >
+                {sortedCats[currentCatIdx + 1]} →
+              </button>
+            ) : (
+              cartTotal > 0 && (
+                <button
+                  onClick={submitOrder}
+                  disabled={submitting}
+                  className="flex-1 py-3 rounded-xl bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-bold text-sm transition-all"
+                >
+                  {submitting ? "Envoi..." : `Commander (${(cartTotal / 100).toFixed(2)} €)`}
+                </button>
+              )
+            )}
+          </div>
+
+          {/* Skip to payment anytime */}
+          {unpaidOrders.length > 0 && (
+            <button
+              onClick={() => setBillMode("CARD")}
+              className="w-full py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-white/40 font-semibold text-xs transition-all mb-4"
+            >
+              Passer au reglement ({(unpaidTotal / 100).toFixed(2)} €)
+            </button>
+          )}
+        </>
+      )}
+
+      {/* Full menu view (classic) */}
+      {!paid && viewMode === "full" && Object.entries(byCat).map(([cat, items]) => (
         <section key={cat} className="mb-8">
           <h2 className="text-xs font-black uppercase tracking-widest text-orange-400 mb-4 flex items-center gap-3">
             <span className="flex-1 h-px bg-orange-500/20" />

@@ -125,6 +125,34 @@ export default function NovaStockPage() {
   const [meta, setMeta]           = useState<{ ordersAnalyzed: number; menuItemsCount: number; period: string; restaurantName?: string } | null>(null);
   const [copied, setCopied]       = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<string | null>(null);
+
+  const importToStock = async () => {
+    if (!stockItems.length) return;
+    setImporting(true); setImportResult(null);
+    try {
+      const products = stockItems.map(it => ({
+        name: it.name,
+        unit: it.unit,
+        category: it.category || "Autre",
+        isFresh: it.isFresh,
+        currentQty: parseFloat(it.currentQty || "0") || 0,
+        lowThreshold: Math.ceil((it.weeklyEstimate || 0) * 0.3),
+        weeklyEstimate: it.weeklyEstimate || 0,
+        linkedDishes: it.linkedDishes || [],
+      }));
+      const res = await api<{ created: number }>("/api/pro/stock/import-ia", {
+        method: "POST",
+        body: JSON.stringify({ products }),
+      });
+      setImportResult(`${res.created} articles importes dans votre stock`);
+    } catch (e: any) {
+      setImportResult("Erreur : " + e.message);
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const onRestoreHistory = (entry: HistoryEntry) => {
     if (entry.outputData?.analysis) {
@@ -502,11 +530,27 @@ export default function NovaStockPage() {
         </div>
       </div>
 
-      {/* Bouton générer */}
-      <button onClick={runAnalysis}
-        className="w-full py-4 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-2xl transition-colors text-base shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2">
-        📋 Générer la liste de courses & recommandations
-      </button>
+      {/* Bouton générer + import */}
+      <div className="space-y-3">
+        <button onClick={runAnalysis}
+          className="w-full py-4 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-2xl transition-colors text-base shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2">
+          📋 Générer la liste de courses & recommandations
+        </button>
+
+        <button
+          onClick={importToStock}
+          disabled={importing || !stockItems.length}
+          className="w-full py-3 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 font-bold rounded-2xl transition-colors text-sm border border-emerald-500/30 flex items-center justify-center gap-2 disabled:opacity-40"
+        >
+          {importing ? "Import en cours..." : "📥 Importer ces articles dans mon Stock"}
+        </button>
+
+        {importResult && (
+          <div className={`rounded-xl p-3 text-sm text-center ${importResult.startsWith("Erreur") ? "bg-red-500/10 border border-red-500/20 text-red-400" : "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"}`}>
+            {importResult}
+          </div>
+        )}
+      </div>
 
       <p className="text-xs text-white/20 text-center">
         Vous pouvez laisser des champs vides — l'IA fera des estimations basées sur vos ventes.

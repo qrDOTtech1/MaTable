@@ -116,7 +116,11 @@ function serverFetch<T>(path: string, opts?: RequestInit): Promise<T> {
   });
 }
 
-type Tab = "tables" | "planning" | "notes" | "defis" | "stats";
+type Tab = "tables" | "order" | "planning" | "notes" | "defis" | "stats";
+
+// ── Order types ───────────────────────────────────────────────────────────────
+type MenuItem = { id: string; name: string; description?: string | null; priceCents: number; category: string; waitMinutes?: number };
+type CartItem = { menuItem: MenuItem; quantity: number };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function ServeurDashPage() {
@@ -161,6 +165,16 @@ export default function ServeurDashPage() {
   const [iaSuggestions, setIaSuggestions] = useState<string | null>(null);
   const [iaLoading, setIaLoading] = useState(false);
   const [iaError, setIaError] = useState<string | null>(null);
+
+  // ── Order on behalf state ───────────────────────────────────────────────
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [menuLoading, setMenuLoading] = useState(false);
+  const [orderTableId, setOrderTableId] = useState<string>("");
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [orderNote, setOrderNote] = useState("");
+  const [orderPlacing, setOrderPlacing] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState<{ tableNumber: number; total: number } | null>(null);
+  const [menuCategory, setMenuCategory] = useState<string>("all");
 
   const hasIA = restaurant?.subscription === "PRO_IA";
 
@@ -333,6 +347,53 @@ export default function ServeurDashPage() {
     }
   }
 
+  // ── Order tab helpers ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (tab !== "order" || menuItems.length > 0) return;
+    setMenuLoading(true);
+    serverFetch<{ items: MenuItem[] }>("/api/server/menu")
+      .then((r) => setMenuItems(r.items))
+      .catch(() => {})
+      .finally(() => setMenuLoading(false));
+  }, [tab, menuItems.length]);
+
+  function cartAdd(item: MenuItem) {
+    setCart((prev) => {
+      const idx = prev.findIndex((c) => c.menuItem.id === item.id);
+      if (idx >= 0) return prev.map((c, i) => i === idx ? { ...c, quantity: c.quantity + 1 } : c);
+      return [...prev, { menuItem: item, quantity: 1 }];
+    });
+  }
+  function cartSet(itemId: string, qty: number) {
+    if (qty <= 0) setCart((prev) => prev.filter((c) => c.menuItem.id !== itemId));
+    else setCart((prev) => prev.map((c) => c.menuItem.id === itemId ? { ...c, quantity: qty } : c));
+  }
+  function cartTotal() {
+    return cart.reduce((s, c) => s + c.menuItem.priceCents * c.quantity, 0);
+  }
+
+  async function placeOrder() {
+    if (!orderTableId || cart.length === 0) return;
+    setOrderPlacing(true);
+    setOrderSuccess(null);
+    try {
+      const items = cart.map((c) => ({ menuItemId: c.menuItem.id, quantity: c.quantity }));
+      await serverFetch<{ totalCents: number }>(`/api/server/tables/${orderTableId}/place-order`, {
+        method: "POST",
+        body: JSON.stringify({ items, notes: orderNote || undefined }),
+      });
+      const tableNum = allTables.find((t) => t.id === orderTableId)?.number ?? 0;
+      setOrderSuccess({ tableNumber: tableNum, total: cartTotal() });
+      setCart([]);
+      setOrderNote("");
+      loadAll();
+    } catch (e: any) {
+      alert("Erreur lors de la commande : " + (e?.message ?? "inconnue"));
+    } finally {
+      setOrderPlacing(false);
+    }
+  }
+
   async function closeSession(sessionId: string, mode: string) {
     setClosing(sessionId);
     try {
@@ -438,6 +499,7 @@ export default function ServeurDashPage() {
 
   const TABS: { id: Tab; icon: string; label: string; badge?: number }[] = [
     { id: "tables", icon: "🪑", label: "Mes tables", badge: pendingOrders.length || undefined },
+    { id: "order", icon: "🛒", label: "Commander", badge: cart.length || undefined },
     { id: "planning", icon: "🗓️", label: "Planning" },
     { id: "notes", icon: "📝", label: "Notes", badge: notes.length || undefined },
     { id: "defis", icon: "🏆", label: "Défis", badge: (challenges.filter((c) => !c.done).length + globalChallenges.filter((c) => !c.done).length) || undefined },
@@ -759,6 +821,166 @@ export default function ServeurDashPage() {
             </div>
           </div>
         )}
+
+        {/* ── COMMANDER ──────────────────────────────────────────── */}
+        {tab === "order" && (() => {
+          const menuCategories = Array.from(new Set(menuItems.map((m) => m.category))).sort();
+          const visibleItems = menuCategory === "all" ? menuItems : menuItems.filter((m) => m.category === menuCategory);
+          const fmt2 = (c: number) => (c / 100).toFixed(2) + "€";
+
+          return (
+            <div className="space-y-4">
+              {/* Success banner */}
+              {orderSuccess && (
+                <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/30 p-4 flex items-center gap-3">
+                  <span className="text-2xl">✅</span>
+                  <div>
+                    <p className="text-sm font-bold text-emerald-300">Commande envoyée !</p>
+                    <p className="text-xs text-white/50">Table {orderSuccess.tableNumber} · {fmt2(orderSuccess.total)}</p>
+                  </div>
+                  <button onClick={() => setOrderSuccess(null)} className="ml-auto text-white/30 hover:text-white/60 text-lg">✕</button>
+                </div>
+              )}
+
+              {/* Table selector */}
+              <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4 space-y-3">
+                <p className="text-xs font-bold text-white/40 uppercase tracking-wider">1. Choisir la table</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {allTables.map((t) => {
+                    const active = t.sessions.length > 0;
+                    const selected = orderTableId === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => setOrderTableId(t.id)}
+                        className={`rounded-xl p-3 text-center border transition-all ${
+                          selected
+                            ? "bg-orange-500/20 border-orange-500/40 text-orange-300"
+                            : active
+                            ? "bg-white/[0.04] border-white/10 text-white/70 hover:border-orange-500/30"
+                            : "bg-white/[0.01] border-white/[0.04] text-white/30 hover:border-white/10"
+                        }`}
+                      >
+                        <p className="text-lg font-black">{t.number}</p>
+                        <p className="text-[9px] mt-0.5">{active ? "🟢" : "⚪"}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                {!orderTableId && (
+                  <p className="text-xs text-white/30 text-center">Sélectionnez une table pour continuer</p>
+                )}
+              </div>
+
+              {/* Menu */}
+              {orderTableId && (
+                <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] overflow-hidden">
+                  <div className="px-4 py-3 border-b border-white/[0.06]">
+                    <p className="text-xs font-bold text-white/40 uppercase tracking-wider mb-2">2. Choisir les plats</p>
+                    {menuLoading ? (
+                      <div className="flex justify-center py-4">
+                        <div className="w-5 h-5 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
+                      </div>
+                    ) : (
+                      <div className="flex gap-1.5 overflow-x-auto pb-1">
+                        <button
+                          onClick={() => setMenuCategory("all")}
+                          className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                            menuCategory === "all" ? "bg-orange-500 text-white" : "bg-white/[0.04] text-white/50 hover:text-white/70"
+                          }`}
+                        >
+                          Tout
+                        </button>
+                        {menuCategories.map((c) => (
+                          <button key={c} onClick={() => setMenuCategory(c)}
+                            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                              menuCategory === c ? "bg-orange-500 text-white" : "bg-white/[0.04] text-white/50 hover:text-white/70"
+                            }`}
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="divide-y divide-white/[0.04]">
+                    {visibleItems.map((item) => {
+                      const inCart = cart.find((c) => c.menuItem.id === item.id);
+                      return (
+                        <div key={item.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white font-medium truncate">{item.name}</p>
+                            {item.description && (
+                              <p className="text-xs text-white/30 truncate mt-0.5">{item.description}</p>
+                            )}
+                            <p className="text-xs text-orange-400 font-bold mt-0.5">{fmt2(item.priceCents)}</p>
+                          </div>
+                          {inCart ? (
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button onClick={() => cartSet(item.id, inCart.quantity - 1)}
+                                className="w-7 h-7 rounded-full bg-white/[0.06] border border-white/10 text-white text-sm font-bold hover:bg-white/10 transition-all">−</button>
+                              <span className="text-sm font-black text-orange-400 w-5 text-center">{inCart.quantity}</span>
+                              <button onClick={() => cartSet(item.id, inCart.quantity + 1)}
+                                className="w-7 h-7 rounded-full bg-orange-500 text-white text-sm font-bold hover:bg-orange-400 transition-all">+</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => cartAdd(item)}
+                              className="shrink-0 w-8 h-8 rounded-full bg-orange-500/20 border border-orange-500/30 text-orange-400 text-lg font-bold hover:bg-orange-500/30 transition-all flex items-center justify-center">
+                              +
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {visibleItems.length === 0 && !menuLoading && (
+                      <p className="px-4 py-6 text-center text-sm text-white/30">Aucun article disponible</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Cart summary + send */}
+              {cart.length > 0 && orderTableId && (
+                <div className="rounded-2xl bg-orange-500/5 border border-orange-500/20 p-4 space-y-3">
+                  <p className="text-xs font-bold text-white/40 uppercase tracking-wider">3. Récapitulatif</p>
+                  <div className="space-y-1.5">
+                    {cart.map((c) => (
+                      <div key={c.menuItem.id} className="flex items-center justify-between text-sm">
+                        <span className="text-white/70">{c.quantity}× {c.menuItem.name}</span>
+                        <span className="text-white/50 font-mono">{fmt2(c.menuItem.priceCents * c.quantity)}</span>
+                      </div>
+                    ))}
+                    <div className="pt-2 border-t border-white/[0.06] flex justify-between text-sm font-bold">
+                      <span className="text-white">Total</span>
+                      <span className="text-orange-400">{fmt2(cartTotal())}</span>
+                    </div>
+                  </div>
+                  <textarea
+                    value={orderNote}
+                    onChange={(e) => setOrderNote(e.target.value)}
+                    placeholder="Note pour la cuisine (optionnel)…"
+                    rows={2}
+                    className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-3 py-2 text-white placeholder:text-white/20 text-xs focus:outline-none focus:border-orange-500 resize-none"
+                  />
+                  <button
+                    onClick={placeOrder}
+                    disabled={orderPlacing}
+                    className="w-full py-3.5 rounded-xl bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                  >
+                    {orderPlacing ? (
+                      <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Envoi en cuisine…</>
+                    ) : (
+                      <>🛒 Envoyer la commande · Table {allTables.find((t) => t.id === orderTableId)?.number}</>
+                    )}
+                  </button>
+                  <button onClick={() => setCart([])} className="w-full py-2 text-xs text-white/25 hover:text-white/50 transition-colors">
+                    Vider le panier
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── PLANNING ───────────────────────────────────────────── */}
         {tab === "planning" && (
