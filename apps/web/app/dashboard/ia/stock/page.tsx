@@ -166,13 +166,15 @@ export default function NovaStockPage() {
     setStep("loading-items"); setError(null);
     try {
       let items: StockItem[] = [];
-      const stream = await apiStream("/api/pro/ia/stock-items/stream", {});
+      // Les deux routes (stream et non-stream) retournent maintenant du SSE avec keepalive
+      const stream = await apiStream("/api/pro/ia/stock-items", {});
       for await (const event of stream) {
         if (event.type === "result") {
           items = (event.items as StockItem[]) ?? [];
         } else if (event.type === "error") {
           throw new Error((event.message as string) || "Erreur IA");
         }
+        // progress et chunk = keepalive, on ignore
       }
 
       if (items.length === 0) {
@@ -219,7 +221,7 @@ export default function NovaStockPage() {
     try {
       let resultAnalysis: Analysis | null = null;
       let resultMeta: any = null;
-      const stream = await apiStream("/api/pro/ia/stock-analysis/stream", payload);
+      const stream = await apiStream("/api/pro/ia/stock-analysis", payload);
       for await (const event of stream) {
         if (event.type === "result") {
           resultAnalysis = event.analysis as Analysis;
