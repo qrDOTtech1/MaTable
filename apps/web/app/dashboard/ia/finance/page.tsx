@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { IaHistoryPanel, type HistoryEntry } from "@/components/ia/IaHistoryPanel";
 
@@ -66,12 +66,36 @@ function fmtK(euros: number) {
   return euros.toFixed(0) + " €";
 }
 
+type ShoppingEntry = {
+  realCost: number | null;
+  estimatedBudget: number;
+  completedAt: string | null;
+};
+
 // ── Composant principal ───────────────────────────────────────────────────────
 export default function NovaFinancePage() {
   const [period, setPeriod]   = useState<"7d"|"30d"|"90d">("30d");
   const [fixedCosts, setFixedCosts] = useState("");
   const [foodCostTarget, setFoodCostTarget] = useState("");
   const [notes, setNotes]     = useState("");
+
+  // Real purchase costs banner
+  const [shoppingData, setShoppingData] = useState<{ totalReal: number; count: number; foodCostPct: number | null } | null>(null);
+
+  useEffect(() => {
+    Promise.all([
+      api<{ history: ShoppingEntry[] }>("/api/pro/shopping-history"),
+      api<{ revenueCents: number }>(`/api/pro/analytics?days=${period === "7d" ? 7 : period === "30d" ? 30 : 90}`),
+    ]).then(([sh, analytics]) => {
+      const days = period === "7d" ? 7 : period === "30d" ? 30 : 90;
+      const cutoff = new Date(Date.now() - days * 86400_000);
+      const inPeriod = sh.history.filter(h => h.completedAt && new Date(h.completedAt) >= cutoff);
+      const totalReal = inPeriod.reduce((s, h) => s + (h.realCost ?? 0), 0);
+      const revEur = (analytics.revenueCents ?? 0) / 100;
+      const pct = revEur > 0 && totalReal > 0 ? (totalReal / revEur) * 100 : null;
+      setShoppingData({ totalReal, count: inPeriod.length, foodCostPct: pct });
+    }).catch(() => {});
+  }, [period]);
 
   const [loading, setLoading] = useState(false);
   const [advice, setAdvice]   = useState<FinanceAdvice | null>(null);
@@ -192,6 +216,32 @@ export default function NovaFinancePage() {
               className="w-full bg-black/20 border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-emerald-500/50" />
           </div>
         </div>
+
+        {/* Real cost insight banner */}
+        {shoppingData && shoppingData.count > 0 && (
+          <div className={`rounded-xl border px-4 py-3 flex items-center justify-between gap-4 flex-wrap text-sm ${
+            shoppingData.foodCostPct != null && shoppingData.foodCostPct > 35
+              ? "bg-red-500/8 border-red-500/20"
+              : "bg-emerald-500/8 border-emerald-500/20"
+          }`}>
+            <div className="flex items-center gap-3">
+              <span className="text-lg">🛒</span>
+              <div>
+                <p className="font-semibold text-white/80">
+                  Achats confirmés sur la période : <span className="text-red-400">{shoppingData.totalReal.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} €</span>
+                  <span className="text-white/30 font-normal ml-2">({shoppingData.count} liste{shoppingData.count > 1 ? "s" : ""})</span>
+                </p>
+                {shoppingData.foodCostPct != null && (
+                  <p className={`text-xs mt-0.5 ${shoppingData.foodCostPct > 35 ? "text-red-400" : shoppingData.foodCostPct > 28 ? "text-amber-400" : "text-emerald-400"}`}>
+                    Food cost réel : {shoppingData.foodCostPct.toFixed(1)}% du CA
+                    {shoppingData.foodCostPct > 35 ? " · Au-dessus de la norme (≤35%)" : shoppingData.foodCostPct > 28 ? " · Dans la norme" : " · Excellent"}
+                  </p>
+                )}
+              </div>
+            </div>
+            <span className="text-xs text-white/30">Nova Finance intègre ces données automatiquement</span>
+          </div>
+        )}
 
         <button onClick={runAnalysis} disabled={loading}
           className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2">
