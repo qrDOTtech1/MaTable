@@ -429,23 +429,47 @@ export default function OrderPage() {
         </div>
       )}
 
-      {/* Paiement confirmé */}
+      {/* Paiement confirme */}
       {paid && (
         <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-6 text-center mb-6">
           <div className="text-5xl mb-3">🎉</div>
-          <h2 className="text-xl font-black text-white">Paiement reçu, merci !</h2>
-          <p className="text-sm text-white/50 mt-1">Nous espérons vous revoir très bientôt.</p>
-          {/* Invoice offer */}
+          <h2 className="text-xl font-black text-white">Paiement recu, merci !</h2>
+          <p className="text-sm text-white/50 mt-1">Nous esperons vous revoir tres bientot.</p>
+          {/* Invoice + email */}
           <div className="mt-5 space-y-3">
-            <p className="text-xs text-white/40">Souhaitez-vous recevoir votre ticket ?</p>
+            <p className="text-xs text-white/40">Recevez votre ticket de caisse par email :</p>
             <div className="flex gap-2">
               <input
                 type="email"
-                placeholder="votre@email.com (optionnel)"
+                placeholder="votre@email.com"
                 value={invoiceEmail}
                 onChange={e => setInvoiceEmail(e.target.value)}
                 className="flex-1 bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-sm placeholder-white/20 focus:outline-none focus:border-orange-500/50"
               />
+              {paidSessionId && invoiceEmail.includes("@") && (
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`${API_URL}/api/invoice/${paidSessionId}/send`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: invoiceEmail }),
+                      });
+                      if (res.ok) {
+                        setInvoiceEmail("");
+                        alert("Ticket envoye a " + invoiceEmail);
+                      } else {
+                        alert("Erreur lors de l'envoi. Reessayez.");
+                      }
+                    } catch {
+                      alert("Erreur reseau");
+                    }
+                  }}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl transition-all shrink-0"
+                >
+                  Envoyer
+                </button>
+              )}
             </div>
             <div className="flex gap-2">
               {paidSessionId && (
@@ -455,7 +479,7 @@ export default function OrderPage() {
                   rel="noopener noreferrer"
                   className="flex-1 py-2.5 bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white/80 font-bold text-sm rounded-xl transition-colors text-center"
                 >
-                  📄 Voir / Télécharger
+                  Voir / Telecharger le ticket
                 </a>
               )}
             </div>
