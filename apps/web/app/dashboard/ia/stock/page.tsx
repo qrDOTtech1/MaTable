@@ -181,29 +181,8 @@ export default function NovaStockPage() {
             setStreamPhase((event.message as string) || "");
           } else if (event.type === "chunk") {
             // keep-alive
-          } else if (event.type === "partial_result") {
-            // Un chunk de données d'une catégorie est prêt, on l'ajoute direct pour le rendre dynamique
-            const newItems = (event.items as StockItem[]) ?? [];
-            items = [...items, ...newItems];
-            // Dedupliquer au cas où
-            const mergedMap: Record<string, StockItem> = {};
-            for (const item of items) {
-              const key = item.name.toLowerCase();
-              if (!mergedMap[key]) {
-                mergedMap[key] = item;
-              } else {
-                mergedMap[key].linkedDishes = [...new Set([...mergedMap[key].linkedDishes, ...(item.linkedDishes || [])])];
-                mergedMap[key].weeklyEstimate += (item.weeklyEstimate || 0);
-              }
-            }
-            items = Object.values(mergedMap);
-            // On affiche en live
-            setStockItems(items.map(it => ({ ...it, currentQty: "", freshExpiry: "" })));
-            setStep("fill-qty"); // on passe à l'étape suivante dès qu'on a un item
           } else if (event.type === "result") {
-            // La fusion finale
             items = (event.items as StockItem[]) ?? [];
-            setStockItems(items.map(it => ({ ...it, currentQty: "", freshExpiry: "" })));
           } else if (event.type === "error") {
             throw new Error((event.message as string) || "Erreur IA");
           }
