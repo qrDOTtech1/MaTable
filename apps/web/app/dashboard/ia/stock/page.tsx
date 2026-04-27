@@ -171,7 +171,10 @@ export default function NovaStockPage() {
       // Try SSE stream first
       try {
         console.log("[stock] trying SSE stream for stock-items...");
-        const stream = await apiStream("/api/pro/ia/stock-items/stream", {});
+        const stream = await apiStream("/api/pro/ia/stock-items/stream", {
+          method: "POST",
+          body: JSON.stringify({}),
+        });
 
         for await (const event of stream) {
           if (event.type === "progress") {
