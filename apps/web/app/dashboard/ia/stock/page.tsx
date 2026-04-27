@@ -181,8 +181,29 @@ export default function NovaStockPage() {
             setStreamPhase((event.message as string) || "");
           } else if (event.type === "chunk") {
             // keep-alive
+          } else if (event.type === "partial_result") {
+            // Un chunk de données d'une catégorie est prêt, on l'ajoute direct pour le rendre dynamique
+            const newItems = (event.items as StockItem[]) ?? [];
+            items = [...items, ...newItems];
+            // Dedupliquer au cas où
+            const mergedMap: Record<string, StockItem> = {};
+            for (const item of items) {
+              const key = item.name.toLowerCase();
+              if (!mergedMap[key]) {
+                mergedMap[key] = item;
+              } else {
+                mergedMap[key].linkedDishes = [...new Set([...mergedMap[key].linkedDishes, ...(item.linkedDishes || [])])];
+                mergedMap[key].weeklyEstimate += (item.weeklyEstimate || 0);
+              }
+            }
+            items = Object.values(mergedMap);
+            // On affiche en live
+            setStockItems(items.map(it => ({ ...it, currentQty: "", freshExpiry: "" })));
+            setStep("fill-qty"); // on passe à l'étape suivante dès qu'on a un item
           } else if (event.type === "result") {
+            // La fusion finale
             items = (event.items as StockItem[]) ?? [];
+            setStockItems(items.map(it => ({ ...it, currentQty: "", freshExpiry: "" })));
           } else if (event.type === "error") {
             throw new Error((event.message as string) || "Erreur IA");
           }
@@ -459,6 +480,20 @@ export default function NovaStockPage() {
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm">{error}</div>
       )}
 
+      {/* Indicateur de chargement continu si SSE encore en cours */}
+      {streamPhase && (
+        <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-5 rounded-full border-2 border-orange-500/30 border-t-orange-500 animate-spin"></div>
+            <div>
+              <p className="text-sm text-orange-400 font-semibold">Analyse en cours...</p>
+              <p className="text-xs text-white/50">{streamPhase}</p>
+            </div>
+          </div>
+          <span className="text-xs font-mono text-white/30">{stockItems.length} trouvés</span>
+        </div>
+      )}
+
       {/* Articles groupés par catégorie */}
       <div className="space-y-4">
         {Object.entries(grouped).map(([cat, items]) => (
@@ -496,11 +531,14 @@ export default function NovaStockPage() {
                         type="number"
                         min="0"
                         step="0.5"
-                        value={stockItems[idx]?.currentQty ?? ""}
+                        value={item.currentQty ?? ""}
                         onChange={e => {
                           const updated = [...stockItems];
-                          updated[idx] = { ...updated[idx], currentQty: e.target.value };
-                          setStockItems(updated);
+                          const realIdx = updated.findIndex(u => u.name === item.name);
+                          if (realIdx !== -1) {
+                            updated[realIdx] = { ...updated[realIdx], currentQty: e.target.value };
+                            setStockItems(updated);
+                          }
                         }}
                         placeholder="0"
                         className="w-24 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm text-right focus:outline-none focus:border-orange-500/50"
@@ -513,11 +551,14 @@ export default function NovaStockPage() {
                       <div className="flex items-center gap-2">
                         <input
                           type="date"
-                          value={stockItems[idx]?.freshExpiry ?? ""}
+                          value={item.freshExpiry ?? ""}
                           onChange={e => {
                             const updated = [...stockItems];
-                            updated[idx] = { ...updated[idx], freshExpiry: e.target.value };
-                            setStockItems(updated);
+                            const realIdx = updated.findIndex(u => u.name === item.name);
+                            if (realIdx !== -1) {
+                              updated[realIdx] = { ...updated[realIdx], freshExpiry: e.target.value };
+                              setStockItems(updated);
+                            }
                           }}
                           className="bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white/60 text-xs focus:outline-none focus:border-emerald-500/50"
                         />
@@ -555,14 +596,15 @@ export default function NovaStockPage() {
       {/* Bouton générer + import */}
       <div className="space-y-3">
         <button onClick={runAnalysis}
-          className="w-full py-4 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-2xl transition-colors text-base shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2">
-          📋 Générer la liste de courses & recommandations
+          disabled={!!streamPhase}
+          className="w-full py-4 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-2xl transition-colors text-base shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+          {streamPhase ? "⏳ Attente fin de l'extraction..." : "📋 Générer la liste de courses & recommandations"}
         </button>
 
         <button
           onClick={importToStock}
-          disabled={importing || !stockItems.length}
-          className="w-full py-3 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 font-bold rounded-2xl transition-colors text-sm border border-emerald-500/30 flex items-center justify-center gap-2 disabled:opacity-40"
+          disabled={importing || !stockItems.length || !!streamPhase}
+          className="w-full py-3 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 font-bold rounded-2xl transition-colors text-sm border border-emerald-500/30 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {importing ? "Import en cours..." : "📥 Importer ces articles dans mon Stock"}
         </button>
