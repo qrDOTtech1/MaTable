@@ -29,7 +29,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let restaurantPages: MetadataRoute.Sitemap = [];
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    const res = await fetch(`${apiUrl}/api/public/restaurants`, {
+    const res = await fetch(`${apiUrl}/api/restaurants`, {
       next: { revalidate: 86400 }, // Revalidate every 24 hours
     });
 
