@@ -171,10 +171,7 @@ export default function NovaStockPage() {
       // Try SSE stream first
       try {
         console.log("[stock] trying SSE stream for stock-items...");
-        const stream = await apiStream("/api/pro/ia/stock-items/stream", {
-          method: "POST",
-          body: JSON.stringify({}),
-        });
+        const stream = await apiStream("/api/pro/ia/stock-items/stream", {});
 
         for await (const event of stream) {
           if (event.type === "progress") {
@@ -252,15 +249,12 @@ export default function NovaStockPage() {
       let resultAnalysis: Analysis | null = null;
       let resultMeta: any = null;
 
-    // Try SSE stream first
-    try {
-      console.log("[stock] trying SSE stream for stock-analysis...");
-      const stream = await apiStream("/api/pro/ia/stock-analysis/stream", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+      // Try SSE stream first
+      try {
+        console.log("[stock] trying SSE stream for stock-analysis...");
+        const stream = await apiStream("/api/pro/ia/stock-analysis/stream", payload);
 
-      for await (const event of stream) {
+        for await (const event of stream) {
           if (event.type === "progress") {
             setStreamPhase((event.message as string) || "");
           } else if (event.type === "chunk") {
