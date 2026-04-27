@@ -187,16 +187,32 @@ export default function NovaStockPage() {
         console.log(`[stock] SSE stream success — ${items.length} items`);
       } catch (streamErr: any) {
         console.warn("[stock] SSE stream failed, falling back:", streamErr.message);
-        // Fallback to old POST endpoint
-        const r = await api<{ items: StockItem[]; meta: any }>("/api/pro/ia/stock-items", { method: "POST" });
-        items = r.items ?? [];
+        // Fallback to old POST endpoint — needs long timeout (IA can take 2-3min)
+        try {
+          const r = await api<{ items: StockItem[]; meta: any }>("/api/pro/ia/stock-items", {
+            method: "POST",
+            body: JSON.stringify({}),
+            timeoutMs: 480_000, // 8 min
+          });
+          items = r.items ?? [];
+        } catch (fallbackErr: any) {
+          console.error("[stock] fallback also failed:", fallbackErr.message);
+          throw fallbackErr;
+        }
+      }
+
+      if (items.length === 0) {
+        setError("L'IA n'a retourne aucun article. Verifiez que votre menu contient des plats.");
+        setStep("idle");
+        return;
       }
 
       setStockItems(items.map(it => ({ ...it, currentQty: "", freshExpiry: "" })));
       setStep("fill-qty");
     } catch (e: any) {
       if (e.message?.includes("403")) setError("Abonnement PRO_IA requis.");
-      else if (e.message?.includes("503")) setError("Clé API IA non configurée. Contactez l'admin.");
+      else if (e.message?.includes("503")) setError("Cle API IA non configuree. Contactez l'admin.");
+      else if (e.message?.includes("504") || e.message?.includes("expire")) setError("L'IA met trop de temps a repondre. Reessayez dans quelques instants.");
       else setError("Erreur : " + e.message);
       setStep("idle");
     }
