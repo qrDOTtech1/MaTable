@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
+import Link from "next/link";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type StockProduct = {
@@ -58,6 +59,7 @@ export default function StockPage() {
   const [products, setProducts] = useState<StockProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastShoppingDate, setLastShoppingDate] = useState<string | null>(null);
 
   // Menu items for linked dishes autocomplete
   const [menuItems, setMenuItems] = useState<MenuItemRef[]>([]);
@@ -105,7 +107,16 @@ export default function StockPage() {
     } catch {}
   }, []);
 
-  useEffect(() => { load(); loadMenu(); }, [load, loadMenu]);
+  // Load last shopping date
+  const loadLastShopping = useCallback(async () => {
+    try {
+      const res = await api<{ history: Array<{ completedAt: string | null; createdAt: string }> }>("/api/pro/shopping-history");
+      const last = res.history.find(h => h.completedAt);
+      if (last?.completedAt) setLastShoppingDate(last.completedAt);
+    } catch {}
+  }, []);
+
+  useEffect(() => { load(); loadMenu(); loadLastShopping(); }, [load, loadMenu, loadLastShopping]);
 
   // ── Computed ──────────────────────────────────────────────────────────────
   const categories = Array.from(new Set(products.map((p) => p.category))).sort();
@@ -250,18 +261,54 @@ export default function StockPage() {
             ) : (
               <span className="text-emerald-400">Tout est bien approvisionné</span>
             )}
+            {lastShoppingDate && (
+              <span className="ml-3 text-white/25">
+                · Dernière MAJ courses : {new Date(lastShoppingDate).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
+              </span>
+            )}
           </p>
         </div>
-        <button
-          onClick={openCreate}
-          className="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-white text-sm font-bold transition-all flex items-center gap-2"
-        >
-          + Ajouter un produit
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard/shopping"
+            className="px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:border-white/20 text-white/60 hover:text-white text-sm font-semibold transition-all flex items-center gap-2"
+          >
+            🛒 Listes de courses
+          </Link>
+          <button
+            onClick={openCreate}
+            className="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-white text-sm font-bold transition-all flex items-center gap-2"
+          >
+            + Ajouter un produit
+          </button>
+        </div>
       </div>
 
       {error && (
         <div className="rounded-xl bg-red-500/10 border border-red-500/30 p-4 text-sm text-red-400">{error}</div>
+      )}
+
+      {/* Low stock alert banner */}
+      {lowCount > 0 && (
+        <div className="rounded-xl bg-red-500/8 border border-red-500/25 p-4 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">🔴</span>
+            <div>
+              <p className="text-sm font-semibold text-red-300">
+                {lowCount} produit{lowCount > 1 ? "s" : ""} en stock bas
+              </p>
+              <p className="text-xs text-white/40 mt-0.5">
+                Lancez Nova Stock IA pour générer une liste de courses automatiquement.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/dashboard/ia/stock"
+            className="shrink-0 px-4 py-2 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30 text-sm font-semibold transition-all"
+          >
+            Générer une liste →
+          </Link>
+        </div>
       )}
 
       {/* Filters */}
