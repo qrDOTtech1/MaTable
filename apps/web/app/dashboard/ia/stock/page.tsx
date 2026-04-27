@@ -460,20 +460,6 @@ export default function NovaStockPage() {
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm">{error}</div>
       )}
 
-      {/* Indicateur de chargement continu si SSE encore en cours */}
-      {streamPhase && (
-        <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-5 h-5 rounded-full border-2 border-orange-500/30 border-t-orange-500 animate-spin"></div>
-            <div>
-              <p className="text-sm text-orange-400 font-semibold">Analyse en cours...</p>
-              <p className="text-xs text-white/50">{streamPhase}</p>
-            </div>
-          </div>
-          <span className="text-xs font-mono text-white/30">{stockItems.length} trouvés</span>
-        </div>
-      )}
-
       {/* Articles groupés par catégorie */}
       <div className="space-y-4">
         {Object.entries(grouped).map(([cat, items]) => (
@@ -576,15 +562,14 @@ export default function NovaStockPage() {
       {/* Bouton générer + import */}
       <div className="space-y-3">
         <button onClick={runAnalysis}
-          disabled={!!streamPhase}
-          className="w-full py-4 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-2xl transition-colors text-base shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-          {streamPhase ? "⏳ Attente fin de l'extraction..." : "📋 Générer la liste de courses & recommandations"}
+          className="w-full py-4 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-2xl transition-colors text-base shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2">
+          📋 Générer la liste de courses & recommandations
         </button>
 
         <button
           onClick={importToStock}
-          disabled={importing || !stockItems.length || !!streamPhase}
-          className="w-full py-3 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 font-bold rounded-2xl transition-colors text-sm border border-emerald-500/30 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+          disabled={importing || !stockItems.length}
+          className="w-full py-3 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 font-bold rounded-2xl transition-colors text-sm border border-emerald-500/30 flex items-center justify-center gap-2 disabled:opacity-40"
         >
           {importing ? "Import en cours..." : "📥 Importer ces articles dans mon Stock"}
         </button>
