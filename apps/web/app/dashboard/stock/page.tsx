@@ -52,10 +52,17 @@ function categoryIcon(c: string) {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
+type MenuItemRef = { id: string; name: string; category?: string | null };
+
 export default function StockPage() {
   const [products, setProducts] = useState<StockProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Menu items for linked dishes autocomplete
+  const [menuItems, setMenuItems] = useState<MenuItemRef[]>([]);
+  const [dishSuggestions, setDishSuggestions] = useState<MenuItemRef[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Modal state
   const [modal, setModal] = useState<"create" | "edit" | null>(null);
@@ -90,7 +97,15 @@ export default function StockPage() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  // Load menu items for autocomplete
+  const loadMenu = useCallback(async () => {
+    try {
+      const res = await api<{ items: MenuItemRef[] }>("/api/pro/menu");
+      setMenuItems(res.items ?? []);
+    } catch {}
+  }, []);
+
+  useEffect(() => { load(); loadMenu(); }, [load, loadMenu]);
 
   // ── Computed ──────────────────────────────────────────────────────────────
   const categories = Array.from(new Set(products.map((p) => p.category))).sort();
@@ -134,12 +149,30 @@ export default function StockPage() {
     setModal("edit");
   }
 
-  function addLinkedDish() {
-    if (!linkedDishInput.trim()) return;
-    if (!form.linkedDishes.includes(linkedDishInput.trim())) {
-      setForm((f) => ({ ...f, linkedDishes: [...f.linkedDishes, linkedDishInput.trim()] }));
+  function addLinkedDish(dishName?: string) {
+    const name = (dishName || linkedDishInput).trim();
+    if (!name) return;
+    if (!form.linkedDishes.includes(name)) {
+      setForm((f) => ({ ...f, linkedDishes: [...f.linkedDishes, name] }));
     }
     setLinkedDishInput("");
+    setShowSuggestions(false);
+    setDishSuggestions([]);
+  }
+
+  function onDishInputChange(value: string) {
+    setLinkedDishInput(value);
+    if (value.trim().length < 1) {
+      setDishSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    const q = value.toLowerCase();
+    const matches = menuItems.filter(
+      (m) => m.name.toLowerCase().includes(q) && !form.linkedDishes.includes(m.name)
+    ).slice(0, 8);
+    setDishSuggestions(matches);
+    setShowSuggestions(matches.length > 0);
   }
 
   async function saveForm() {
@@ -537,33 +570,82 @@ export default function StockPage() {
               {/* Linked dishes */}
               <div>
                 <label className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1.5 block">
-                  Plats liés (optionnel)
+                  Plats lies (recherche dans votre menu)
                 </label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    value={linkedDishInput}
-                    onChange={(e) => setLinkedDishInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addLinkedDish())}
-                    placeholder="Ex: Saumon grillé…"
-                    className="flex-1 bg-white/[0.04] border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={addLinkedDish}
-                    className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/50 text-sm hover:text-white transition-all"
-                  >
-                    +
-                  </button>
+                <div className="relative">
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      value={linkedDishInput}
+                      onChange={(e) => onDishInputChange(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); addLinkedDish(); }
+                        if (e.key === "Escape") { setShowSuggestions(false); }
+                      }}
+                      onFocus={() => { if (linkedDishInput.trim()) onDishInputChange(linkedDishInput); }}
+                      onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                      placeholder="Tapez pour rechercher un plat du menu..."
+                      className="flex-1 bg-white/[0.04] border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => addLinkedDish()}
+                      className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/50 text-sm hover:text-white transition-all"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  {/* Autocomplete dropdown */}
+                  {showSuggestions && dishSuggestions.length > 0 && (
+                    <div className="absolute z-50 left-0 right-12 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
+                      {dishSuggestions.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onMouseDown={(e) => { e.preventDefault(); addLinkedDish(m.name); }}
+                          className="w-full text-left px-4 py-2.5 text-sm hover:bg-orange-500/10 transition-colors flex items-center justify-between gap-2 border-b border-white/[0.04] last:border-0"
+                        >
+                          <span className="text-white font-medium truncate">{m.name}</span>
+                          {m.category && (
+                            <span className="text-[10px] text-white/30 shrink-0 bg-white/[0.05] px-2 py-0.5 rounded-full">{m.category}</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
+
+                {/* Menu items quick-add — show all menu items when input is empty */}
+                {linkedDishInput.trim() === "" && menuItems.length > 0 && form.linkedDishes.length === 0 && (
+                  <div className="mb-3">
+                    <p className="text-[10px] text-white/25 mb-1.5">Plats populaires du menu :</p>
+                    <div className="flex flex-wrap gap-1">
+                      {menuItems.slice(0, 12).map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => addLinkedDish(m.name)}
+                          className="text-[11px] px-2 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-white/40 hover:text-orange-400 hover:border-orange-500/30 transition-all"
+                        >
+                          + {m.name}
+                        </button>
+                      ))}
+                      {menuItems.length > 12 && (
+                        <span className="text-[10px] text-white/20 flex items-center px-2">+{menuItems.length - 12} autres</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {form.linkedDishes.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {form.linkedDishes.map((d) => (
-                      <span key={d} className="flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-white/[0.06] border border-white/10 text-white/60">
+                      <span key={d} className="flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400">
                         {d}
                         <button
                           type="button"
                           onClick={() => setForm((f) => ({ ...f, linkedDishes: f.linkedDishes.filter((x) => x !== d) }))}
-                          className="text-white/30 hover:text-red-400 transition-colors ml-0.5"
+                          className="text-orange-400/50 hover:text-red-400 transition-colors ml-0.5"
                         >
                           ×
                         </button>
