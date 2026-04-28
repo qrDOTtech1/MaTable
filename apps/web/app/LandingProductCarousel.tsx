@@ -193,14 +193,14 @@ export default function LandingProductCarousel() {
   }, []);
 
   return (
-    <section className="border-y border-black bg-[#ffd400] px-4 py-20 text-black md:px-6">
+    <section className="border-y border-white/10 bg-[#0a0a0a] px-4 py-20 text-white md:px-6">
       <div className="mx-auto max-w-6xl">
         <div className="mb-10 text-center">
-          <div className="mx-auto mb-6 inline-block -rotate-2 border-4 border-black px-6 py-2 text-sm font-black uppercase tracking-[0.25em] md:text-xl">Le vrai tableau de bord</div>
-          <h2 className="text-5xl font-black uppercase leading-[0.88] tracking-[-0.06em] md:text-8xl">
+          <div className="mx-auto mb-6 inline-block -rotate-2 border-4 border-white px-6 py-2 text-sm font-black uppercase tracking-[0.25em] md:text-xl text-white">Le vrai tableau de bord</div>
+          <h2 className="text-5xl font-black uppercase leading-[0.88] tracking-[-0.06em] md:text-8xl text-white">
             Pas des slides.<br />Des écrans qui bossent.
           </h2>
-          <p className="mx-auto mt-6 max-w-3xl text-xl font-black leading-tight md:text-3xl">
+          <p className="mx-auto mt-6 max-w-3xl text-xl font-black leading-tight md:text-3xl text-white/80">
             Cuisine, salle, caisse, stats, stock. Tout ce que vous ouvrez pendant le service. Pas après. Pas demain. Maintenant.
           </p>
         </div>
