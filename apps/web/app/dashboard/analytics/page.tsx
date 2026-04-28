@@ -1,7 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { api } from "@/lib/api";
 import Link from "next/link";
+import {
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  BarChart, Bar, Cell
+} from "recharts";
 
 type Analytics = {
   revenueCents: number;
@@ -9,6 +14,7 @@ type Analytics = {
   avgTicketCents: number;
   topItems: Array<{ name: string; qty: number; revenueCents: number }>;
   revenueByServer: Array<{ name: string; revenueCents: number; orders: number }>;
+  revenueByDay: Array<{ date: string; cents: number }>;
 };
 
 type ShoppingEntry = {
@@ -57,6 +63,24 @@ export default function AnalyticsPage() {
   const realFoodCostPct = revenueCents > 0 && totalRealCost > 0
     ? ((totalRealCost / (revenueCents / 100)) * 100)
     : null;
+
+  // Prepare chart data
+  const revenueChartData = useMemo(() => {
+    if (!analytics?.revenueByDay) return [];
+    return analytics.revenueByDay.map(d => ({
+      date: new Date(d.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }),
+      ca: d.cents / 100,
+    }));
+  }, [analytics]);
+
+  const serverRadarData = useMemo(() => {
+    if (!analytics?.revenueByServer) return [];
+    return analytics.revenueByServer.map(s => ({
+      subject: s.name,
+      A: s.revenueCents / 100,
+      fullMark: Math.max(...analytics.revenueByServer.map(x => x.revenueCents / 100)) || 1
+    }));
+  }, [analytics]);
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -116,6 +140,65 @@ export default function AnalyticsPage() {
               </p>
               <p className="text-[10px] text-white/25 mt-0.5">moyenne</p>
             </div>
+          </div>
+
+          {/* ── Graphiques (Recharts) ─────────────────────────────────────── */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Main Area Chart */}
+            <div className="lg:col-span-2 bg-white/[0.03] border border-white/[0.07] rounded-2xl p-6">
+              <h2 className="text-sm font-bold text-white/60 uppercase tracking-widest mb-4">
+                📈 Évolution du CA ({days} jours)
+              </h2>
+              <div className="h-[250px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={revenueChartData}>
+                    <defs>
+                      <linearGradient id="colorCA" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="date" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}€`} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#111', borderColor: '#ffffff20', borderRadius: '12px' }}
+                      itemStyle={{ color: '#10b981', fontWeight: 'bold' }}
+                      formatter={(value: any) => [`${Number(value).toFixed(2)} €`, "CA"]}
+                    />
+                    <Area type="monotone" dataKey="ca" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorCA)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Radar Chart (Serveurs) */}
+            <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-6 flex flex-col">
+              <h2 className="text-sm font-bold text-white/60 uppercase tracking-widest mb-2 text-center">
+                🌟 Performance Serveurs
+              </h2>
+              {serverRadarData.length > 2 ? (
+                <div className="flex-1 min-h-[220px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="65%" data={serverRadarData}>
+                      <PolarGrid stroke="#ffffff20" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#ffffff60', fontSize: 10 }} />
+                      <Radar name="CA" dataKey="A" stroke="#f97316" fill="#f97316" fillOpacity={0.4} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#111', borderColor: '#ffffff20', borderRadius: '12px' }}
+                        formatter={(value: any) => [`${Number(value).toFixed(0)} €`, "CA généré"]}
+                      />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-white/30 text-sm p-4 text-center">
+                  <span className="text-3xl mb-2">🍽️</span>
+                  Pas assez de serveurs différents pour afficher un radar (min 3 requis).
+                </div>
+              )}
+            </div>
+
           </div>
 
           {/* ── Coûts d'achats réels ─────────────────────────────────────────── */}
@@ -219,28 +302,33 @@ export default function AnalyticsPage() {
             )}
           </div>
 
-          {/* ── Top plats + Par serveur ──────────────────────────────────────── */}
+          {/* ── Top plats + Par serveur (avec mini charts) ──────────────────────────────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
-              <h2 className="text-sm font-bold text-white/60 uppercase tracking-widest mb-3">
-                🔥 Top 10 plats
+              <h2 className="text-sm font-bold text-white/60 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <span>🔥</span> Top 10 plats
               </h2>
-              <div className="space-y-2">
-                {analytics.topItems.slice(0, 10).map((item, idx) => (
-                  <div
-                    key={item.name}
-                    className="flex items-center gap-3 bg-white/[0.03] border border-white/[0.07] rounded-xl px-4 py-3"
-                  >
-                    <span className="text-xs text-white/30 w-6 text-right shrink-0">
-                      {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`}
-                    </span>
-                    <span className="flex-1 text-sm text-white truncate">{item.name}</span>
-                    <span className="text-xs text-white/40 shrink-0">{item.qty} ventes</span>
-                    <span className="text-sm font-black text-orange-400 shrink-0">
-                      {fmtEur(item.revenueCents)}
-                    </span>
-                  </div>
-                ))}
+              <div className="space-y-2 relative">
+                {analytics.topItems.slice(0, 10).map((item, idx) => {
+                  const maxQty = Math.max(...analytics.topItems.map(i => i.qty)) || 1;
+                  const pct = (item.qty / maxQty) * 100;
+                  return (
+                    <div
+                      key={item.name}
+                      className="relative overflow-hidden flex items-center gap-3 bg-white/[0.02] border border-white/[0.05] rounded-xl px-4 py-3"
+                    >
+                      <div className="absolute left-0 top-0 bottom-0 bg-orange-500/10 pointer-events-none" style={{ width: `${pct}%` }} />
+                      <span className="text-xs font-bold text-white/30 w-6 text-right shrink-0 relative z-10">
+                        {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`}
+                      </span>
+                      <span className="flex-1 text-sm font-semibold text-white truncate relative z-10">{item.name}</span>
+                      <span className="text-xs text-white/50 shrink-0 relative z-10">{item.qty} ventes</span>
+                      <span className="text-sm font-black text-orange-400 shrink-0 relative z-10">
+                        {fmtEur(item.revenueCents)}
+                      </span>
+                    </div>
+                  );
+                })}
                 {analytics.topItems.length === 0 && (
                   <p className="text-white/30 text-sm text-center py-6">Aucune vente sur la période</p>
                 )}
@@ -248,26 +336,32 @@ export default function AnalyticsPage() {
             </div>
 
             <div>
-              <h2 className="text-sm font-bold text-white/60 uppercase tracking-widest mb-3">
-                👥 Par serveur
+              <h2 className="text-sm font-bold text-white/60 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <span>👥</span> Top Serveurs
               </h2>
               <div className="space-y-2">
-                {analytics.revenueByServer.map((server) => (
-                  <div
-                    key={server.name}
-                    className="flex items-center gap-3 bg-white/[0.03] border border-white/[0.07] rounded-xl px-4 py-3"
-                  >
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-white">{server.name}</p>
-                      <p className="text-xs text-white/40">
-                        {server.orders} commande{server.orders > 1 ? "s" : ""}
+                {analytics.revenueByServer.map((server, idx) => {
+                   const maxRev = Math.max(...analytics.revenueByServer.map(s => s.revenueCents)) || 1;
+                   const pct = (server.revenueCents / maxRev) * 100;
+                   return (
+                    <div
+                      key={server.name}
+                      className="relative overflow-hidden flex items-center gap-3 bg-white/[0.02] border border-white/[0.05] rounded-xl px-4 py-3"
+                    >
+                      <div className="absolute left-0 top-0 bottom-0 bg-emerald-500/10 pointer-events-none" style={{ width: `${pct}%` }} />
+                      <span className="text-xs font-bold text-white/30 w-4 text-right shrink-0 relative z-10">{idx + 1}</span>
+                      <div className="flex-1 relative z-10">
+                        <p className="text-sm font-semibold text-white truncate">{server.name}</p>
+                        <p className="text-[10px] text-white/40">
+                          {server.orders} commande{server.orders > 1 ? "s" : ""}
+                        </p>
+                      </div>
+                      <p className="text-sm font-black text-emerald-400 relative z-10">
+                        {fmtEur(server.revenueCents)}
                       </p>
                     </div>
-                    <p className="text-sm font-black text-emerald-400">
-                      {fmtEur(server.revenueCents)}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
                 {analytics.revenueByServer.length === 0 && (
                   <p className="text-white/30 text-sm text-center py-6">Aucun serveur sur la période</p>
                 )}
