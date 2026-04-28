@@ -5,14 +5,14 @@ import { api } from "@/lib/api";
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type HistoryEntry = {
   id: string;
-  type: "STOCK" | "MENU" | "CHAT" | "PLANNING" | "FINANCE";
+  type: "STOCK" | "MENU" | "CHAT" | "PLANNING" | "FINANCE" | "NOVACONTAB";
   title: string;
   outputData: any;
   createdAt: string;
 };
 
 interface IaHistoryPanelProps {
-  type: "STOCK" | "MENU" | "CHAT" | "PLANNING" | "FINANCE";
+  type: "STOCK" | "MENU" | "CHAT" | "PLANNING" | "FINANCE" | "NOVACONTAB";
   onRestore: (entry: HistoryEntry) => void;
   /** bump this value to trigger a refresh after a new save */
   refreshKey?: number;

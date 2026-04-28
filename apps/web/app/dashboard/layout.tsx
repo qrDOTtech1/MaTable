@@ -69,6 +69,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
       label: "ANALYSE",
       items: [
         { href: "/dashboard/analytics", icon: "📊", label: "Statistiques" },
+        { href: "/dashboard/novacontab", icon: "🧮", label: "URSSAF & TVA" },
         { href: "/dashboard/reviews", icon: "⭐", label: "Avis" },
         { href: "/dashboard/reservations", icon: "📅", label: "Réservations" },
         { href: "/dashboard/invoices", icon: "🧾", label: "Factures" },
@@ -208,7 +209,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
             <div className="mt-6 mx-1 p-3 rounded-xl bg-gradient-to-br from-purple-500/10 to-violet-500/5 border border-purple-500/20">
               <p className="text-xs font-bold text-purple-300 mb-1">✨ Nova IA</p>
               <p className="text-[11px] text-white/40 mb-2 leading-relaxed">
-                Stock IA, Menu Generator, Chatbot, Magic Scan & plus.
+                NovaContab IA, Stock, Menu Generator, Chatbot & plus.
               </p>
               <a
                 href="mailto:contact@novavivo.online?subject=Upgrade PRO_IA"
