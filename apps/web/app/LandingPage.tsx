@@ -235,41 +235,27 @@ export default function LandingPage() {
             </motion.div>
           </div>
 
-          {/* Floating UI Elements Showcase */}
-          <div className="w-full max-w-6xl relative h-64 md:h-96 perspective-[2000px]">
+          {/* ── Defi / Prouvez-nous qu'on a tort (Hero placement) ────────────────── */}
+          <div className="w-full max-w-6xl relative perspective-[2000px] mt-10">
             <motion.div 
               initial={{ opacity: 0, rotateX: 20, y: 100 }}
               animate={{ opacity: 1, rotateX: 0, y: 0 }}
               transition={{ delay: 0.6, duration: 1.2, type: "spring", stiffness: 50 }}
-              className="absolute left-1/2 top-0 -translate-x-1/2 w-[90%] md:w-[800px] h-full bg-[#111] rounded-t-3xl border border-white/10 shadow-2xl overflow-hidden flex flex-col"
+              className="relative z-10 max-w-4xl mx-auto text-center border border-white/10 bg-black/40 backdrop-blur-xl rounded-[2rem] p-10 md:p-16 shadow-2xl"
             >
-              <div className="h-12 bg-[#1a1a1a] border-b border-white/5 flex items-center px-4 gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500" />
-                <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                <div className="w-3 h-3 rounded-full bg-green-500" />
-                <div className="ml-4 text-xs font-medium text-white/30">matable.pro/dashboard/serveurdash</div>
+              <div className="absolute inset-0 bg-gradient-to-b from-orange-500/5 to-transparent rounded-[2rem] pointer-events-none" />
+              
+              <div className="inline-block px-4 py-1 border-2 border-white/20 text-white font-black tracking-widest text-sm mb-10 rotate-[-2deg]">
+                LE DÉFI OFFICIEL
               </div>
-              <div className="flex-1 p-6 bg-gradient-to-br from-[#0f0f0f] to-[#1a1a1a] flex gap-6">
-                <div className="w-1/3 space-y-4">
-                  <div className="h-20 rounded-xl bg-orange-500/10 border border-orange-500/20 p-4">
-                    <div className="text-orange-400 text-sm font-bold mb-1">🛎️ Appel Serveur</div>
-                    <div className="text-white text-xs">Table 4 - L'addition</div>
-                  </div>
-                  <div className="h-24 rounded-xl bg-white/5 border border-white/10 p-4">
-                    <div className="text-white/60 text-sm font-bold mb-2">T7 - En preparation</div>
-                    <div className="h-2 bg-white/10 rounded-full overflow-hidden"><div className="h-full w-2/3 bg-orange-500 rounded-full" /></div>
-                  </div>
-                </div>
-                <div className="flex-1 rounded-xl bg-white/5 border border-white/10 p-4 relative overflow-hidden">
-                   <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/5 to-transparent" />
-                   <div className="text-white text-sm font-bold mb-4">Nova Sommelier IA ✨</div>
-                   <div className="space-y-2">
-                     <div className="h-6 w-3/4 bg-white/10 rounded-md" />
-                     <div className="h-6 w-1/2 bg-white/10 rounded-md" />
-                     <div className="h-6 w-5/6 bg-white/10 rounded-md" />
-                   </div>
-                </div>
-              </div>
+              
+              <h2 className="text-5xl md:text-7xl lg:text-8xl font-black mb-8 leading-[0.9] text-white">
+                PROUVEZ-NOUS<br />QU'ON A TORT.
+              </h2>
+              
+              <p className="text-xl md:text-2xl font-bold text-white/80 max-w-3xl mx-auto leading-snug">
+                Installez Ma Table. Si vous ne gagnez pas plus d'argent et ne gagnez pas de temps dans les 14 premiers jours, désinstallez-le. On s'inclinera.
+              </p>
             </motion.div>
           </div>
         </motion.section>
@@ -536,29 +522,6 @@ export default function LandingPage() {
         </section>
 
         <LandingTestimonials />
-
-        {/* ── Defi / Prouvez-nous qu'on a tort ────────────────────────────────── */}
-        <section className="border-b border-white/5 bg-black px-6 py-32 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-orange-500/5 to-transparent pointer-events-none" />
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="relative z-10 max-w-4xl mx-auto text-center"
-          >
-            <div className="inline-block px-4 py-1 border-2 border-white/20 text-white font-black tracking-widest text-sm mb-12 rotate-[-2deg]">
-              LE DÉFI OFFICIEL
-            </div>
-            
-            <h2 className="text-6xl md:text-8xl lg:text-9xl font-black mb-10 leading-[0.9] text-white">
-              PROUVEZ-NOUS<br />QU'ON A TORT.
-            </h2>
-            
-            <p className="text-2xl md:text-3xl font-bold text-white/80 max-w-3xl mx-auto leading-snug">
-              Installez Ma Table. Si vous ne gagnez pas plus d'argent et ne gagnez pas de temps dans les 14 premiers jours, désinstallez-le. On s'inclinera.
-            </p>
-          </motion.div>
-        </section>
 
         {/* ── Final CTA ───────────────────────────────────────────────────────── */}
         <section className="py-32 px-6 relative overflow-hidden text-center">
