@@ -291,9 +291,13 @@ export default function NovaMenuGeneratorPage() {
   const [improving, setImproving] = useState(false);
   const [improveProgress, setImproveProgress] = useState<string | null>(null);
   const [improvedCount, setImprovedCount] = useState(0);
+  const [improvedItems, setImprovedItems] = useState<Array<any>>([]);
+  const [newBeverageSuggestions, setNewBeverageSuggestions] = useState<string[]>([]);
+  const [addingBeverages, setAddingBeverages] = useState(false);
 
   const improvePairings = async () => {
-    setImproving(true); setError(null); setImproveProgress("Connexion à Nova Sommelier..."); setImprovedCount(0);
+    setImproving(true); setError(null); setImproveProgress("Connexion à Nova Sommelier..."); 
+    setImprovedCount(0); setImprovedItems([]); setNewBeverageSuggestions([]);
     try {
       const stream = await apiStream("/api/pro/ia/menu-improve-pairings", {});
       for await (const event of stream) {
@@ -301,6 +305,8 @@ export default function NovaMenuGeneratorPage() {
           setImproveProgress("Nova analyse vos plats et recherche les meilleurs accords...");
         } else if (event.type === "result") {
           setImprovedCount(Number(event.updatedCount) || 0);
+          setImprovedItems(event.improvements as any[] || []);
+          setNewBeverageSuggestions(event.newBeverageSuggestions as string[] || []);
           setHistoryKey(k => k + 1);
         } else if (event.type === "error") {
           throw new Error((event.message as string) || "Erreur IA");
@@ -312,6 +318,27 @@ export default function NovaMenuGeneratorPage() {
     } finally {
       setImproving(false);
       setImproveProgress(null);
+    }
+  };
+
+  const addNewBeverages = async (bevs: string[]) => {
+    if (!bevs.length) return;
+    setAddingBeverages(true);
+    try {
+      const itemsToCreate = bevs.map(b => ({
+        name: b,
+        priceCents: 0,
+        category: "Boissons (Nouvelles suggestions)",
+        available: false, // Default to out of stock
+        waitMinutes: 0
+      }));
+      await api("/api/pro/ia/menu-generate/apply", { method: "POST", body: JSON.stringify({ items: itemsToCreate }) });
+      setNewBeverageSuggestions(prev => prev.filter(b => !bevs.includes(b)));
+      alert(`${bevs.length} boisson(s) ajoutée(s) au menu (en rupture de stock). N'oubliez pas de les ajouter à votre liste de courses !`);
+    } catch (e: any) {
+      setError("Erreur lors de l'ajout des boissons : " + e.message);
+    } finally {
+      setAddingBeverages(false);
     }
   };
 
@@ -375,17 +402,83 @@ export default function NovaMenuGeneratorPage() {
                 <p className="text-xs text-white/40 mt-2">Cela peut prendre 1 à 2 minutes selon la taille de votre menu.</p>
               </div>
             ) : improvedCount > 0 ? (
-              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-6 text-center">
-                <div className="text-4xl mb-3">✅</div>
-                <h3 className="text-lg font-bold text-emerald-400 mb-1">Analyse terminée !</h3>
-                <p className="text-sm text-white/60">
-                  <strong className="text-emerald-400">{improvedCount} plats</strong> ont été mis à jour avec de nouveaux accords et suggestions d'up-selling.
-                </p>
-                <div className="mt-6 flex justify-center gap-4">
-                  <button onClick={() => setImprovedCount(0)} className="px-5 py-2.5 bg-white/[0.05] hover:bg-white/[0.1] text-white/60 hover:text-white rounded-xl text-sm transition-colors border border-white/10">
-                    Relancer une analyse
-                  </button>
+              <div className="space-y-6">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-6 text-center">
+                  <div className="text-4xl mb-3">✅</div>
+                  <h3 className="text-lg font-bold text-emerald-400 mb-1">Analyse terminée !</h3>
+                  <p className="text-sm text-white/60">
+                    <strong className="text-emerald-400">{improvedCount} plats</strong> ont été mis à jour avec de nouveaux accords et suggestions d'up-selling.
+                  </p>
+                  <div className="mt-4 flex justify-center gap-4">
+                    <button onClick={() => setImprovedCount(0)} className="px-4 py-2 bg-white/[0.05] hover:bg-white/[0.1] text-white/60 hover:text-white rounded-lg text-sm transition-colors border border-white/10">
+                      Faire une nouvelle analyse
+                    </button>
+                    <a href="/dashboard/menu" className="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 font-bold rounded-lg text-sm transition-colors border border-emerald-500/30">
+                      Voir mon menu
+                    </a>
+                  </div>
                 </div>
+
+                {newBeverageSuggestions.length > 0 && (
+                  <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-5 animate-in slide-in-from-bottom-4">
+                    <h3 className="font-bold text-orange-400 mb-2 flex items-center gap-2">
+                      <span>💡</span> Nouvelles boissons suggérées par l'IA
+                    </h3>
+                    <p className="text-xs text-white/60 mb-4">
+                      Nova a remarqué que ces boissons manquent à votre carte pour proposer des accords parfaits avec vos plats existants. Voulez-vous les ajouter à votre menu (en rupture de stock pour que vous puissiez les commander) ?
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                      {newBeverageSuggestions.map((bev, i) => (
+                        <div key={i} className="px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-sm text-white/80 truncate">
+                          {bev}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-4 flex gap-3">
+                      <button
+                        onClick={() => addNewBeverages(newBeverageSuggestions)}
+                        disabled={addingBeverages}
+                        className="px-4 py-2.5 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-lg text-sm transition-colors disabled:opacity-50"
+                      >
+                        {addingBeverages ? "Ajout..." : `+ Ajouter ces ${newBeverageSuggestions.length} boissons à ma carte`}
+                      </button>
+                      <a href="/dashboard/shopping" className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white font-semibold rounded-lg text-sm transition-colors">
+                        Aller aux listes de courses →
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {improvedItems.length > 0 && (
+                  <div className="mt-6 space-y-3">
+                    <h3 className="text-sm font-bold text-white/40 uppercase tracking-widest px-1">Détail des plats mis à jour</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                      {improvedItems.map((item, i) => (
+                        <div key={i} className="bg-black/40 border border-white/[0.06] rounded-xl p-4">
+                          <p className="font-bold text-white mb-2">{item.dishName || `Plat #${item.menuItemId}`}</p>
+                          <div className="space-y-2">
+                            {item.suggestedPairings?.length > 0 && (
+                              <div>
+                                <p className="text-[10px] text-purple-400 font-bold uppercase mb-1">Accords (Textes)</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {item.suggestedPairings.map((p: string, idx: number) => (
+                                    <span key={idx} className="text-xs px-2 py-0.5 bg-purple-500/10 text-purple-300 rounded border border-purple-500/20">{p}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {item.upsellItemIds?.length > 0 && (
+                              <div>
+                                <p className="text-[10px] text-orange-400 font-bold uppercase mb-1">Up-selling (Plats liés)</p>
+                                <p className="text-xs text-white/50">{item.upsellItemIds.length} produit(s) de la carte lié(s)</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <button
