@@ -345,6 +345,9 @@ export default function OrderPage() {
     finally { setSubmittingReview(false); }
   }
 
+  const [currentCatIdx, setCurrentCatIdx] = useState(0);
+  const [viewMode, setViewMode] = useState<"steps" | "full">("steps");
+
   if (error) return <main className="min-h-screen flex items-center justify-center text-white/50">{error}</main>;
   if (!info)  return (
     <main className="min-h-screen flex items-center justify-center">
@@ -367,8 +370,6 @@ export default function OrderPage() {
     const ib = PHASE_ORDER.findIndex(p => b.toLowerCase().includes(p.toLowerCase()));
     return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
   });
-  const [currentCatIdx, setCurrentCatIdx] = useState(0);
-  const [viewMode, setViewMode] = useState<"steps" | "full">("steps");
   
   // Make sure we have a valid index even if sortedCats changes
   const safeIdx = Math.min(Math.max(0, currentCatIdx), Math.max(0, sortedCats.length - 1));
