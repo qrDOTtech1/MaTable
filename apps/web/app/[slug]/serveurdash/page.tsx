@@ -10,6 +10,7 @@ type RestaurantInfo = { id: string; name: string; subscription: string };
 type Schedule = { dayOfWeek: number; openMin: number; closeMin: number };
 type Note = { id: string; content: string; updatedAt: string };
 type Challenge = { id: string; title: string; done: boolean; dueDate?: string | null };
+type ServiceCall = { id: string; tableId: string; table: { id: string; number: number }; reason?: string | null; createdAt: string };
 type Order = { id: string; status: string; totalCents: number; items: any[]; createdAt: string };
 type SplitPart = {
   id: string; label: string; amountCents: number;
@@ -138,6 +139,9 @@ export default function ServeurDashPage() {
   const [globalChallenges, setGlobalChallenges] = useState<Challenge[]>([]);
   const [generatingChallenges, setGeneratingChallenges] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [serviceCalls, setServiceCalls] = useState<ServiceCall[]>([]);
+  const [resolvingCall, setResolvingCall] = useState<string | null>(null);
+  const [closedSessionReceipt, setClosedSessionReceipt] = useState<{ sessionId: string; tableNumber: number } | null>(null);
   const [tab, setTab] = useState<Tab>("tables");
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -181,10 +185,11 @@ export default function ServeurDashPage() {
   // ── Load data ─────────────────────────────────────────────────────────────
   const loadAll = useCallback(async () => {
     try {
-      const [meRes, tablesRes, statsRes] = await Promise.all([
+      const [meRes, tablesRes, statsRes, callsRes] = await Promise.all([
         serverFetch<{ server: any; restaurant: RestaurantInfo }>("/api/server/me"),
         serverFetch<{ sessions: TableSession[]; allTables: TableMap[]; myEmptyTables?: EmptyTable[] }>("/api/server/tables"),
         serverFetch<Stats>("/api/server/stats"),
+        serverFetch<{ calls: ServiceCall[] }>("/api/server/service-calls"),
       ]);
       setServer({ id: meRes.server.id, name: meRes.server.name, photoUrl: meRes.server.photoUrl });
       setRestaurant(meRes.restaurant);
@@ -196,6 +201,7 @@ export default function ServeurDashPage() {
       setAllTables(tablesRes.allTables);
       setMyEmptyTables(tablesRes.myEmptyTables ?? []);
       setStats(statsRes);
+      setServiceCalls(callsRes.calls ?? []);
     } catch {
       // token invalid → redirect handled in serverFetch
     } finally {
@@ -221,8 +227,10 @@ export default function ServeurDashPage() {
 
     const refreshData = () => {
       serverFetch<{ sessions: TableSession[]; allTables: TableMap[]; myEmptyTables?: EmptyTable[] }>("/api/server/tables")
-        .then((r) => { setSessions(r.sessions); setAllTables(r.allTables); });
+        .then((r) => { setSessions(r.sessions); setAllTables(r.allTables); setMyEmptyTables(r.myEmptyTables ?? []); });
       serverFetch<Stats>("/api/server/stats").then(setStats);
+      serverFetch<{ calls: ServiceCall[] }>("/api/server/service-calls")
+        .then((r) => setServiceCalls(r.calls ?? []));
     };
 
     socket.on("order:new", (data: any) => {
@@ -274,8 +282,25 @@ export default function ServeurDashPage() {
       refreshData();
     });
 
-    return () => void socket.disconnect();
+    // Fallback polling every 15s in case socket disconnects
+    const pollInterval = setInterval(refreshData, 15000);
+
+    return () => {
+      socket.disconnect();
+      clearInterval(pollInterval);
+    };
   }, [restaurant?.id, server?.id]);
+
+  // ── Service call actions ───────────────────────────────────────────────────
+  async function resolveServiceCall(callId: string) {
+    setResolvingCall(callId);
+    try {
+      await serverFetch("/api/server/service-calls/" + callId + "/resolve", { method: "POST" });
+      setServiceCalls((prev) => prev.filter((c) => c.id !== callId));
+    } catch { } finally {
+      setResolvingCall(null);
+    }
+  }
 
   // ── Note actions ──────────────────────────────────────────────────────────
   async function addNote() {
@@ -397,9 +422,14 @@ export default function ServeurDashPage() {
   async function closeSession(sessionId: string, mode: string) {
     setClosing(sessionId);
     try {
+      const session = sessions.find((s) => s.id === sessionId);
       await serverFetch(`/api/server/tables/${sessionId}/close`, {
         method: "POST", body: JSON.stringify({ paymentMode: mode }),
       });
+      // Show receipt link for the closed session
+      if (session) {
+        setClosedSessionReceipt({ sessionId, tableNumber: session.table.number });
+      }
       loadAll();
     } catch { } finally { setClosing(null); }
   }
@@ -498,7 +528,7 @@ export default function ServeurDashPage() {
   const todaySchedule = schedules.filter((s) => s.dayOfWeek === todayDow);
 
   const TABS: { id: Tab; icon: string; label: string; badge?: number }[] = [
-    { id: "tables", icon: "🪑", label: "Mes tables", badge: pendingOrders.length || undefined },
+    { id: "tables", icon: "🪑", label: "Mes tables", badge: (pendingOrders.length + serviceCalls.length) || undefined },
     { id: "order", icon: "🛒", label: "Commander", badge: cart.length || undefined },
     { id: "planning", icon: "🗓️", label: "Planning" },
     { id: "notes", icon: "📝", label: "Notes", badge: notes.length || undefined },
@@ -559,6 +589,56 @@ export default function ServeurDashPage() {
         {/* ── TABLES ─────────────────────────────────────────────── */}
         {tab === "tables" && (
           <div className="space-y-4">
+
+            {/* ── Service Calls Alert ──────────────────────────────── */}
+            {serviceCalls.length > 0 && (
+              <div className="rounded-2xl bg-red-500/10 border border-red-500/30 overflow-hidden animate-pulse-slow">
+                <div className="px-5 py-3 border-b border-red-500/20 flex items-center gap-2">
+                  <span className="text-xl">🛎️</span>
+                  <p className="text-sm font-bold text-red-300">Appels en attente · {serviceCalls.length}</p>
+                </div>
+                <div className="divide-y divide-red-500/10">
+                  {serviceCalls.map((call) => (
+                    <div key={call.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <span className="text-lg font-black text-red-400">T{call.table.number}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-white/80 truncate">{call.reason || "Appel serveur"}</p>
+                          <p className="text-[10px] text-white/30">
+                            {new Date(call.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                            {" · "}
+                            {(() => {
+                              const mins = Math.floor((Date.now() - new Date(call.createdAt).getTime()) / 60000);
+                              return mins < 1 ? "à l'instant" : `il y a ${mins} min`;
+                            })()}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => resolveServiceCall(call.id)}
+                        disabled={resolvingCall === call.id}
+                        className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold transition-all shrink-0"
+                      >
+                        {resolvingCall === call.id ? "…" : "✓ J'y vais"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── Closed session receipt toast ────────────────────── */}
+            {closedSessionReceipt && (
+              <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/30 p-4 flex items-center gap-3">
+                <span className="text-2xl">🧾</span>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-emerald-300">Session Table {closedSessionReceipt.tableNumber} fermée</p>
+                  <p className="text-xs text-white/40">Le client peut recevoir son ticket par email</p>
+                </div>
+                <button onClick={() => setClosedSessionReceipt(null)} className="text-white/30 hover:text-white/60 text-lg">✕</button>
+              </div>
+            )}
+
             {/* Quick stats */}
             <div className="grid grid-cols-3 gap-3">
               <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4 text-center">

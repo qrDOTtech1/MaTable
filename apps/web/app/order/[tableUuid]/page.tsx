@@ -166,6 +166,8 @@ export default function OrderPage() {
 
   const [invoiceEmail, setInvoiceEmail]   = useState("");
   const [paidSessionId, setPaidSessionId] = useState<string | null>(null);
+  const [invoiceSent, setInvoiceSent]     = useState(false);
+  const [invoiceSending, setInvoiceSending] = useState(false);
 
   // ── Upsell Drawer State ──
   const [upsellItem, setUpsellItem] = useState<MenuItem | null>(null);
@@ -679,27 +681,77 @@ export default function OrderPage() {
             />
           </div>
 
-          {/* Boutons paiement */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <button
-              onClick={async () => { try { await requestBill("CARD"); } catch {} await payByCard(); }}
-              className="py-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-sm transition-all"
-            >
-              💳 Payer par carte
-            </button>
-            <button
-              onClick={() => requestBill("COUNTER")}
-              className="py-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white/80 font-bold text-sm transition-all"
-            >
-              🏪 Caisse
-            </button>
-            <button
-              onClick={() => requestBill("CASH")}
-              className="py-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white/80 font-bold text-sm transition-all"
-            >
-              💵 Espèces
-            </button>
-          </div>
+           {/* Boutons paiement */}
+          {!billMode ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button
+                onClick={async () => { try { await requestBill("CARD"); } catch {} await payByCard(); }}
+                className="py-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-sm transition-all"
+              >
+                💳 Payer par carte
+              </button>
+              <button
+                onClick={() => requestBill("COUNTER")}
+                className="py-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white/80 font-bold text-sm transition-all"
+              >
+                🏪 Caisse
+              </button>
+              <button
+                onClick={() => requestBill("CASH")}
+                className="py-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white/80 font-bold text-sm transition-all"
+              >
+                💵 Espèces
+              </button>
+            </div>
+          ) : (billMode === "CASH" || billMode === "COUNTER") && (
+            <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-4 space-y-3 text-center">
+              <p className="text-sm text-amber-300 font-bold">
+                {billMode === "CASH" ? "💵 Votre serveur arrive pour l'encaissement" : "🏪 Rendez-vous en caisse"}
+              </p>
+              <p className="text-xs text-white/40">
+                {billMode === "CASH" ? "Merci de patienter, un serveur vient à votre table." : "Veuillez vous rendre en caisse pour régler."}
+              </p>
+              {/* Email receipt for non-card payments */}
+              {sessionId && !invoiceSent && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-[11px] text-white/50">Recevoir votre ticket par email :</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      placeholder="votre@email.com"
+                      value={invoiceEmail}
+                      onChange={e => setInvoiceEmail(e.target.value)}
+                      className="flex-1 bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-sm placeholder-white/20 focus:outline-none focus:border-orange-500/50"
+                    />
+                    {invoiceEmail.includes("@") && (
+                      <button
+                        onClick={async () => {
+                          setInvoiceSending(true);
+                          try {
+                            const res = await fetch(`${API_URL}/api/invoice/${sessionId}/send`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ email: invoiceEmail }),
+                            });
+                            if (res.ok) setInvoiceSent(true);
+                            else alert("Erreur lors de l'envoi. Reessayez.");
+                          } catch { alert("Erreur reseau"); }
+                          finally { setInvoiceSending(false); }
+                        }}
+                        disabled={invoiceSending}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-bold text-sm rounded-xl transition-all shrink-0"
+                      >
+                        {invoiceSending ? "..." : "Envoyer"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+              {invoiceSent && (
+                <p className="text-xs text-emerald-400 font-medium mt-2">Ticket envoye a {invoiceEmail}</p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
