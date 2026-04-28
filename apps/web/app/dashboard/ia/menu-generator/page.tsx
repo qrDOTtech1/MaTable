@@ -75,6 +75,9 @@ const CUISINE_PRESETS = [
 
 // ── Composant principal ───────────────────────────────────────────────────────
 export default function NovaMenuGeneratorPage() {
+  // Main Tab
+  const [mainTab, setMainTab] = useState<"CREATE" | "IMPROVE">("CREATE");
+
   // Mode: "generate" = créer de zéro | "import" = importer photo
   const [mode, setMode] = useState<"generate" | "import">("generate");
 
@@ -285,6 +288,33 @@ export default function NovaMenuGeneratorPage() {
     finally { setApplying(false); }
   };
 
+  const [improving, setImproving] = useState(false);
+  const [improveProgress, setImproveProgress] = useState<string | null>(null);
+  const [improvedCount, setImprovedCount] = useState(0);
+
+  const improvePairings = async () => {
+    setImproving(true); setError(null); setImproveProgress("Connexion à Nova Sommelier..."); setImprovedCount(0);
+    try {
+      const stream = await apiStream("/api/pro/ia/menu-improve-pairings", {});
+      for await (const event of stream) {
+        if (event.type === "progress") {
+          setImproveProgress("Nova analyse vos plats et recherche les meilleurs accords...");
+        } else if (event.type === "result") {
+          setImprovedCount(Number(event.updatedCount) || 0);
+          setHistoryKey(k => k + 1);
+        } else if (event.type === "error") {
+          throw new Error((event.message as string) || "Erreur IA");
+        }
+      }
+    } catch (e: any) {
+      if (e.message?.includes("403")) setError("Abonnement PRO_IA requis.");
+      else setError("Erreur lors de l'analyse : " + e.message);
+    } finally {
+      setImproving(false);
+      setImproveProgress(null);
+    }
+  };
+
   return (
     <div className="p-8 max-w-6xl space-y-6">
 
@@ -295,28 +325,96 @@ export default function NovaMenuGeneratorPage() {
             <span className="text-3xl">🍽️</span> Nova Menu IA
           </h1>
           <p className="text-sm text-white/40 mt-1">
-            Générez un menu complet de zéro ou importez votre carte existante depuis une photo.
+            Générez un menu, importez une photo, ou améliorez votre carte existante avec Nova Sommelier.
           </p>
         </div>
         <IaHistoryPanel type="MENU" onRestore={onRestoreHistory} refreshKey={historyKey} />
       </div>
 
-      {/* Sélecteur de mode */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Main Tabs */}
+      <div className="flex bg-white/[0.03] border border-white/[0.08] p-1 rounded-2xl w-fit">
         <button
-          onClick={() => setMode("generate")}
-          className={`rounded-2xl border p-5 text-left transition-all ${
-            mode === "generate"
-              ? "border-orange-500/40 bg-orange-500/10"
-              : "border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.04]"
-          }`}
+          onClick={() => setMainTab("CREATE")}
+          className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${mainTab === "CREATE" ? "bg-orange-500 text-white shadow-lg" : "text-white/50 hover:text-white"}`}
         >
-          <div className="text-3xl mb-2">✨</div>
-          <h2 className={`font-bold text-sm ${mode === "generate" ? "text-orange-400" : "text-white"}`}>
-            Générer un menu
-          </h2>
-          <p className="text-xs text-white/40 mt-1">L'IA crée une carte complète à partir de votre style de cuisine</p>
+          Créer un Menu
         </button>
+        <button
+          onClick={() => setMainTab("IMPROVE")}
+          className={`px-6 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${mainTab === "IMPROVE" ? "bg-purple-500 text-white shadow-lg" : "text-white/50 hover:text-white"}`}
+        >
+          <span>✨</span> Accords & Up-Selling
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm">
+          {error}
+        </div>
+      )}
+
+      {mainTab === "IMPROVE" ? (
+        <div className="bg-gradient-to-br from-purple-500/10 to-violet-500/5 border border-purple-500/20 rounded-2xl p-8 space-y-6 animate-in fade-in">
+          <div>
+            <h2 className="text-xl font-bold text-purple-300 flex items-center gap-2 mb-2">
+              <span>✨</span> Nova Sommelier
+            </h2>
+            <p className="text-sm text-white/60 leading-relaxed max-w-3xl">
+              Laissez l'intelligence artificielle analyser tous les plats de votre carte actuelle. Pour chaque plat, Nova trouvera le meilleur accord (vin, bière, boisson) et suggèrera des produits croisés (up-selling) parmi ce qui existe déjà dans votre menu.
+            </p>
+            <p className="text-xs text-purple-300 mt-3 font-semibold bg-purple-500/10 inline-block px-3 py-1.5 rounded-lg border border-purple-500/20">
+              Note : Ces suggestions apparaîtront automatiquement sur le QR code de vos clients lorsqu'ils commanderont pour augmenter le ticket moyen.
+            </p>
+          </div>
+
+          <div className="pt-4 border-t border-purple-500/20">
+            {improving ? (
+              <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-6 text-center">
+                <div className="w-8 h-8 mx-auto border-4 border-purple-500/30 border-t-purple-400 rounded-full animate-spin mb-4" />
+                <p className="text-sm font-bold text-purple-300">{improveProgress}</p>
+                <p className="text-xs text-white/40 mt-2">Cela peut prendre 1 à 2 minutes selon la taille de votre menu.</p>
+              </div>
+            ) : improvedCount > 0 ? (
+              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-6 text-center">
+                <div className="text-4xl mb-3">✅</div>
+                <h3 className="text-lg font-bold text-emerald-400 mb-1">Analyse terminée !</h3>
+                <p className="text-sm text-white/60">
+                  <strong className="text-emerald-400">{improvedCount} plats</strong> ont été mis à jour avec de nouveaux accords et suggestions d'up-selling.
+                </p>
+                <div className="mt-6 flex justify-center gap-4">
+                  <button onClick={() => setImprovedCount(0)} className="px-5 py-2.5 bg-white/[0.05] hover:bg-white/[0.1] text-white/60 hover:text-white rounded-xl text-sm transition-colors border border-white/10">
+                    Relancer une analyse
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={improvePairings}
+                className="w-full sm:w-auto px-8 py-3.5 bg-purple-600 hover:bg-purple-500 text-white font-black rounded-xl transition-all shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2"
+              >
+                <span>✨</span> Lancer l'analyse du menu
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Sélecteur de mode CREATE */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setMode("generate")}
+              className={`rounded-2xl border p-5 text-left transition-all ${
+                mode === "generate"
+                  ? "border-orange-500/40 bg-orange-500/10"
+                  : "border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.04]"
+              }`}
+            >
+              <div className="text-3xl mb-2">✨</div>
+              <h2 className={`font-bold text-sm ${mode === "generate" ? "text-orange-400" : "text-white"}`}>
+                Générer un menu
+              </h2>
+              <p className="text-xs text-white/40 mt-1">L'IA crée une carte complète à partir de votre style de cuisine</p>
+            </button>
 
         <button
           onClick={() => setMode("import")}
@@ -723,13 +821,13 @@ export default function NovaMenuGeneratorPage() {
       {/* Empty state */}
       {!items.length && !loading && !error && (
         <div className="text-center py-16 text-white/30">
-          <div className="text-5xl mb-3">{mode === "import" ? "📸" : "✨"}</div>
-          <p className="text-sm">
-            {mode === "import"
-              ? "Importez jusqu'à 5 photos de votre carte pour commencer"
-              : "Choisissez un type de cuisine et générez votre menu"}
-          </p>
+          <div className="text-5xl mb-3">🍽️</div>
+          <p className="text-sm">Configurez le générateur ou importez vos photos pour commencer.</p>
         </div>
+      )}
+      
+      {/* End of CREATE block */}
+      </div>
       )}
     </div>
   );
