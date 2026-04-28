@@ -12,6 +12,8 @@ type MenuItem = {
   priceCents: number; category?: string | null; imageUrl?: string | null;
   allergens?: string[]; diets?: string[];
   waitMinutes?: number;
+  suggestedPairings?: string[]; // Arrays of pairing strings, e.g. ["Un bon vin rouge", "Une bière ambrée"]
+  upsellItems?: string[]; // Array of MenuItem IDs to suggest
 };
 type TableInfo = {
   table: { id: string; number: number; zone?: string };
@@ -162,9 +164,12 @@ export default function OrderPage() {
   const [callingService, setCallingService] = useState(false);
   const [serviceCalled, setServiceCalled]   = useState(false);
 
-  // Invoice email
   const [invoiceEmail, setInvoiceEmail]   = useState("");
   const [paidSessionId, setPaidSessionId] = useState<string | null>(null);
+
+  // ── Upsell Drawer State ──
+  const [upsellItem, setUpsellItem] = useState<MenuItem | null>(null);
+  const [upsellSuggestions, setUpsellSuggestions] = useState<MenuItem[]>([]);
 
   useEffect(() => {
     api<TableInfo>(`/api/tables/${tableUuid}`, { pro: false })
@@ -250,6 +255,23 @@ export default function OrderPage() {
       const next = { ...c, [id]: Math.max(0, (c[id] || 0) + delta) };
       if (next[id] === 0) delete next[id];
       localStorage.setItem(cartKey(tableUuid), JSON.stringify(next));
+
+      // Trigger upsell if item was added (delta > 0), item has upsells, and info is loaded
+      if (delta > 0 && info) {
+        const addedItem = info.menu.find(m => m.id === id);
+        if (addedItem && addedItem.upsellItems && addedItem.upsellItems.length > 0) {
+          // Filter out suggestions already in cart
+          const suggestions = addedItem.upsellItems
+            .map(uid => info.menu.find(m => m.id === uid))
+            .filter((m): m is MenuItem => m !== undefined && !(next[m.id] > 0));
+          
+          if (suggestions.length > 0) {
+            setUpsellItem(addedItem);
+            setUpsellSuggestions(suggestions);
+          }
+        }
+      }
+
       return next;
     });
   }
@@ -725,7 +747,18 @@ export default function OrderPage() {
                         <h3 className="font-bold text-white text-sm leading-tight">{m.name}</h3>
                         <span className="font-black text-orange-400 text-sm shrink-0">{(m.priceCents / 100).toFixed(2)} €</span>
                       </div>
-                      {m.description && <p className="text-xs text-white/65 mt-1 leading-relaxed line-clamp-2">{m.description}</p>}
+                      
+                      {m.suggestedPairings && m.suggestedPairings.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {m.suggestedPairings.map((p, i) => (
+                            <span key={i} className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/25">
+                              ✨ Se marie avec {p}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {m.description && <p className="text-xs text-white/65 mt-1.5 leading-relaxed line-clamp-2">{m.description}</p>}
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {(m.waitMinutes ?? 0) > 0 ? (
                           <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded border border-blue-500/20">⏱ {m.waitMinutes} min</span>
@@ -816,8 +849,19 @@ export default function OrderPage() {
                       <h3 className="font-bold text-white text-sm leading-tight">{m.name}</h3>
                       <span className="font-black text-orange-400 text-sm shrink-0">{(m.priceCents / 100).toFixed(2)} €</span>
                     </div>
+
+                    {m.suggestedPairings && m.suggestedPairings.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {m.suggestedPairings.map((p, i) => (
+                          <span key={i} className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/25">
+                            ✨ Se marie avec {p}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
                     {m.description && (
-                      <p className="text-xs text-white/65 mt-1 leading-relaxed line-clamp-2">{m.description}</p>
+                      <p className="text-xs text-white/65 mt-1.5 leading-relaxed line-clamp-2">{m.description}</p>
                     )}
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {(m.waitMinutes ?? 0) > 0 ? (
@@ -862,6 +906,79 @@ export default function OrderPage() {
           </div>
         </section>
       ))}
+
+      {/* Upsell Drawer */}
+      {upsellItem && upsellSuggestions.length > 0 && (
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[#111] border border-white/10 rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom-8">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-sm text-purple-400 font-bold flex items-center gap-1.5 mb-1">
+                  ✨ Suggestion pour accompagner
+                </p>
+                <h3 className="text-white text-lg font-black">{upsellItem.name}</h3>
+              </div>
+              <button 
+                onClick={() => { setUpsellItem(null); setUpsellSuggestions([]); }}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <p className="text-sm text-white/60 mb-5 leading-relaxed">
+              Pour une expérience optimale, notre sommelier ou chef vous recommande d'accompagner ce plat avec :
+            </p>
+            
+            <div className="space-y-3">
+              {upsellSuggestions.map(s => (
+                <div key={s.id} className="flex gap-3 p-3 bg-white/[0.03] border border-white/[0.07] hover:border-purple-500/30 rounded-2xl transition-colors">
+                  {s.imageUrl && (
+                    <img src={s.imageUrl} alt={s.name} className="w-16 h-16 rounded-xl object-cover" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start">
+                      <p className="text-sm font-bold text-white truncate pr-2">{s.name}</p>
+                      <p className="text-sm font-black text-orange-400 shrink-0">{(s.priceCents / 100).toFixed(2)}€</p>
+                    </div>
+                    {s.description && (
+                      <p className="text-xs text-white/50 mt-1 line-clamp-2">{s.description}</p>
+                    )}
+                  </div>
+                  <button 
+                    onClick={() => {
+                      // Add without triggering another upsell loop (direct state update)
+                      setCart(c => {
+                        const next = { ...c, [s.id]: (c[s.id] || 0) + 1 };
+                        localStorage.setItem(cartKey(tableUuid), JSON.stringify(next));
+                        return next;
+                      });
+                      // Remove from suggestions
+                      const newSuggestions = upsellSuggestions.filter(u => u.id !== s.id);
+                      if (newSuggestions.length === 0) {
+                        setUpsellItem(null);
+                        setUpsellSuggestions([]);
+                      } else {
+                        setUpsellSuggestions(newSuggestions);
+                      }
+                    }}
+                    className="w-10 h-10 shrink-0 self-center rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-lg flex items-center justify-center transition-colors shadow-lg shadow-purple-500/20"
+                  >
+                    +
+                  </button>
+                </div>
+              ))}
+            </div>
+            
+            <button 
+              onClick={() => { setUpsellItem(null); setUpsellSuggestions([]); }}
+              className="w-full mt-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-semibold text-sm transition-colors"
+            >
+              Non merci, continuer ma commande
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Sticky cart bar */}
       {cartTotal > 0 && !paid && (
