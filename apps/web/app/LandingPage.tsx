@@ -119,6 +119,32 @@ const languageLines = [
   ["CN", "我讲中文。"],
 ];
 
+const comparisons = [
+  { feature: "Commande QR sans friction (0 app, 0 compte)", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Suivi commande en temps réel côté client", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Temps d'attente estimé + compte à rebours", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Paiement fractionné (égal ou personnalisé)", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Flux addition (client → serveur → caisse)", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Temps réel WebSocket (cuisine + salle + client)", us: "✓", starter: "Partiel", dino: "✕" },
+  { feature: "Dashboard individuel par serveur (PIN)", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Tables assignées par serveur", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Planning de service par employé", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Nova Stock IA (liste de courses + alertes frais)", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Nova Finance IA (KPIs + prévisions + offres)", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Nova Menu IA (génération + import photo)", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "IA Vision (Magic Scan plats)", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Planning hebdomadaire IA", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Descriptions de plats IA", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Défis serveurs générés par IA (quotidiens)", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Avis vérifiés anti-fraude", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Réservations + arrhes Stripe", us: "✓", starter: "✓", dino: "✕" },
+  { feature: "Allergènes EU (14) automatiques", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Analytics de précision (CA, tips, splits)", us: "✓", starter: "Basique", dino: "✕" },
+  { feature: "Page vitrine SEO incluse", us: "✓", starter: "✕", dino: "✕" },
+  { feature: "Réseau social culinaire (Nova Match)", us: "Bientôt", starter: "✕", dino: "✕" },
+  { feature: "Essai gratuit sans CB", us: "✓", starter: "✕", dino: "✕" },
+];
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
@@ -176,7 +202,7 @@ export default function LandingPage() {
               className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-400 text-sm mb-8"
             >
               <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
-              La version NovaTech 3.0 est en ligne
+              La version NovaTech 3.0 est en ligne — Testez-le gratuitement pendant 14 jours
             </motion.div>
 
             <motion.h1 
@@ -410,6 +436,53 @@ export default function LandingPage() {
                 </motion.div>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* ── Compare ─────────────────────────────────────────────────────────── */}
+        <section id="compare" className="py-32 px-6 bg-[#0a0a0a]">
+          <div className="max-w-5xl mx-auto">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-16"
+            >
+              <h2 className="text-4xl md:text-5xl font-black mb-4">Pourquoi nous ? Et pas les dinosaures ?</h2>
+              <p className="text-white/40 text-lg">Comparez les fonctionnalites point par point. La difference est ecrasante.</p>
+            </motion.div>
+            
+            <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="overflow-x-auto rounded-3xl border border-white/10 bg-[#0f0f0f]"
+            >
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="text-white/40 text-sm bg-white/[0.02]">
+                    <th className="p-5 border-b border-white/10 font-bold w-1/2">Fonctionnalite</th>
+                    <th className="p-5 border-b border-white/10 text-center font-black text-orange-400">Ma Table</th>
+                    <th className="p-5 border-b border-white/10 text-center font-bold text-white/80">Concurrents SaaS</th>
+                    <th className="p-5 border-b border-white/10 text-center font-bold text-white/50">Cahier / Papier</th>
+                  </tr>
+                </thead>
+                <tbody className="text-sm">
+                  {comparisons.map((c, i) => (
+                    <tr key={i} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
+                      <td className="p-5 font-medium text-white/80">{c.feature}</td>
+                      <td className={`p-5 text-center font-black ${c.us === "✓" ? "text-orange-400" : c.us === "Bientôt" ? "text-amber-400 text-xs" : "text-orange-300"}`}>
+                        {c.us}
+                      </td>
+                      <td className={`p-5 text-center text-sm font-semibold ${c.starter === "✓" ? "text-white/60" : c.starter === "Partiel" || c.starter === "Basique" ? "text-yellow-500/60 text-xs" : "text-white/20"}`}>
+                        {c.starter}
+                      </td>
+                      <td className="p-5 text-center text-white/20 font-semibold">{c.dino}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </motion.div>
           </div>
         </section>
 
