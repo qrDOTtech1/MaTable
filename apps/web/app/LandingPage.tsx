@@ -3,6 +3,8 @@
 import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import LandingProductCarousel from "./LandingProductCarousel";
+import LandingTestimonials from "./LandingTestimonials";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -105,6 +107,16 @@ const hardware = [
   { name: "QR Vinyle", desc: "Indestructible. QR unique par table.", icon: "🎯", tag: "Des 3€/table" },
   { name: "Chevalet Acrylique", desc: "Le luxe sur table. QR serigraphie.", icon: "💎", tag: "Des 8€/table" },
   { name: "PDF A4 Gratuit", desc: "Imprimez-le vous-meme. Gratuit.", icon: "📄", tag: "Gratuit" },
+];
+
+const languageLines = [
+  ["GB", "I speak English."],
+  ["ES", "Hablo español."],
+  ["IT", "Parlo italiano."],
+  ["DE", "Ich spreche Deutsch."],
+  ["PT", "Falo português."],
+  ["JP", "私は日本語を話します。"],
+  ["CN", "我讲中文。"],
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -252,6 +264,34 @@ export default function LandingPage() {
                 <div className="text-sm font-medium text-white/50">{s.label}</div>
               </motion.div>
             ))}
+          </div>
+        </section>
+
+        <LandingProductCarousel />
+
+        {/* ── Language Campaign ─────────────────────────────────────────────── */}
+        <section className="border-b border-white/5 bg-black px-6 py-24">
+          <div className="mx-auto grid max-w-6xl gap-12 md:grid-cols-[0.9fr_1.1fr] md:items-center">
+            <div className="space-y-4 text-left">
+              {languageLines.map(([code, text], i) => (
+                <div key={code} className={`flex items-baseline gap-4 font-black uppercase tracking-tight ${i === languageLines.length - 1 ? "text-white" : "text-white/40"}`}>
+                  <span className="w-12 text-right text-2xl md:text-3xl">{code}</span>
+                  <span className="text-3xl md:text-5xl">{text}</span>
+                </div>
+              ))}
+            </div>
+            <div className="text-center md:text-left">
+              <h2 className="mb-6 text-6xl font-black uppercase leading-none tracking-[-0.07em] text-orange-500 md:text-8xl">Et toi ?</h2>
+              <p className="text-3xl font-black leading-tight text-white md:text-4xl">
+                Votre menu cartonne est muet face a un touriste. Ma Table, lui, parle la langue du telephone qui scanne.
+              </p>
+              <p className="mt-8 text-2xl font-black leading-tight text-white md:text-3xl">
+                L'argent n'a pas de barriere de langue. Votre menu ne devrait pas en avoir non plus.
+              </p>
+              <Link href="/register" className="mt-10 inline-block -skew-x-6 bg-orange-500 px-10 py-5 text-2xl font-black uppercase tracking-wide text-black transition hover:bg-orange-400">
+                Captez 100% des touristes.
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -421,6 +461,8 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        <LandingTestimonials />
 
         {/* ── Final CTA ───────────────────────────────────────────────────────── */}
         <section className="py-32 px-6 relative overflow-hidden text-center">

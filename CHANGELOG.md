@@ -88,6 +88,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ### Ajouté — Lot G : Marketing
 - **Témoignages landing** : page dashboard `/dashboard/testimonial` pour soumettre un témoignage, affichage des témoignages publiés sur `/`.
+- **Landing publicitaire** : nouveau ton plus direct, section multilingue inspirée campagne, et carousel dynamique de mockups fidèles aux vues réelles (cuisine, salle/serveurs, caisse, statistiques, stock).
 
 ### Ajouté — Lot F : Réservations
 - **Disponibilité slots** : calcul dynamique des créneaux libres en fonction des horaires, durée de repas, réservations existantes.
