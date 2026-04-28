@@ -328,7 +328,7 @@ export default function NovaMenuGeneratorPage() {
       const itemsToCreate = bevs.map(b => ({
         name: b,
         priceCents: 0,
-        category: "Boissons (Nouvelles suggestions)",
+        category: "Boissons à ajouter",
         available: false, // Default to out of stock
         waitMinutes: 0
       }));
