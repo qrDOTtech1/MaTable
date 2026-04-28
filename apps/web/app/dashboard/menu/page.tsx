@@ -29,6 +29,8 @@ type Item = {
   stockEnabled: boolean; stockQty?: number | null; lowStockThreshold?: number | null;
   waitMinutes: number;
   modifierGroups: ModifierGroup[];
+  suggestedPairings: string[];
+  upsellItems: string[];
 };
 
 type UploadRes = { id: string; path: string };
@@ -38,6 +40,7 @@ const emptyForm = {
   allergens: [] as string[], diets: [] as string[],
   stockEnabled: false, stockQty: "", lowStockThreshold: "5",
   waitMinutes: "0",
+  suggestedPairings: "", upsellItems: [] as string[],
 };
 
 export default function MenuPage() {
@@ -118,7 +121,10 @@ export default function MenuPage() {
       stockEnabled: it.stockEnabled, stockQty: it.stockQty?.toString() ?? "",
       lowStockThreshold: it.lowStockThreshold?.toString() ?? "5",
       waitMinutes: (it.waitMinutes ?? 0).toString(),
+      suggestedPairings: (it.suggestedPairings ?? []).join(", "),
+      upsellItems: it.upsellItems ?? [],
     });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const cancelEdit = () => { setEditId(null); setForm(emptyForm); };
@@ -137,6 +143,8 @@ export default function MenuPage() {
       stockQty: form.stockEnabled && form.stockQty !== "" ? parseInt(form.stockQty) : null,
       lowStockThreshold: form.stockEnabled && form.lowStockThreshold !== "" ? parseInt(form.lowStockThreshold) : null,
       waitMinutes: parseInt(form.waitMinutes) || 0,
+      suggestedPairings: form.suggestedPairings.split(",").map(s => s.trim()).filter(Boolean),
+      upsellItems: form.upsellItems,
     };
     if (editId) {
       await api(`/api/pro/menu/${editId}`, { method: "PATCH", body: JSON.stringify(payload) });
@@ -279,25 +287,43 @@ export default function MenuPage() {
               value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
           </div>
           <div>
-            <label className="label">Catégorie</label>
-            <input className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30" value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })} />
+            <label className="label">Temps de prépa (min) ⏱️</label>
+            <input className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30" type="number" min="0" max="180" step="1"
+              value={form.waitMinutes} onChange={(e) => setForm({ ...form, waitMinutes: e.target.value })} placeholder="0 = immédiat" />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <div className="col-span-2 md:col-span-3">
-            <label className="label">Description</label>
-            <input className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30" value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <div>
+              <label className="label">Catégorie</label>
+              <input className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30" value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Description courte</label>
+              <textarea className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30 resize-y min-h-[80px]" rows={3}
+                value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            </div>
           </div>
-          <div>
-            <label className="label">Temps d'attente (min)</label>
-            <input className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30" type="number" min="0" max="180" step="1"
-              value={form.waitMinutes} onChange={(e) => setForm({ ...form, waitMinutes: e.target.value })}
-              placeholder="0 = instantané" title="0 = prêt instantanément, sinon durée en minutes" />
+          <div className="space-y-3">
+            <div>
+              <label className="label">🍷 Accords (Nova Sommelier)</label>
+              <input className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30 text-sm"
+                value={form.suggestedPairings} onChange={(e) => setForm({ ...form, suggestedPairings: e.target.value })}
+                placeholder="Ex: Pinot noir, Bière ambrée (séparés par des virgules)" />
+            </div>
+            <div>
+              <label className="label">✨ Suggestions d'Up-Selling (Upsell Drawer)</label>
+              <select multiple className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white text-sm h-[80px]"
+                value={form.upsellItems} onChange={(e) => setForm({ ...form, upsellItems: Array.from(e.target.selectedOptions, o => o.value) })}>
+                {items.filter(i => i.id !== editId).map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+              </select>
+              <p className="text-[10px] text-white/30 mt-1">Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs produits suggérés quand le client ajoute ce plat.</p>
+            </div>
           </div>
         </div>
+
         <div>
           <label className="label">Photo</label>
           <div className="flex flex-col md:flex-row gap-2 md:items-center">
