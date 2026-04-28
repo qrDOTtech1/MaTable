@@ -188,7 +188,7 @@ export default function LandingProductCarousel() {
   const slide = slides[active];
 
   useEffect(() => {
-    const id = window.setInterval(() => setActive((i) => (i + 1) % slides.length), 4500);
+    const id = window.setInterval(() => setActive((i) => (i + 1) % slides.length), 11000);
     return () => window.clearInterval(id);
   }, []);
 
