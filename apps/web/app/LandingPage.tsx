@@ -234,36 +234,6 @@ export default function LandingPage() {
               </a>
             </motion.div>
           </div>
-
-          {/* ── Test du pourboire ────────────────── */}
-          <div className="w-full max-w-6xl relative perspective-[2000px] mt-10">
-            <motion.div 
-              initial={{ opacity: 0, rotateX: 20, y: 100 }}
-              animate={{ opacity: 1, rotateX: 0, y: 0 }}
-              transition={{ delay: 0.6, duration: 1.2, type: "spring", stiffness: 50 }}
-              className="relative z-10 max-w-5xl mx-auto text-left border border-white/5 bg-[#0a0a0a]/80 backdrop-blur-xl rounded-[2rem] p-10 md:p-16 shadow-2xl"
-            >
-              {/* Pattern de fond rayé */}
-              <div 
-                className="absolute inset-0 rounded-[2rem] opacity-[0.03] pointer-events-none" 
-                style={{ backgroundImage: "repeating-linear-gradient(45deg, #fff 0, #fff 2px, transparent 2px, transparent 12px)" }}
-              />
-              
-              <div className="inline-block px-4 py-1 border-2 border-orange-500 text-orange-500 font-black tracking-widest text-sm mb-10 rotate-[-2deg]">
-                LE TEST DU POURBOIRE
-              </div>
-              
-              <h2 className="text-5xl md:text-7xl lg:text-8xl font-black mb-8 leading-[0.9] text-white">
-                VOUS PENSEZ QUE VOS CLIENTS<br />
-                <span className="text-orange-500">SONT RADINS ?</span>
-              </h2>
-              
-              <p className="text-xl md:text-3xl font-bold text-white/90 max-w-3xl leading-snug">
-                Activez notre module de paiement in-app avec suggestion de pourboire. Regardez les 10%, 15%, 20% pleuvoir sur votre staff à chaque fin de repas.<br/>
-                La psychologie UI bat toujours la radinerie.
-              </p>
-            </motion.div>
-          </div>
         </motion.section>
 
         {/* ── Stats ───────────────────────────────────────────────────────────── */}
@@ -341,6 +311,38 @@ export default function LandingPage() {
                 </motion.div>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* ── Test du pourboire ────────────────── */}
+        <section className="border-y border-white/5 bg-black px-6 py-32 relative overflow-hidden">
+          <div className="w-full max-w-6xl relative perspective-[2000px] mt-10 mx-auto">
+            <motion.div 
+              initial={{ opacity: 0, rotateX: 20, y: 100 }}
+              animate={{ opacity: 1, rotateX: 0, y: 0 }}
+              transition={{ delay: 0.6, duration: 1.2, type: "spring", stiffness: 50 }}
+              className="relative z-10 max-w-5xl mx-auto text-left border border-white/5 bg-[#0a0a0a]/80 backdrop-blur-xl rounded-[2rem] p-10 md:p-16 shadow-2xl"
+            >
+              {/* Pattern de fond rayé */}
+              <div 
+                className="absolute inset-0 rounded-[2rem] opacity-[0.03] pointer-events-none" 
+                style={{ backgroundImage: "repeating-linear-gradient(45deg, #fff 0, #fff 2px, transparent 2px, transparent 12px)" }}
+              />
+              
+              <div className="inline-block px-4 py-1 border-2 border-orange-500 text-orange-500 font-black tracking-widest text-sm mb-10 rotate-[-2deg]">
+                LE TEST DU POURBOIRE
+              </div>
+              
+              <h2 className="text-5xl md:text-7xl lg:text-8xl font-black mb-8 leading-[0.9] text-white">
+                VOUS PENSEZ QUE VOS CLIENTS<br />
+                <span className="text-orange-500">SONT RADINS ?</span>
+              </h2>
+              
+              <p className="text-xl md:text-3xl font-bold text-white/90 max-w-3xl leading-snug">
+                Activez notre module de paiement in-app avec suggestion de pourboire. Regardez les 10%, 15%, 20% pleuvoir sur votre staff à chaque fin de repas.<br/>
+                La psychologie UI bat toujours la radinerie.
+              </p>
+            </motion.div>
           </div>
         </section>
 
