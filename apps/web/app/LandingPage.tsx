@@ -209,17 +209,17 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.8 }}
               className="text-5xl md:text-7xl lg:text-8xl font-black leading-[1.05] tracking-tight mb-6"
             >
-              Moins d'attente.<br />
+              La restauration de demain,<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500">
-                Plus de service.<br />Plus de chiffre.
+                maintenant.
               </span>
             </motion.h1>
 
             <motion.p 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 1 }}
-              className="text-xl md:text-2xl text-white/50 max-w-3xl mx-auto mb-10 leading-relaxed font-medium"
+              className="text-xl md:text-2xl text-white/50 max-w-4xl mx-auto mb-10 leading-relaxed font-medium"
             >
-              Un parcours client plus rapide, un service plus clair et une vue complète sur la salle, la carte et les stocks.
+              Commande QR, portail serveur en temps réel, paiement plus fluide, pourboires simplifiés et pilotage intelligent de la salle : tout ce qui modernise vraiment un restaurant, réuni dans une seule solution.
             </motion.p>
 
             <motion.div 
@@ -235,26 +235,32 @@ export default function LandingPage() {
             </motion.div>
           </div>
 
-          {/* ── Defi / Prouvez-nous qu'on a tort (Hero placement) ────────────────── */}
+          {/* ── Test du pourboire ────────────────── */}
           <div className="w-full max-w-6xl relative perspective-[2000px] mt-10">
             <motion.div 
               initial={{ opacity: 0, rotateX: 20, y: 100 }}
               animate={{ opacity: 1, rotateX: 0, y: 0 }}
               transition={{ delay: 0.6, duration: 1.2, type: "spring", stiffness: 50 }}
-              className="relative z-10 max-w-4xl mx-auto text-center border border-white/10 bg-black/40 backdrop-blur-xl rounded-[2rem] p-10 md:p-16 shadow-2xl"
+              className="relative z-10 max-w-5xl mx-auto text-left border border-white/5 bg-[#0a0a0a]/80 backdrop-blur-xl rounded-[2rem] p-10 md:p-16 shadow-2xl"
             >
-              <div className="absolute inset-0 bg-gradient-to-b from-orange-500/5 to-transparent rounded-[2rem] pointer-events-none" />
+              {/* Pattern de fond rayé */}
+              <div 
+                className="absolute inset-0 rounded-[2rem] opacity-[0.03] pointer-events-none" 
+                style={{ backgroundImage: "repeating-linear-gradient(45deg, #fff 0, #fff 2px, transparent 2px, transparent 12px)" }}
+              />
               
-              <div className="inline-block px-4 py-1 border-2 border-white/20 text-white font-black tracking-widest text-sm mb-10 rotate-[-2deg]">
-                LE DÉFI OFFICIEL
+              <div className="inline-block px-4 py-1 border-2 border-orange-500 text-orange-500 font-black tracking-widest text-sm mb-10 rotate-[-2deg]">
+                LE TEST DU POURBOIRE
               </div>
               
               <h2 className="text-5xl md:text-7xl lg:text-8xl font-black mb-8 leading-[0.9] text-white">
-                PROUVEZ-NOUS<br />QU'ON A TORT.
+                VOUS PENSEZ QUE VOS CLIENTS<br />
+                <span className="text-orange-500">SONT RADINS ?</span>
               </h2>
               
-              <p className="text-xl md:text-2xl font-bold text-white/80 max-w-3xl mx-auto leading-snug">
-                Installez Ma Table. Si vous ne gagnez pas plus d'argent et ne gagnez pas de temps dans les 14 premiers jours, désinstallez-le. On s'inclinera.
+              <p className="text-xl md:text-3xl font-bold text-white/90 max-w-3xl leading-snug">
+                Activez notre module de paiement in-app avec suggestion de pourboire. Regardez les 10%, 15%, 20% pleuvoir sur votre staff à chaque fin de repas.<br/>
+                La psychologie UI bat toujours la radinerie.
               </p>
             </motion.div>
           </div>
