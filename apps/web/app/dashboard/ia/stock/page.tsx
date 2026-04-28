@@ -129,6 +129,30 @@ export default function NovaStockPage() {
   const [importResult, setImportResult] = useState<string | null>(null);
   const [shoppingHistoryId, setShoppingHistoryId] = useState<string | null>(null);
 
+  const [savingToList, setSavingToList] = useState(false);
+
+  const saveToShoppingHistory = async () => {
+    if (!analysis?.shoppingList?.length) return;
+    setSavingToList(true);
+    try {
+      const title = `Courses du ${new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} (IA)`;
+      const res = await api<{ id: string }>("/api/pro/shopping-history", {
+        method: "POST",
+        body: JSON.stringify({
+          title,
+          itemCount: analysis.shoppingList.length,
+          estimatedBudget: analysis.totalShoppingBudget ?? 0,
+          shoppingList: analysis.shoppingList,
+        })
+      });
+      setShoppingHistoryId(res.id);
+    } catch (e: any) {
+      alert("Erreur lors de la sauvegarde : " + e.message);
+    } finally {
+      setSavingToList(false);
+    }
+  };
+
   const importToStock = async () => {
     if (!stockItems.length) return;
     setImporting(true); setImportResult(null);
@@ -223,13 +247,11 @@ export default function NovaStockPage() {
     try {
       let resultAnalysis: Analysis | null = null;
       let resultMeta: any = null;
-      let resultShoppingId: string | null = null;
       const stream = await apiStream("/api/pro/ia/stock-analysis", payload);
       for await (const event of stream) {
         if (event.type === "result") {
           resultAnalysis = event.analysis as Analysis;
           resultMeta = event.meta;
-          resultShoppingId = (event.shoppingHistoryId as string) ?? null;
         } else if (event.type === "error") {
           throw new Error((event.message as string) || "Erreur IA");
         }
@@ -238,7 +260,7 @@ export default function NovaStockPage() {
       if (resultAnalysis) {
         setAnalysis(resultAnalysis);
         setMeta(resultMeta);
-        setShoppingHistoryId(resultShoppingId);
+        setShoppingHistoryId(null);
         setStep("results");
         setHistoryKey(k => k + 1);
       } else {
@@ -617,14 +639,14 @@ export default function NovaStockPage() {
       {shoppingHistoryId && (
         <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-emerald-400">Liste de courses sauvegardée</p>
-            <p className="text-xs text-white/40 mt-0.5">Confirmez les achats pour mettre à jour votre stock automatiquement.</p>
+            <p className="text-sm font-semibold text-emerald-400">Liste de courses ajoutée à votre historique</p>
+            <p className="text-xs text-white/40 mt-0.5">Allez dans vos listes de courses pour confirmer vos achats et mettre à jour votre stock automatiquement.</p>
           </div>
           <Link
             href={`/dashboard/shopping/${shoppingHistoryId}`}
             className="shrink-0 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl transition-colors"
           >
-            🛒 Voir la liste →
+            🛒 Ouvrir la liste →
           </Link>
         </div>
       )}
@@ -726,6 +748,23 @@ export default function NovaStockPage() {
                   <span className="text-xs text-white/30 font-normal ml-2">{analysis.shoppingList.length} articles</span>
                 </h2>
                 <div className="flex items-center gap-2">
+                  {/* Ajouter à mes listes */}
+                  {!shoppingHistoryId ? (
+                    <button
+                      onClick={saveToShoppingHistory}
+                      disabled={savingToList}
+                      className="text-xs px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white border border-emerald-500/30 rounded-lg transition-colors flex items-center gap-1 font-bold shadow-lg shadow-emerald-500/20"
+                    >
+                      {savingToList ? "..." : "+ Ajouter à mes listes"}
+                    </button>
+                  ) : (
+                    <Link
+                      href={`/dashboard/shopping/${shoppingHistoryId}`}
+                      className="text-xs px-3 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg transition-colors flex items-center gap-1 font-bold"
+                    >
+                      ✓ Liste sauvegardée →
+                    </Link>
+                  )}
                   {/* Télécharger PDF */}
                   <button
                     onClick={() => downloadShoppingListPdf({
