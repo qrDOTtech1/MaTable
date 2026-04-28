@@ -209,9 +209,9 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.8 }}
               className="text-5xl md:text-7xl lg:text-8xl font-black leading-[1.05] tracking-tight mb-6"
             >
-              Le futur de la<br />
+              Moins d'attente.<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500">
-                restauration.
+                Plus de service.<br />Plus de chiffre.
               </span>
             </motion.h1>
 
@@ -219,7 +219,7 @@ export default function LandingPage() {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 1 }}
               className="text-xl md:text-2xl text-white/50 max-w-3xl mx-auto mb-10 leading-relaxed font-medium"
             >
-              Commande QR sans friction, Portail Serveur en temps reel, et Nova IA pour piloter vos stocks, vos accords mets & vins et votre comptabilite.
+              Un parcours client plus rapide, un service plus clair et une vue complète sur la salle, la carte et les stocks.
             </motion.p>
 
             <motion.div 
