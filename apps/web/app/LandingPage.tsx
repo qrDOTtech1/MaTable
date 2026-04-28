@@ -531,6 +531,30 @@ export default function LandingPage() {
 
         <LandingTestimonials />
 
+        {/* ── Defi / Prouvez-nous qu'on a tort ────────────────────────────────── */}
+        <section className="border-b border-white/5 bg-black px-6 py-32 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-orange-500/5 to-transparent pointer-events-none" />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="relative z-10 max-w-4xl mx-auto text-center"
+          >
+            <div className="inline-block px-4 py-1 border-2 border-white/20 text-white font-black tracking-widest text-sm mb-12 rotate-[-2deg]">
+              LE DÉFI OFFICIEL
+            </div>
+            
+            <h2 className="text-6xl md:text-8xl lg:text-9xl font-black mb-10 leading-[0.9] text-white">
+              PROUVEZ-NOUS<br />QU'ON A TORT.
+            </h2>
+            
+            <p className="text-2xl md:text-3xl font-bold text-white/80 max-w-3xl mx-auto leading-snug">
+              Installez Ma Table. Si vous ne gagnez pas plus d'argent et ne gagnez pas de temps dans les 14 premiers jours, désinstallez-le. On s'inclinera.
+            </p>
+          </motion.div>
+        </section>
+
+
         {/* ── Final CTA ───────────────────────────────────────────────────────── */}
         <section className="py-32 px-6 relative overflow-hidden text-center">
           <div className="absolute inset-0 bg-gradient-to-t from-orange-900/20 to-transparent pointer-events-none" />

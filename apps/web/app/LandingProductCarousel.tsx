@@ -193,7 +193,7 @@ export default function LandingProductCarousel() {
   }, []);
 
   return (
-    <section className="border-y border-white/10 bg-[#0a0a0a] px-4 py-20 text-white md:px-6">
+    <section id="demo" className="border-y border-white/10 bg-[#0a0a0a] px-4 py-20 text-white md:px-6">
       <div className="mx-auto max-w-6xl">
         <div className="mb-10 text-center">
           <div className="mx-auto mb-6 inline-block -rotate-2 border-4 border-white px-6 py-2 text-sm font-black uppercase tracking-[0.25em] md:text-xl text-white">Le vrai tableau de bord</div>
