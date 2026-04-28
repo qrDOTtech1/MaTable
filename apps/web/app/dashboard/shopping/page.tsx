@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type ShoppingEntry = {
   id: string;
@@ -15,16 +16,44 @@ type ShoppingEntry = {
 };
 
 export default function ShoppingPage() {
+  const router = useRouter();
   const [history, setHistory] = useState<ShoppingEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isNovaActive, setIsNovaActive] = useState(true);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    api<{ history: ShoppingEntry[] }>("/api/pro/shopping-history")
-      .then(r => setHistory(r.history))
+    Promise.all([
+      api<{ history: ShoppingEntry[] }>("/api/pro/shopping-history"),
+      api<{ restaurant: { subscription?: string } }>("/api/pro/me")
+    ])
+      .then(([r, me]) => {
+        setHistory(r.history);
+        setIsNovaActive(me.restaurant.subscription === "PRO_IA");
+      })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  const createEmptyList = async () => {
+    setCreating(true); setError(null);
+    try {
+      const res = await api<{ id: string }>("/api/pro/shopping-history", {
+        method: "POST",
+        body: JSON.stringify({
+          title: `Courses du ${new Date().toLocaleDateString("fr-FR")}`,
+          itemCount: 0,
+          estimatedBudget: 0,
+          shoppingList: [],
+        })
+      });
+      router.push(`/dashboard/shopping/${res.id}`);
+    } catch (e: any) {
+      setError(e.message);
+      setCreating(false);
+    }
+  };
 
   const pending = history.filter(h => !h.completedAt);
   const completed = history.filter(h => h.completedAt);
@@ -32,22 +61,51 @@ export default function ShoppingPage() {
   return (
     <div className="p-6 max-w-4xl space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
             <span className="text-3xl">🛒</span> Listes de courses
           </h1>
           <p className="text-sm text-white/40 mt-1">
-            Générées par Nova Stock IA · Confirmez les achats pour mettre à jour votre stock
+            {isNovaActive ? "Générées par Nova Stock IA · " : "Création manuelle · "}Confirmez les achats pour mettre à jour votre stock
           </p>
         </div>
-        <Link
-          href="/dashboard/ia/stock"
-          className="text-sm px-4 py-2 bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-500/30 rounded-xl transition-colors"
-        >
-          + Générer une liste
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={createEmptyList}
+            disabled={creating}
+            className="text-sm px-4 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white border border-white/[0.08] rounded-xl transition-all disabled:opacity-50"
+          >
+            {creating ? "..." : "+ Liste vide"}
+          </button>
+          <Link
+            href="/dashboard/ia/stock"
+            className="text-sm px-4 py-2.5 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-xl transition-all flex items-center gap-2"
+          >
+            ✨ Générer avec IA
+          </Link>
+        </div>
       </div>
+
+      {/* Upsell Banner for non-PRO_IA */}
+      {!loading && !isNovaActive && (
+        <div className="bg-gradient-to-br from-purple-500/10 to-violet-500/5 border border-purple-500/20 rounded-2xl p-5 flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-sm font-bold text-purple-300 flex items-center gap-2 mb-1">
+              <span>✨</span> Passez à Nova Stock IA
+            </h2>
+            <p className="text-xs text-white/50 max-w-xl leading-relaxed">
+              Laissez l'intelligence artificielle analyser vos ventes, vos stocks actuels et votre menu pour générer automatiquement vos listes de courses avec les justes quantités. Fini le gaspillage et les ruptures.
+            </p>
+          </div>
+          <a
+            href="mailto:contact@novavivo.online?subject=Demande démo Nova Stock IA"
+            className="shrink-0 px-4 py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-bold transition-all"
+          >
+            Demander une démo →
+          </a>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm">{error}</div>
@@ -64,10 +122,15 @@ export default function ShoppingPage() {
         <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-12 text-center">
           <p className="text-4xl mb-4">🛒</p>
           <p className="text-white/50 text-sm">Aucune liste de courses pour l&apos;instant.</p>
-          <p className="text-white/30 text-xs mt-1">Lancez Nova Stock IA pour en générer une automatiquement.</p>
-          <Link href="/dashboard/ia/stock" className="mt-4 inline-block px-5 py-2.5 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-sm font-semibold transition-colors">
-            Lancer Nova Stock IA
-          </Link>
+          <p className="text-white/30 text-xs mt-1 mb-5">Lancez Nova Stock IA pour en générer une automatiquement ou créez une liste manuelle.</p>
+          <div className="flex items-center justify-center gap-3">
+            <button onClick={createEmptyList} disabled={creating} className="px-5 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 border border-white/[0.08]">
+              {creating ? "..." : "+ Liste vide"}
+            </button>
+            <Link href="/dashboard/ia/stock" className="px-5 py-2.5 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-sm font-semibold transition-colors">
+              ✨ Générer avec IA
+            </Link>
+          </div>
         </div>
       )}
 

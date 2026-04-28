@@ -85,6 +85,7 @@ export default function StockPage() {
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterLow, setFilterLow] = useState(false);
+  const [isNovaActive, setIsNovaActive] = useState(true);
 
   // ── Data ─────────────────────────────────────────────────────────────────
   const load = useCallback(async () => {
@@ -107,12 +108,16 @@ export default function StockPage() {
     } catch {}
   }, []);
 
-  // Load last shopping date
+  // Load last shopping date and subscription status
   const loadLastShopping = useCallback(async () => {
     try {
-      const res = await api<{ history: Array<{ completedAt: string | null; createdAt: string }> }>("/api/pro/shopping-history");
+      const [res, me] = await Promise.all([
+        api<{ history: Array<{ completedAt: string | null; createdAt: string }> }>("/api/pro/shopping-history"),
+        api<{ restaurant: { subscription?: string } }>("/api/pro/me")
+      ]);
       const last = res.history.find(h => h.completedAt);
       if (last?.completedAt) setLastShoppingDate(last.completedAt);
+      setIsNovaActive(me.restaurant.subscription === "PRO_IA");
     } catch {}
   }, []);
 
@@ -298,16 +303,36 @@ export default function StockPage() {
                 {lowCount} produit{lowCount > 1 ? "s" : ""} en stock bas
               </p>
               <p className="text-xs text-white/40 mt-0.5">
-                Lancez Nova Stock IA pour générer une liste de courses automatiquement.
+                {isNovaActive ? "Lancez Nova Stock IA pour générer une liste de courses automatiquement." : "Allez dans Listes de courses pour créer une liste manuellement."}
               </p>
             </div>
           </div>
           <Link
-            href="/dashboard/ia/stock"
+            href={isNovaActive ? "/dashboard/ia/stock" : "/dashboard/shopping"}
             className="shrink-0 px-4 py-2 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30 text-sm font-semibold transition-all"
           >
-            Générer une liste →
+            {isNovaActive ? "Générer une liste →" : "Faire une liste →"}
           </Link>
+        </div>
+      )}
+
+      {/* Upsell Banner for non-PRO_IA */}
+      {!isNovaActive && (
+        <div className="bg-gradient-to-br from-purple-500/10 to-violet-500/5 border border-purple-500/20 rounded-2xl p-5 flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-sm font-bold text-purple-300 flex items-center gap-2 mb-1">
+              <span>✨</span> Inventaire intelligent avec Nova Stock IA
+            </h2>
+            <p className="text-xs text-white/50 max-w-2xl leading-relaxed">
+              Automatisez votre gestion de stock. Nova IA analyse vos fiches techniques et vos ventes en temps réel, vous alerte sur les produits périssables (DLC), et génère vos listes de courses avec des quantités précises.
+            </p>
+          </div>
+          <a
+            href="mailto:contact@novavivo.online?subject=Demande démo Nova Stock IA"
+            className="shrink-0 px-4 py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-bold transition-all"
+          >
+            Découvrir Nova IA →
+          </a>
         </div>
       )}
 
