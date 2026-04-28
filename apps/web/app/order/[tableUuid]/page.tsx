@@ -369,7 +369,10 @@ export default function OrderPage() {
   });
   const [currentCatIdx, setCurrentCatIdx] = useState(0);
   const [viewMode, setViewMode] = useState<"steps" | "full">("steps");
-  const currentCat = sortedCats[currentCatIdx] || sortedCats[0];
+  
+  // Make sure we have a valid index even if sortedCats changes
+  const safeIdx = Math.min(Math.max(0, currentCatIdx), Math.max(0, sortedCats.length - 1));
+  const currentCat = sortedCats[safeIdx] || "Menu";
 
   const showFeedback = paid || billMode !== null || myOrders.some(o => o.status === "SERVED");
 
@@ -387,10 +390,10 @@ export default function OrderPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setViewMode(viewMode === "steps" ? "full" : "steps")}
+            onClick={() => setViewMode(v => v === "steps" ? "full" : "steps")}
             className="text-[10px] px-2.5 py-1 rounded-full border border-white/[0.08] text-white/40 hover:text-white/70 transition-colors"
           >
-            {viewMode === "steps" ? "Voir tout" : "Par etape"}
+            {viewMode === "steps" ? "Voir tout" : "Par étape"}
           </button>
           <Link
             href={`https://matable.app/onboarding?restaurantId=${info.restaurant.id}&tableId=${info.table.id}`}
