@@ -37,7 +37,7 @@ export default function PublicReviewPage() {
   const [drafts, setDrafts] = useState<{ version1: string; version2: string } | null>(null);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/public/r/${params.slug}/review-campaign`)
+    fetch(`${API_URL}/api/r/${params.slug}/review-campaign`)
       .then(res => {
         if (!res.ok) throw new Error("Campagne non trouvée ou désactivée");
         return res.json();
