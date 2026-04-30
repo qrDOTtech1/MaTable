@@ -15,6 +15,15 @@ const stats = [
   { value: "×4", label: "Moins de no-shows" },
 ];
 
+const MODULES = [
+  { id: "avis", name: "Avis Google & Réputation", desc: "Campagne QR, IA rédactionnelle, Bons de réduction auto.", price: 45.99, required: true },
+  { id: "qr", name: "Commande & Paiement", desc: "Menu digital QR, paiement fractionné ou espèces, tickets.", price: 59.99, required: false },
+  { id: "server", name: "Portail Serveur (Live)", desc: "Gestion des tables, suivi cuisine, appels serveur instantanés.", price: 39.99, required: false },
+  { id: "stock", name: "Nova Stock IA", desc: "Listes de courses auto, alertes de ruptures, food cost.", price: 49.99, required: false },
+  { id: "sommelier", name: "Nova Sommelier IA", desc: "Accords mets-vins, up-selling, et optimisation de la carte.", price: 29.99, required: false },
+  { id: "contab", name: "Nova Contab IA", desc: "Exports comptables, TVA, rapports de fin de mois intelligents.", price: 29.99, required: false },
+];
+
 const features = [
   { icon: "📱", title: "Scan → Commande. C'est tout.", desc: "Pas d'app. Pas de compte. Le client scanne, choisit, commande. Simplicite desarmante.", highlight: true },
   { icon: "⚡", title: "Temps reel absolu", desc: "Chaque commande frappe l'ecran cuisine. Le client voit son statut evoluer en direct : en cours, pret, servi.", highlight: false },
@@ -36,69 +45,7 @@ const features = [
   { icon: "🔔", title: "Appel Serveur", desc: "Un bouton, une alerte sonore sur le dashboard du serveur. Precision chirurgicale.", highlight: false },
 ];
 
-const plans = [
-  {
-    name: "Starter",
-    price: "49,99 €",
-    period: "/ mois HT",
-    trial: "14 jours d'essai gratuit",
-    color: "border-white/10 bg-white/[0.02]",
-    ctaColor: "bg-orange-500 hover:bg-orange-400 text-white",
-    badge: null,
-    features: [
-      "Jusqu'a 30 tables",
-      "Menu illimite + attente par plat",
-      "Commandes QR temps reel",
-      "Paiement fractionne / Especes / Caisse",
-      "Ticket de caisse email",
-      "Reservations en ligne",
-      "Listes de courses (manuel)",
-      "Portail serveur (PIN)",
-      "Support par email",
-    ],
-  },
-  {
-    name: "Pro",
-    price: "139,99 €",
-    period: "/ mois HT",
-    trial: "Demo personnalisee",
-    color: "border-orange-500 bg-gradient-to-b from-orange-500/10 to-transparent ring-1 ring-orange-500/30",
-    ctaColor: "bg-orange-500 hover:bg-orange-400 text-white",
-    badge: "L'excellence",
-    features: [
-      "Tables illimitees",
-      "Multi-utilisateurs",
-      "Analytics avancees (Recharts, stats)",
-      "Pourboires digitaux",
-      "Avis verifies",
-      "Portail serveur complet avec alertes",
-      "Fermeture session par serveur",
-      "Materiel POS sur devis",
-      "Support prioritaire 7j/7",
-    ],
-  },
-  {
-    name: "NovaTech IA",
-    price: "299 €",
-    period: "/ mois HT",
-    trial: "La puissance absolue",
-    color: "border-purple-500/60 bg-gradient-to-b from-purple-500/10 to-transparent ring-1 ring-purple-500/30",
-    ctaColor: "bg-purple-500 hover:bg-purple-400 text-white",
-    badge: "✨ Nova IA Inclus",
-    features: [
-      "Tout l'offre Pro",
-      "Nova Contab IA (URSSAF / TVA)",
-      "Nova Stock IA (courses auto)",
-      "Nova Finance IA (food cost)",
-      "Nova Sommelier (accords mets/vins)",
-      "Nova Menu IA & Magic Scan Vision",
-      "Up-Selling IA automatisé",
-      "Planning hebdomadaire IA",
-      "Defis serveurs IA quotidiens",
-      "Support IA prioritaire",
-    ],
-  },
-];
+// REMOVED PLANS
 
 const hardware = [
   { name: "POS Client", desc: "Une tablette murale pour la commande.", icon: "🖥️", tag: "Sur devis" },
@@ -146,6 +93,107 @@ const comparisons = [
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
+
+function PricingBuilder() {
+  const [selected, setSelected] = useState<string[]>(["avis"]);
+
+  const toggleModule = (id: string) => {
+    if (id === "avis") return; // always required
+    setSelected(prev => 
+      prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
+    );
+  };
+
+  const selectedCount = selected.length;
+  let discountPercent = 0;
+  if (selectedCount === 2) discountPercent = 10;
+  if (selectedCount === 3) discountPercent = 15;
+  if (selectedCount >= 4) discountPercent = 20;
+
+  const rawTotal = selected.reduce((sum, id) => {
+    const mod = MODULES.find(m => m.id === id);
+    return sum + (mod ? mod.price : 0);
+  }, 0);
+
+  const discountAmount = rawTotal * (discountPercent / 100);
+  const finalTotal = rawTotal - discountAmount;
+
+  return (
+    <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-8">
+      {/* Liste des modules */}
+      <div className="space-y-3">
+        {MODULES.map(mod => {
+          const isSelected = selected.includes(mod.id);
+          return (
+            <div 
+              key={mod.id} 
+              onClick={() => toggleModule(mod.id)}
+              className={`flex items-center justify-between p-5 rounded-2xl border transition-all cursor-pointer ${
+                isSelected 
+                  ? "bg-orange-500/10 border-orange-500/30 shadow-lg shadow-orange-500/5" 
+                  : "bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10"
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <div className={`w-6 h-6 rounded flex items-center justify-center border-2 transition-colors ${
+                  isSelected ? "bg-orange-500 border-orange-500" : "border-white/20 bg-transparent"
+                }`}>
+                  {isSelected && <span className="text-black text-sm font-bold">✓</span>}
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                    {mod.name}
+                    {mod.required && <span className="text-[10px] uppercase tracking-wider bg-white/10 px-2 py-0.5 rounded text-white/50">Base obligatoire</span>}
+                  </h3>
+                  <p className="text-sm text-white/50">{mod.desc}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="font-bold text-xl text-white">{mod.price.toFixed(2)}€</div>
+                <div className="text-xs text-white/40">/ mois</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Résumé fixe */}
+      <div className="relative">
+        <div className="sticky top-24 rounded-3xl bg-[#111] border border-white/10 p-8 shadow-2xl">
+          <h3 className="text-xl font-bold mb-6 border-b border-white/10 pb-4">Votre Abonnement</h3>
+          
+          <div className="space-y-4 mb-6">
+            <div className="flex justify-between text-white/70">
+              <span>Applications ({selectedCount})</span>
+              <span>{rawTotal.toFixed(2)} €</span>
+            </div>
+            {discountPercent > 0 && (
+              <div className="flex justify-between text-emerald-400 font-medium">
+                <span>Remise volume (-{discountPercent}%)</span>
+                <span>-{discountAmount.toFixed(2)} €</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="border-t border-white/10 pt-6 mb-8">
+            <div className="flex items-end justify-between">
+              <span className="text-white/60">Total HT</span>
+              <div className="text-right">
+                <div className="text-5xl font-black text-white">{finalTotal.toFixed(2)} €</div>
+                <div className="text-sm text-white/40 mt-1">/ mois sans engagement</div>
+              </div>
+            </div>
+          </div>
+
+          <Link href="/register" className="block w-full py-4 bg-orange-500 hover:bg-orange-400 text-white rounded-xl font-bold text-lg text-center transition-all shadow-xl shadow-orange-500/20 hover:-translate-y-1">
+            Créer mon compte
+          </Link>
+          <p className="text-center text-xs text-white/40 mt-4">14 jours d'essai offerts. Pas de CB requise.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function LandingPage() {
   const { scrollYProgress } = useScroll();
@@ -480,52 +528,15 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── Pricing ─────────────────────────────────────────────────────────── */}
+        {/* ── Pricing Builder ─────────────────────────────────────────────────── */}
         <section id="pricing" className="py-32 px-6 bg-[#0f0f0f]">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-20">
-              <h2 className="text-4xl md:text-5xl font-black mb-4">Tarifs transparents.</h2>
-              <p className="text-white/40 text-lg">Resiliation a tout moment. Pas d'asterisque cachee.</p>
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl md:text-5xl font-black mb-4">Créez votre solution sur mesure.</h2>
+              <p className="text-white/40 text-lg">Ne payez que pour ce que vous utilisez. Tarif dégressif selon le volume d'applications.</p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8 items-start">
-              {plans.map((plan, i) => (
-                <motion.div 
-                  key={plan.name} 
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.15 }}
-                  className={`relative rounded-3xl border p-8 bg-[#0a0a0a] shadow-2xl ${plan.color}`}
-                >
-                  {plan.badge && (
-                    <div className={`absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 text-white text-xs font-bold rounded-full shadow-lg ${plan.name.includes("Nova") ? "bg-purple-500" : "bg-orange-500"}`}>
-                      {plan.badge}
-                    </div>
-                  )}
-                  <div className="text-xl font-bold text-white mb-2">{plan.name}</div>
-                  <div className="flex items-end gap-1 mb-2">
-                    <span className="text-4xl lg:text-5xl font-black text-white">{plan.price}</span>
-                    <span className="text-white/40 mb-2 text-sm">{plan.period}</span>
-                  </div>
-                  <div className={`text-sm font-semibold mb-8 ${plan.name.includes("IA") ? "text-purple-400" : "text-orange-400"}`}>{plan.trial}</div>
-                  
-                  <div className="h-px w-full bg-white/10 mb-8" />
-                  
-                  <ul className="space-y-4 mb-10">
-                    {plan.features.map((f) => (
-                      <li key={f} className="flex items-start gap-3 text-sm text-white/70">
-                        <span className={`mt-0.5 flex-shrink-0 text-lg ${plan.name.includes("IA") ? "text-purple-400" : "text-orange-400"}`}>✓</span>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href="/register" className={`block w-full py-4 rounded-xl font-bold text-center transition-all shadow-lg hover:scale-[1.02] ${plan.ctaColor}`}>
-                    {plan.name === "Pro" ? "Demander une demo" : "Demarrer maintenant"}
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
+            <PricingBuilder />
           </div>
         </section>
 
