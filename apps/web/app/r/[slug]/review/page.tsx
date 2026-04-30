@@ -89,7 +89,10 @@ export default function PublicReviewPage() {
       let partial = "";
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          setGenerating(false);
+          break;
+        }
         partial += new TextDecoder().decode(value);
         const lines = partial.split("\n\n");
         partial = lines.pop() || "";
