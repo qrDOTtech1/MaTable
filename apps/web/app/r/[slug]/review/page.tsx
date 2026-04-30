@@ -35,6 +35,7 @@ export default function PublicReviewPage() {
   // AI Drafts State
   const [generating, setGenerating] = useState(false);
   const [drafts, setDrafts] = useState<{ version1: string; version2: string } | null>(null);
+  const [liveText, setLiveText] = useState("");
 
   useEffect(() => {
     fetch(`${API_URL}/api/r/${params.slug}/review-campaign`)
@@ -70,6 +71,7 @@ export default function PublicReviewPage() {
 
   const generateDrafts = (finalAnswers: string[]) => {
     setGenerating(true);
+    setLiveText("");
     // Use the SSE endpoint /api/ia/review-draft
     fetch(`${API_URL}/api/ia/review-draft`, {
       method: "POST",
@@ -94,7 +96,9 @@ export default function PublicReviewPage() {
         for (const line of lines) {
           if (line.startsWith("data: ")) {
             const data = JSON.parse(line.slice(6));
-            if (data.type === "done") {
+            if (data.type === "chunk" && data.text) {
+              setLiveText(prev => prev + data.text);
+            } else if (data.type === "done") {
               setDrafts({ version1: data.version1, version2: data.version2 });
               setGenerating(false);
             } else if (data.type === "error") {
@@ -203,6 +207,11 @@ export default function PublicReviewPage() {
             <div className="text-center p-8 space-y-4">
               <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
               <p className="text-orange-400 font-medium">L'IA rédige votre avis...</p>
+              {liveText && (
+                <div className="mt-6 p-4 bg-white/5 rounded-xl text-left font-mono text-xs whitespace-pre-wrap text-white/70 overflow-hidden break-words border border-white/10">
+                  {liveText}
+                </div>
+              )}
             </div>
           ) : drafts ? (
             <div className="space-y-4">
