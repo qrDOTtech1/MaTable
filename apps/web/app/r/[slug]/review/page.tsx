@@ -8,9 +8,50 @@ type Server = { id: string; name: string; photoUrl: string | null };
 type Config = {
   restaurant: { id: string; name: string };
   googleReviewLink: string | null;
-  reviewVoucherConfig: { active: boolean; title: string; description: string; code: string } | null;
+  reviewVoucherConfig: { active?: boolean | string; title?: string; description?: string; code?: string } | null;
   servers: Server[];
 };
+
+type Drafts = { version1: string; version2: string };
+
+function normalizeVoucher(config: Config | null) {
+  const voucher = config?.reviewVoucherConfig;
+  if (!voucher) return null;
+  const active = voucher.active === true || voucher.active === "true";
+  const code = `${voucher.code ?? ""}`.trim();
+  if (!active || !code) return null;
+  return {
+    code,
+    title: `${voucher.title ?? "Merci pour votre avis !"}`.trim() || "Merci pour votre avis !",
+    description: `${voucher.description ?? "Présentez ce code lors de votre prochain passage."}`.trim() || "Présentez ce code lors de votre prochain passage.",
+  };
+}
+
+function parseDraftsFromText(text: string): Drafts | null {
+  const cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
+  const jsonStart = cleaned.indexOf("{");
+  const jsonEnd = cleaned.lastIndexOf("}");
+  const candidates = [
+    cleaned,
+    jsonStart >= 0 && jsonEnd > jsonStart ? cleaned.slice(jsonStart, jsonEnd + 1) : "",
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (typeof parsed.version1 === "string" && typeof parsed.version2 === "string") {
+        return { version1: parsed.version1.trim(), version2: parsed.version2.trim() };
+      }
+    } catch {}
+  }
+
+  const chunks = cleaned
+    .split(/(?:version\s*1\s*:|version\s*2\s*:|\n\s*[-•]\s*)/i)
+    .map((s) => s.replace(/^['"\s:,-]+|['"\s,]+$/g, "").trim())
+    .filter((s) => s.length > 20);
+  if (chunks.length >= 2) return { version1: chunks[0], version2: chunks[1] };
+  return null;
+}
 
 export default function PublicReviewPage() {
   const params = useParams() as { slug: string };
@@ -34,7 +75,7 @@ export default function PublicReviewPage() {
   
   // AI Drafts State
   const [generating, setGenerating] = useState(false);
-  const [drafts, setDrafts] = useState<{ version1: string; version2: string } | null>(null);
+  const [drafts, setDrafts] = useState<Drafts | null>(null);
   const [liveText, setLiveText] = useState("");
 
   useEffect(() => {
@@ -71,7 +112,10 @@ export default function PublicReviewPage() {
 
   const generateDrafts = (finalAnswers: string[]) => {
     setGenerating(true);
+    setDrafts(null);
     setLiveText("");
+    let streamedText = "";
+    let receivedDone = false;
     // Use the SSE endpoint /api/ia/review-draft
     fetch(`${API_URL}/api/ia/review-draft`, {
       method: "POST",
@@ -90,6 +134,10 @@ export default function PublicReviewPage() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
+          if (!receivedDone) {
+            const parsed = parseDraftsFromText(streamedText);
+            if (parsed) setDrafts(parsed);
+          }
           setGenerating(false);
           break;
         }
@@ -98,11 +146,23 @@ export default function PublicReviewPage() {
         partial = lines.pop() || "";
         for (const line of lines) {
           if (line.startsWith("data: ")) {
-            const data = JSON.parse(line.slice(6));
+            let data: any;
+            try {
+              data = JSON.parse(line.slice(6));
+            } catch {
+              continue;
+            }
             if (data.type === "chunk" && data.text) {
+              streamedText += data.text;
               setLiveText(prev => prev + data.text);
             } else if (data.type === "done") {
-              setDrafts({ version1: data.version1, version2: data.version2 });
+              receivedDone = true;
+              const parsed =
+                typeof data.version1 === "string" && typeof data.version2 === "string"
+                  ? { version1: data.version1.trim(), version2: data.version2.trim() }
+                  : parseDraftsFromText(streamedText);
+              if (parsed) setDrafts(parsed);
+              else alert("L'IA a répondu, mais le format est illisible. Réessayez.");
               setGenerating(false);
             } else if (data.type === "error") {
               alert("Erreur de génération IA");
@@ -120,20 +180,17 @@ export default function PublicReviewPage() {
 
   const copyAndGoToGoogle = (text: string) => {
     navigator.clipboard.writeText(text);
+    const voucher = normalizeVoucher(config);
+    setStep(voucher ? "voucher" : "google");
     if (config?.googleReviewLink) {
-      window.open(config.googleReviewLink, "_blank");
-    }
-    // After copying and going to google, show voucher if configured
-    if (config?.reviewVoucherConfig?.active) {
-      setStep("voucher");
-    } else {
-      setStep("google");
+      window.setTimeout(() => window.open(config.googleReviewLink!, "_blank"), 150);
     }
   };
 
   if (loading) return <div className="p-8 text-center text-white/50">Chargement...</div>;
   if (error) return <div className="p-8 text-center text-red-400">{error}</div>;
   if (!config) return null;
+  const voucher = normalizeVoucher(config);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white p-6 max-w-md mx-auto flex flex-col pt-12">
@@ -146,7 +203,7 @@ export default function PublicReviewPage() {
         <div className="animate-fade-in space-y-6">
           <h2 className="text-xl font-bold text-center">Qui s'est occupé de vous ?</h2>
           <div className="grid grid-cols-2 gap-4">
-            {config.servers.map(s => (
+            {(config.servers.length ? config.servers : [{ id: "team", name: "L'équipe", photoUrl: null }]).map(s => (
               <button 
                 key={s.id} 
                 onClick={() => handleServerSelect(s)}
@@ -246,17 +303,17 @@ export default function PublicReviewPage() {
         </div>
       )}
 
-      {step === "voucher" && config.reviewVoucherConfig && (
+      {step === "voucher" && voucher && (
         <div className="animate-fade-in text-center space-y-6 py-8">
           <div className="text-6xl mb-4">🎁</div>
           <h2 className="text-2xl font-bold">Merci pour votre avis !</h2>
           <p className="text-white/50">Pour vous remercier, voici un cadeau lors de votre prochain passage.</p>
           
           <div className="bg-gradient-to-br from-orange-500/20 to-orange-900/20 border border-orange-500/30 rounded-3xl p-8 mt-8">
-            <h3 className="text-xl font-black text-orange-400 mb-2">{config.reviewVoucherConfig.title}</h3>
-            <p className="text-sm text-white/70 mb-6">{config.reviewVoucherConfig.description}</p>
+            <h3 className="text-xl font-black text-orange-400 mb-2">{voucher.title}</h3>
+            <p className="text-sm text-white/70 mb-6">{voucher.description}</p>
             <div className="bg-black/40 rounded-xl py-3 px-6 inline-block">
-              <span className="font-mono text-2xl font-black tracking-widest text-white">{config.reviewVoucherConfig.code}</span>
+              <span className="font-mono text-2xl font-black tracking-widest text-white">{voucher.code}</span>
             </div>
             <p className="text-[10px] text-white/30 mt-6 uppercase tracking-wider">Sur présentation de cet écran</p>
           </div>

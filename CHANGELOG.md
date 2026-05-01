@@ -21,6 +21,9 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 ### Ajouté — Expérience Client (Lot B)
 - **Suivi de commande Live** : Statuts dynamiques via Socket.io (Reçue, En préparation, Servie) avec icônes et couleurs dédiées.
 
+### Corrigé
+- **Campagne avis IA** : la page `/r/[slug]/review` normalise la récompense configurée, affiche le code promo après copie de l'avis et récupère les 2 propositions même si le flux IA renvoie un format partiel.
+
 ## [1.1.0] — 2026-04-20
 - **Design Tokens** : Centralized design system (`/lib/design-system.ts`) with:
   - Colors (primary orange #f97316, backgrounds, text, borders, status)
