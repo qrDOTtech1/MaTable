@@ -21,6 +21,9 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 ### Ajouté — Expérience Client (Lot B)
 - **Suivi de commande Live** : Statuts dynamiques via Socket.io (Reçue, En préparation, Servie) avec icônes et couleurs dédiées.
 
+### Ajouté — SEO & Marque
+- **Référencement MaTable Pro** : métadonnées brandées `MaTable Pro / matablepro`, JSON-LD Organization/WebSite/SoftwareApplication, OpenGraph dynamique et signaux canonical/sitemap/robots corrigés.
+
 ### Corrigé
 - **Campagne avis IA** : la page `/r/[slug]/review` normalise la récompense configurée, affiche le code promo après copie de l'avis et récupère les 2 propositions même si le flux IA renvoie un format partiel.
 

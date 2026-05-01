@@ -1,34 +1,35 @@
 import { MetadataRoute } from 'next';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://matable.pro';
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://matable.pro').replace(/\/$/, '');
+  const now = new Date();
 
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
     {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
+      url: `${baseUrl}/`,
+      lastModified: now,
+      changeFrequency: 'daily',
       priority: 1.0,
     },
     {
       url: `${baseUrl}/register`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.9,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.8,
     },
     {
-      url: `${baseUrl}/login`,
-      lastModified: new Date(),
+      url: `${baseUrl}/blog`,
+      lastModified: now,
       changeFrequency: 'monthly',
-      priority: 0.8,
+      priority: 0.7,
     },
   ];
 
   // Try to fetch restaurants from API for their public pages
   let restaurantPages: MetadataRoute.Sitemap = [];
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://matable-api-production.up.railway.app';
     const res = await fetch(`${apiUrl}/api/restaurants`, {
       next: { revalidate: 86400 }, // Revalidate every 24 hours
     });
@@ -55,7 +56,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         );
     }
   } catch (error) {
-    console.error('Failed to fetch restaurants for sitemap:', error);
+    // Keep the marketing sitemap valid even if the API is unavailable at build time.
   }
 
   return [...staticPages, ...restaurantPages];

@@ -221,7 +221,7 @@ export default function LandingPage() {
         className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[#0a0a0a]/70 backdrop-blur-xl"
       >
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="text-2xl font-black text-white">Ma <span className="text-orange-500">Table</span></span>
+          <span className="text-2xl font-black text-white">MaTable <span className="text-orange-500">Pro</span></span>
           <div className="hidden md:flex items-center gap-8 text-sm text-white/60">
             <a href="#features" className="hover:text-white transition-colors">Fonctionnalites</a>
             <a href="#nova-ia" className="hover:text-white transition-colors">Nova IA</a>
@@ -250,16 +250,16 @@ export default function LandingPage() {
               className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-400 text-sm mb-8"
             >
               <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
-              La version NovaTech 3.0 est en ligne — Testez-le gratuitement pendant 14 jours
+              MaTable Pro — matablepro — est en ligne. Testez-le gratuitement pendant 14 jours
             </motion.div>
 
             <motion.h1 
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.8 }}
               className="text-5xl md:text-7xl lg:text-8xl font-black leading-[1.05] tracking-tight mb-6"
             >
-              La restauration de demain,<br />
+              MaTable Pro,<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500">
-                maintenant.
+                le logiciel restaurant qui travaille vraiment.
               </span>
             </motion.h1>
 
@@ -267,7 +267,7 @@ export default function LandingPage() {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 1 }}
               className="text-xl md:text-2xl text-white/50 max-w-4xl mx-auto mb-10 leading-relaxed font-medium"
             >
-              Commande QR, portail serveur en temps réel, paiement plus fluide, pourboires simplifiés et pilotage intelligent de la salle : tout ce qui modernise vraiment un restaurant, réuni dans une seule solution.
+              MaTable Pro (matablepro), c'est le logiciel restaurant tout-en-un : commande QR, portail serveur en temps réel, caisse, avis Google IA, stock, réservations et analytics dans une seule solution cohérente.
             </motion.p>
 
             <motion.div 

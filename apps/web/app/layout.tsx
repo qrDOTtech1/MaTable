@@ -3,8 +3,14 @@ import type { Metadata } from "next";
 import { Footer } from "@/components/layout/Footer";
 
 export const metadata: Metadata = {
-  title: "A table !",
-  description: "Commandez depuis votre table — scanner, choisir, payer.",
+  metadataBase: new URL("https://matable.pro"),
+  title: {
+    default: "MaTable Pro",
+    template: "%s | MaTable Pro",
+  },
+  description: "Logiciel restaurant MaTable Pro : QR code, commande à table, caisse, portail serveur, IA, réservations et analytics.",
+  applicationName: "MaTable Pro",
+  alternates: { canonical: "https://matable.pro/" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -17,8 +23,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="canonical" href="https://matable.pro" />
-        <link rel="alternate" hrefLang="en" href="https://en.matable.pro" />
-        <link rel="alternate" hrefLang="es" href="https://es.matable.pro" />
+        <link rel="alternate" hrefLang="fr" href="https://matable.pro/" />
+        <link rel="alternate" hrefLang="x-default" href="https://matable.pro/" />
       </head>
       <body className="flex flex-col min-h-screen">
         <div className="flex-1">{children}</div>
