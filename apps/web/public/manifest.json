@@ -1,7 +1,7 @@
 {
-  "name": "MaTable Pro — logiciel restaurant QR, caisse, serveur et IA",
+  "name": "MaTable Pro (matable / matablepro) — logiciel restaurant QR, caisse, serveur et IA",
   "short_name": "MaTable Pro",
-  "description": "MaTable Pro (matablepro) : logiciel restaurant tout-en-un avec QR code, caisse, portail serveur, avis Google IA, réservations, stock et analytics.",
+  "description": "MaTable Pro, aussi recherché matable ou matablepro : logiciel restaurant tout-en-un avec QR code, caisse, portail serveur, avis Google IA, réservations, stock et analytics.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

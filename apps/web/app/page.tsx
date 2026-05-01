@@ -4,12 +4,13 @@ import LandingPage from "./LandingPage";
 export const metadata: Metadata = {
   metadataBase: new URL("https://matable.pro"),
   title: {
-    default: "MaTable Pro — Logiciel restaurant QR, caisse, serveur et IA",
+    default: "MaTable Pro (matable) — Logiciel restaurant QR, caisse, serveur et IA",
     template: "%s | MaTable Pro",
   },
   description:
-    "MaTable Pro (matablepro) est le logiciel restaurant tout-en-un : menu QR code, commande à table, portail serveur, caisse, stock, avis Google IA, réservations et analytics.",
+    "MaTable Pro, aussi recherché matable ou matablepro, est le logiciel restaurant tout-en-un : menu QR code, commande à table, portail serveur, caisse, stock, avis Google IA, réservations et analytics.",
   keywords: [
+    "matable",
     "MaTable Pro",
     "matablepro",
     "matable.pro",
@@ -44,22 +45,22 @@ export const metadata: Metadata = {
     locale: "fr_FR",
     url: "https://matable.pro/",
     siteName: "MaTable Pro",
-    title: "MaTable Pro — Logiciel restaurant QR, caisse, serveur et IA",
+    title: "MaTable Pro (matable) — Logiciel restaurant QR, caisse, serveur et IA",
     description:
-      "La plateforme SaaS restaurant pour commander par QR code, piloter la salle, encaisser, gérer les avis Google IA, les stocks, les réservations et les analytics.",
+      "MaTable Pro, aussi recherché matable ou matablepro, est la plateforme SaaS restaurant pour commander par QR code, piloter la salle, encaisser, gérer les avis Google IA, les stocks, les réservations et les analytics.",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "MaTable Pro — logiciel restaurant QR, caisse, serveur et IA",
+        alt: "MaTable Pro matable matablepro — logiciel restaurant QR, caisse, serveur et IA",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "MaTable Pro — Logiciel restaurant QR, caisse, serveur et IA",
-    description: "Commande QR, avis Google IA, portail serveur, caisse, stock, réservations et analytics.",
+    title: "MaTable Pro (matable) — Logiciel restaurant QR, caisse, serveur et IA",
+    description: "MaTable Pro, matable ou matablepro : commande QR, avis Google IA, portail serveur, caisse, stock, réservations et analytics.",
     images: ["/opengraph-image"],
   },
   alternates: { canonical: "https://matable.pro/" },
@@ -76,7 +77,7 @@ export default function HomePage() {
         "@type": "Organization",
         "@id": "https://matable.pro/#organization",
         name: "MaTable Pro",
-        alternateName: ["matablepro", "Ma Table Pro", "Ma Table", "matable.pro"],
+        alternateName: ["matable", "matablepro", "Ma Table Pro", "Ma Table", "matable.pro"],
         url: "https://matable.pro/",
         logo: "https://matable.pro/favicon.svg",
         sameAs: ["https://matable.pro/"],
@@ -85,7 +86,7 @@ export default function HomePage() {
         "@type": "WebSite",
         "@id": "https://matable.pro/#website",
         name: "MaTable Pro",
-        alternateName: "matablepro",
+        alternateName: ["matable", "matablepro", "MaTable Pro", "matable.pro"],
         url: "https://matable.pro/",
         publisher: { "@id": "https://matable.pro/#organization" },
         potentialAction: {
@@ -98,17 +99,39 @@ export default function HomePage() {
         "@type": "SoftwareApplication",
         "@id": "https://matable.pro/#software",
         name: "MaTable Pro",
-        alternateName: "matablepro",
+        alternateName: ["matable", "matablepro", "MaTable Pro", "matable.pro"],
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
         url: "https://matable.pro/",
-        description: "Logiciel restaurant tout-en-un : menu QR code, commande à table, portail serveur, caisse, avis Google IA, stock, réservations et analytics.",
+        description: "MaTable Pro, aussi appelé matable ou matablepro, est un logiciel restaurant tout-en-un : menu QR code, commande à table, portail serveur, caisse, avis Google IA, stock, réservations et analytics.",
         offers: {
           "@type": "Offer",
           url: "https://matable.pro/register",
           priceCurrency: "EUR",
           availability: "https://schema.org/InStock",
         },
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://matable.pro/#brand-faq",
+        mainEntity: [
+          {
+            "@type": "Question",
+            name: "Quel est le site officiel de MaTable ou matablepro ?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Le site officiel de MaTable Pro, aussi recherché sous matable ou matablepro, est https://matable.pro/.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "MaTable Pro sert à quoi ?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "MaTable Pro est un logiciel restaurant pour menu QR code, commande à table, caisse, portail serveur, avis Google IA, stock, réservations et analytics.",
+            },
+          },
+        ],
       },
     ],
   };

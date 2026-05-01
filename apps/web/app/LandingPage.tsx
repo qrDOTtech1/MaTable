@@ -250,7 +250,7 @@ export default function LandingPage() {
               className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-400 text-sm mb-8"
             >
               <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
-              MaTable Pro — matablepro — est en ligne. Testez-le gratuitement pendant 14 jours
+              MaTable Pro — matable — matablepro. Site officiel : matable.pro
             </motion.div>
 
             <motion.h1 
@@ -267,7 +267,7 @@ export default function LandingPage() {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 1 }}
               className="text-xl md:text-2xl text-white/50 max-w-4xl mx-auto mb-10 leading-relaxed font-medium"
             >
-              MaTable Pro (matablepro), c'est le logiciel restaurant tout-en-un : commande QR, portail serveur en temps réel, caisse, avis Google IA, stock, réservations et analytics dans une seule solution cohérente.
+              MaTable Pro (matable / matablepro), c'est le logiciel restaurant tout-en-un : commande QR, portail serveur en temps réel, caisse, avis Google IA, stock, réservations et analytics dans une seule solution cohérente.
             </motion.p>
 
             <motion.div 
@@ -283,6 +283,19 @@ export default function LandingPage() {
             </motion.div>
           </div>
         </motion.section>
+
+        {/* ── Brand SEO Clarifier ───────────────────────────────────────────── */}
+        <section className="border-y border-white/[0.06] bg-[#0a0a0a]/70 px-6 py-8">
+          <div className="mx-auto flex max-w-6xl flex-col gap-3 text-center md:flex-row md:items-center md:justify-between md:text-left">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-400">Site officiel</p>
+              <h2 className="mt-1 text-2xl font-black text-white md:text-3xl">MaTable Pro, aussi recherché “matable” ou “matablepro”.</h2>
+            </div>
+            <p className="max-w-xl text-sm font-semibold leading-relaxed text-white/50">
+              Si vous cherchez MaTable, matablepro ou matable.pro, vous êtes au bon endroit : le logiciel restaurant QR, caisse, serveur, avis Google IA, stock et analytics.
+            </p>
+          </div>
+        </section>
 
         {/* ── Stats ───────────────────────────────────────────────────────────── */}
         <section className="border-y border-white/[0.06] bg-[#0a0a0a]/50 backdrop-blur-sm relative z-10">

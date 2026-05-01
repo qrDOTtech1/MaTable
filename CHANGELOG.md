@@ -23,6 +23,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ### Ajouté — SEO & Marque
 - **Référencement MaTable Pro** : métadonnées brandées `MaTable Pro / matablepro`, JSON-LD Organization/WebSite/SoftwareApplication, OpenGraph dynamique et signaux canonical/sitemap/robots corrigés.
+- **Requêtes marque exactes** : ajout de signaux visibles et structurés pour `matable`, `matablepro` et `matable.pro` afin d'aider Google à associer ces recherches au domaine officiel.
 
 ### Corrigé
 - **Campagne avis IA** : la page `/r/[slug]/review` normalise la récompense configurée, affiche le code promo après copie de l'avis et récupère les 2 propositions même si le flux IA renvoie un format partiel.

@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "MaTable Pro — logiciel restaurant QR, caisse, serveur et IA";
+export const alt = "MaTable Pro matable matablepro — logiciel restaurant QR, caisse, serveur et IA";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -26,7 +26,7 @@ export default function Image() {
             MaTable <span style={{ color: "#f97316" }}>Pro</span>
           </div>
           <div style={{ border: "3px solid #f97316", color: "#f97316", padding: "12px 18px", fontSize: 24, fontWeight: 900 }}>
-            matablepro
+            matable · matablepro
           </div>
         </div>
         <div>
