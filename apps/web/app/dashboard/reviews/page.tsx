@@ -6,12 +6,16 @@ import QRCode from "qrcode";
 
 type DishReview = { id: string; rating: number; comment?: string; menuItem: { name: string }; createdAt: string };
 type ServerReview = { id: string; rating: number; comment?: string; server: { name: string }; createdAt: string };
+type CustomerReview = { id: string; serverName: string; ratings: any; reviewText: string; createdAt: string };
+type ServerTip = { id: string; serverName: string; amountCents: number; createdAt: string };
 type RestaurantConfig = { id: string; slug: string; name: string; googleReviewLink?: string; reviewVoucherConfig?: { active: boolean; title: string; description: string; code: string } };
 
 export default function ReviewsPage() {
   const [dishReviews, setDishReviews] = useState<DishReview[]>([]);
   const [serverReviews, setServerReviews] = useState<ServerReview[]>([]);
-  const [tab, setTab] = useState<"dishes" | "servers" | "campaign">("dishes");
+  const [customerReviews, setCustomerReviews] = useState<CustomerReview[]>([]);
+  const [serverTips, setServerTips] = useState<ServerTip[]>([]);
+  const [tab, setTab] = useState<"dishes" | "servers" | "customers" | "campaign">("customers");
   const [restaurant, setRestaurant] = useState<RestaurantConfig | null>(null);
   const [qrUrl, setQrUrl] = useState<string>("");
 
@@ -29,6 +33,12 @@ export default function ReviewsPage() {
       .catch(() => {});
     api<{ reviews: ServerReview[] }>("/api/pro/reviews/servers")
       .then((r) => setServerReviews(r.reviews))
+      .catch(() => {});
+    api<{ reviews: CustomerReview[], tips: ServerTip[] }>("/api/pro/reviews/customers")
+      .then((r) => {
+        setCustomerReviews(r.reviews);
+        setServerTips(r.tips);
+      })
       .catch(() => {});
     api<{ restaurant: RestaurantConfig }>("/api/pro/me")
       .then((r) => {
@@ -69,11 +79,12 @@ export default function ReviewsPage() {
   return (
     <div className="max-w-4xl">
       <h1 className="text-2xl font-bold mb-6">Avis & Réputation</h1>
-      <div className="flex gap-2 mb-6 border-b border-white/10 pb-2">
-        <button className={`pb-2 px-2 text-sm font-bold ${tab === "dishes" ? "border-b-2 border-orange-500 text-orange-500" : "text-white/50"}`} onClick={() => setTab("dishes")}>Plats ({dishReviews.length})</button>
-        <button className={`pb-2 px-2 text-sm font-bold ${tab === "servers" ? "border-b-2 border-orange-500 text-orange-500" : "text-white/50"}`} onClick={() => setTab("servers")}>Serveurs ({serverReviews.length})</button>
-        <button className={`pb-2 px-2 text-sm font-bold flex items-center gap-2 ${tab === "campaign" ? "border-b-2 border-orange-500 text-orange-500" : "text-white/50"}`} onClick={() => setTab("campaign")}>
-          ✨ Campagne IA <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 text-[10px] uppercase">Nouveau</span>
+      <div className="flex gap-2 mb-6 border-b border-white/10 pb-2 overflow-x-auto scrollbar-none">
+        <button className={`shrink-0 pb-2 px-2 text-sm font-bold ${tab === "customers" ? "border-b-2 border-orange-500 text-orange-500" : "text-white/50"}`} onClick={() => setTab("customers")}>Avis des clients ({customerReviews.length})</button>
+        <button className={`shrink-0 pb-2 px-2 text-sm font-bold ${tab === "dishes" ? "border-b-2 border-orange-500 text-orange-500" : "text-white/50"}`} onClick={() => setTab("dishes")}>Plats ({dishReviews.length})</button>
+        <button className={`shrink-0 pb-2 px-2 text-sm font-bold ${tab === "servers" ? "border-b-2 border-orange-500 text-orange-500" : "text-white/50"}`} onClick={() => setTab("servers")}>Serveurs ({serverReviews.length})</button>
+        <button className={`shrink-0 pb-2 px-2 text-sm font-bold flex items-center gap-2 ${tab === "campaign" ? "border-b-2 border-orange-500 text-orange-500" : "text-white/50"}`} onClick={() => setTab("campaign")}>
+          ⚙️ Paramètres IA
         </button>
       </div>
 
@@ -142,6 +153,59 @@ export default function ReviewsPage() {
             ) : (
               <p className="text-sm text-white/40">Veuillez sauvegarder le nom du restaurant dans les paramètres pour générer le QR Code.</p>
             )}
+          </div>
+        </div>
+      )}
+
+      {tab === "customers" && (
+        <div className="grid md:grid-cols-2 gap-8">
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold flex items-center gap-2">⭐ Avis IA générés</h2>
+            {customerReviews.length === 0 ? (
+              <p className="text-sm text-white/50 bg-white/5 p-4 rounded-xl text-center">Aucun avis généré pour le moment.</p>
+            ) : customerReviews.map((r) => {
+              const ratings = r.ratings || {};
+              const vals = Object.values(ratings) as number[];
+              const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+              return (
+                <div key={r.id} className="card space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="text-sm text-orange-400 font-bold">{avg > 0 ? `${avg.toFixed(1)}/5 globale` : 'Nouvel avis'}</div>
+                    <div className="text-xs text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</div>
+                  </div>
+                  {r.serverName && <div className="text-xs text-white/50">Serveur: {r.serverName}</div>}
+                  {ratings && (
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      {ratings.food && <span className="px-2 py-1 rounded bg-white/5">🍽️ {ratings.food}</span>}
+                      {ratings.service && <span className="px-2 py-1 rounded bg-white/5">😊 {ratings.service}</span>}
+                      {ratings.atmosphere && <span className="px-2 py-1 rounded bg-white/5">🏠 {ratings.atmosphere}</span>}
+                      {ratings.value && <span className="px-2 py-1 rounded bg-white/5">💰 {ratings.value}</span>}
+                    </div>
+                  )}
+                  {r.reviewText && (
+                    <p className="text-sm text-white/70 bg-black/20 p-3 rounded-xl whitespace-pre-wrap">{r.reviewText}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold flex items-center gap-2">💝 Pourboires reçus</h2>
+            {serverTips.length === 0 ? (
+              <p className="text-sm text-white/50 bg-white/5 p-4 rounded-xl text-center">Aucun pourboire reçu pour le moment.</p>
+            ) : serverTips.map((t) => (
+              <div key={t.id} className="card flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-emerald-400">{(t.amountCents / 100).toFixed(2)} €</div>
+                  <div className="text-xs text-white/50 mt-0.5">Pour : {t.serverName}</div>
+                </div>
+                <div className="text-xs text-slate-400 text-right">
+                  <div>{new Date(t.createdAt).toLocaleDateString()}</div>
+                  <div className="text-[10px] mt-0.5">Stripe</div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
