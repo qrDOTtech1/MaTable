@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import { API_URL } from "@/lib/api";
 
 type Server = { id: string; name: string; photoUrl: string | null };
@@ -60,9 +60,13 @@ export default function PublicReviewPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Flow State
-  const [step, setStep] = useState<"server" | "rating" | "chat" | "drafts" | "google" | "voucher">("server");
+  const [step, setStep] = useState<"server" | "tip" | "rating" | "chat" | "drafts" | "google" | "voucher">("server");
   const [selectedServer, setSelectedServer] = useState<Server | null>(null);
   const [rating, setRating] = useState(0);
+
+  // Tip State
+  const searchParams = useSearchParams();
+  const [tipLoading, setTipLoading] = useState(false);
   
   // Chat State
   const questions = [
@@ -87,11 +91,47 @@ export default function PublicReviewPage() {
       .then(data => setConfig(data))
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  }, [params.slug]);
+
+    // Handle return from Stripe
+    if (searchParams.get("tip") === "success") {
+      setStep("rating");
+      // Could show a toast here "Merci pour le pourboire !"
+    } else if (searchParams.get("tip") === "cancel") {
+      setStep("tip");
+    }
+  }, [params.slug, searchParams]);
 
   const handleServerSelect = (s: Server) => {
     setSelectedServer(s);
+    setStep("tip");
+  };
+
+  const skipTip = () => {
     setStep("rating");
+  };
+
+  const handleTip = async (amountCents: number) => {
+    setTipLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/r/${params.slug}/tip`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amountCents,
+          serverName: selectedServer?.name || "L'équipe",
+          serverId: selectedServer?.id === "team" ? undefined : selectedServer?.id,
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur paiement");
+      
+      // Redirect to Stripe checkout
+      window.location.href = data.url;
+    } catch (e: any) {
+      alert("Impossible de procéder au pourboire pour le moment.");
+      setTipLoading(false);
+      setStep("rating"); // Skip if error
+    }
   };
 
   const handleRatingSelect = (r: number) => {
@@ -216,6 +256,36 @@ export default function PublicReviewPage() {
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {step === "tip" && (
+        <div className="animate-fade-in space-y-6">
+          <div className="text-center">
+            <h2 className="text-xl font-bold mb-2">Un petit pourboire pour {selectedServer?.name} ?</h2>
+            <p className="text-white/50 text-sm">Le service vous a plu ? Laissez un pourboire par carte ou Apple Pay / Google Pay. 100% sécurisé.</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {[200, 300, 500, 1000].map(cents => (
+              <button
+                key={cents}
+                disabled={tipLoading}
+                onClick={() => handleTip(cents)}
+                className="bg-white/5 hover:bg-orange-500/20 border border-white/10 hover:border-orange-500 rounded-2xl p-4 font-bold text-lg transition-colors flex items-center justify-center gap-2"
+              >
+                {(cents / 100).toFixed(2)} €
+              </button>
+            ))}
+          </div>
+
+          <button
+            disabled={tipLoading}
+            onClick={skipTip}
+            className="w-full py-4 text-white/40 hover:text-white transition-colors text-sm font-semibold mt-4"
+          >
+            Non merci, juste l'avis
+          </button>
         </div>
       )}
 
