@@ -148,12 +148,6 @@ export default function OrderPage() {
     return localStorage.getItem(sessionIdKey(tableUuid));
   });
 
-  // Tips — now part of the addition
-  const [tipCents, setTipCents]           = useState(0);
-  const [customTip, setCustomTip]         = useState("");
-  const [submittingTip, setSubmittingTip] = useState(false);
-  const [tipSent, setTipSent]             = useState(false);
-
   // Reviews
   const [serverRating, setServerRating]     = useState(0);
   const [dishRatings, setDishRatings]       = useState<Record<string, number>>({});
@@ -240,7 +234,7 @@ export default function OrderPage() {
 
   const unpaidOrders = myOrders.filter(o => o.status !== "PAID" && o.status !== "CANCELLED");
   const unpaidTotal  = unpaidOrders.reduce((s, o) => s + o.totalCents, 0);
-  const grandTotal   = unpaidTotal + tipCents; // total including tip
+  const grandTotal   = unpaidTotal; // tip removed
 
   const orderedItems = useMemo(() => {
     if (!info) return [];
@@ -329,26 +323,15 @@ export default function OrderPage() {
     const token = localStorage.getItem(tokenKey(tableUuid));
     if (!token) return;
     try {
-      // Pass tipCents + optional email to checkout
+      // Pass optional email to checkout (tip is now in the review flow)
       const res = await api<{ url: string }>(`/api/stripe/checkout`, {
         method: "POST", token,
-        body: JSON.stringify({ tipCents: tipCents > 0 ? tipCents : undefined, email: invoiceEmail || undefined }),
+        body: JSON.stringify({ email: invoiceEmail || undefined }),
       });
       window.location.href = res.url;
     } catch (e: any) {
       alert("Paiement indisponible — " + e.message);
     }
-  }
-
-  async function sendTip(cents: number) {
-    const token = localStorage.getItem(tokenKey(tableUuid));
-    if (!token) return;
-    setSubmittingTip(true);
-    try {
-      await api(`/api/tip`, { method: "POST", token, pro: false, body: JSON.stringify({ amountCents: cents }) });
-      setTipSent(true);
-    } catch { alert("Erreur lors de l'envoi du pourboire"); }
-    finally { setSubmittingTip(false); }
   }
 
   async function submitReviews() {
@@ -612,74 +595,25 @@ export default function OrderPage() {
             )}
           </div>
 
-          {/* Détail */}
           <div className="space-y-1 text-sm">
-            <div className="flex justify-between text-white/60">
-              <span>Commandes</span>
-              <span>{(unpaidTotal / 100).toFixed(2)} €</span>
-            </div>
-            {tipCents > 0 && (
-              <div className="flex justify-between text-emerald-400">
-                <span>💝 Pourboire</span>
-                <span>+ {(tipCents / 100).toFixed(2)} €</span>
-              </div>
-            )}
-            <div className="flex justify-between text-white font-black text-base pt-2 border-t border-white/[0.06] mt-2">
+            <div className="flex justify-between text-white font-black text-base mt-2">
               <span>Total</span>
               <span className="text-orange-400">{(grandTotal / 100).toFixed(2)} €</span>
             </div>
           </div>
 
-          {/* Pourboire intégré */}
-          {info.restaurant.tipsEnabled && !tipSent && (
-            <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 space-y-2">
-              <p className="text-xs text-white/50 font-medium">💝 Ajouter un pourboire ?</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setTipCents(0)}
-                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${tipCents === 0 ? "bg-white/[0.12] text-white" : "bg-white/[0.04] text-white/40 hover:text-white/60"}`}
-                >
-                  Sans
-                </button>
-                {TIP_PRESETS.map(c => (
-                  <button
-                    key={c}
-                    onClick={() => setTipCents(c)}
-                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${tipCents === c ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-white/[0.04] text-white/40 hover:text-white/60 border border-white/[0.06]"}`}
-                  >
-                    {(c / 100).toFixed(2)} €
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="number" min="0" step="0.50" placeholder="Montant libre (€)"
-                  value={customTip}
-                  onChange={e => {
-                    setCustomTip(e.target.value);
-                    setTipCents(Math.round(parseFloat(e.target.value || "0") * 100));
-                  }}
-                  className="flex-1 bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-sm placeholder-white/20 focus:outline-none focus:border-emerald-500/50"
-                />
-              </div>
-            </div>
-          )}
-          {tipSent && (
-            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-2 text-center text-emerald-400 text-xs font-medium">
-              💝 Pourboire envoyé, merci !
-            </div>
-          )}
-
           {/* Email pour la facture */}
-          <div>
-            <input
-              type="email"
-              placeholder="Email pour recevoir votre ticket (optionnel)"
-              value={invoiceEmail}
-              onChange={e => setInvoiceEmail(e.target.value)}
-              className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-sm placeholder-white/20 focus:outline-none focus:border-orange-500/50"
-            />
-          </div>
+          {!billMode && (
+            <div>
+              <input
+                type="email"
+                placeholder="Email pour recevoir votre ticket (optionnel)"
+                value={invoiceEmail}
+                onChange={e => setInvoiceEmail(e.target.value)}
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-sm placeholder-white/20 focus:outline-none focus:border-orange-500/50"
+              />
+            </div>
+          )}
 
            {/* Boutons paiement */}
           {!billMode ? (
