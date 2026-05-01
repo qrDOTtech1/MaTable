@@ -50,7 +50,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
     {
       label: "SERVICE",
       items: [
-        { href: "/dashboard", icon: "🔴", label: "Live cuisine" },
+        ...(has("orders") ? [{ href: "/dashboard", icon: "🔴", label: "Live cuisine" }] : []),
         ...(has("orders") ? [{ href: "/dashboard/tables", icon: "🪑", label: "Tables" }] : []),
         ...(has("orders") ? [{ href: "/dashboard/service-calls", icon: "🔔", label: "Appels serveur" }] : []),
       ],
@@ -58,21 +58,21 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
     {
       label: "CONTENU",
       items: [
-        { href: "/dashboard/menu", icon: "🍽️", label: "Menu" },
+        ...(has("orders") ? [{ href: "/dashboard/menu", icon: "🍽️", label: "Menu" }] : []),
         ...(has("nova_stock") ? [{ href: "/dashboard/stock", icon: "📦", label: "Stock & Ingredients" }] : []),
         ...(has("nova_stock") ? [{ href: "/dashboard/shopping", icon: "🛒", label: "Listes de courses" }] : []),
         { href: "/dashboard/servers", icon: "👤", label: "Serveurs" },
-        { href: "/dashboard/print", icon: "🖨️", label: "QR Codes" },
+        ...(has("orders") ? [{ href: "/dashboard/print", icon: "🖨️", label: "QR Codes" }] : []),
       ],
     },
     {
       label: "ANALYSE",
       items: [
-        { href: "/dashboard/analytics", icon: "📊", label: "Statistiques" },
+        ...(has("orders") ? [{ href: "/dashboard/analytics", icon: "📊", label: "Statistiques" }] : []),
         ...(has("nova_contab") ? [{ href: "/dashboard/novacontab", icon: "🧮", label: "URSSAF & TVA" }] : []),
-        ...(has("reviews") ? [{ href: "/dashboard/reviews", icon: "⭐", label: "Avis" }] : []),
+        ...(has("reviews") ? [{ href: "/dashboard/reviews", icon: "⭐", label: "Avis des clients" }] : []),
         ...(has("reservations") ? [{ href: "/dashboard/reservations", icon: "📅", label: "Reservations" }] : []),
-        { href: "/dashboard/invoices", icon: "🧾", label: "Factures" },
+        ...(has("orders") ? [{ href: "/dashboard/invoices", icon: "🧾", label: "Factures" }] : []),
       ],
     },
     {
@@ -83,7 +83,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
         { href: "/dashboard/testimonial", icon: "💬", label: "Temoignage" },
       ],
     },
-  ];
+  ].filter(section => section.items.length > 0);
 
   // Nova IA section items — only show apps that are enabled
   const iaItems = [
