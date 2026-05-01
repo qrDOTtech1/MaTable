@@ -54,8 +54,8 @@ export default function NovaContabPage() {
   const [historyKey, setHistoryKey] = useState(0);
 
   useEffect(() => {
-    api<{ restaurant: { subscription?: string } }>("/api/pro/me")
-      .then((me) => setIsNovaActive(me.restaurant.subscription === "PRO_IA"))
+    api<{ restaurant: { enabledApps?: string[] } }>("/api/pro/me")
+      .then((me) => setIsNovaActive(me.restaurant.enabledApps?.includes("nova_contab") ?? false))
       .catch(() => {})
       .finally(() => setLoadingConfig(false));
   }, []);
@@ -129,7 +129,7 @@ export default function NovaContabPage() {
         throw new Error("L'IA n'a pas retourné de résultat.");
       }
     } catch (e: any) {
-      if (e.message?.includes("403")) setError("Abonnement PRO_IA requis pour cette fonctionnalité.");
+      if (e.message?.includes("403")) setError("Application non activee.");
       else setError("Erreur lors de l'analyse : " + e.message);
     } finally {
       setAnalyzing(false);

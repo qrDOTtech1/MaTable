@@ -151,7 +151,7 @@ export default function NovaFinancePage() {
       setMeta(r.meta);
       setHistoryKey(k => k + 1);
     } catch (e: any) {
-      if (e.message?.includes("403")) setError("Abonnement PRO_IA requis.");
+      if (e.message?.includes("403")) setError("Application non activee.");
       else if (e.message?.includes("503")) setError("Clé API IA non configurée. Contactez l'admin.");
       else setError("Erreur : " + e.message);
     } finally {

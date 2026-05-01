@@ -6,7 +6,7 @@ import { API_URL } from "@/lib/api";
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "⌫", "0", "✓"];
 
 type ServerInfo = { id: string; name: string; photoUrl?: string | null };
-type RestaurantInfo = { id: string; name: string; subscription: string };
+type RestaurantInfo = { id: string; name: string; enabledApps: string[] };
 
 function setServerToken(token: string) {
   localStorage.setItem("server_token", token);

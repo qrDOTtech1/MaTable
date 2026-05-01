@@ -67,13 +67,13 @@ export default function ShoppingDetailPage() {
   useEffect(() => {
     Promise.all([
       api<ShoppingDetail>(`/api/pro/shopping-history/${id}`),
-      api<{ restaurant: { subscription?: string } }>("/api/pro/me")
+      api<{ restaurant: { enabledApps?: string[] } }>("/api/pro/me")
     ])
       .then(([r, me]) => {
         setData(r);
         setEditTitle(r.title);
         setListDraft(r.shoppingList);
-        setIsNovaActive(me.restaurant.subscription === "PRO_IA");
+        setIsNovaActive(me.restaurant.enabledApps?.includes("nova_stock") ?? false);
         if (r.completedAt) {
           setDone(true);
           setRealCost(String(r.realCost ?? ""));

@@ -6,7 +6,7 @@ import { io, Socket } from "socket.io-client";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type ServerInfo = { id: string; name: string; photoUrl?: string | null };
-type RestaurantInfo = { id: string; name: string; subscription: string };
+type RestaurantInfo = { id: string; name: string; enabledApps: string[] };
 type Schedule = { dayOfWeek: number; openMin: number; closeMin: number };
 type Note = { id: string; content: string; updatedAt: string };
 type Challenge = { id: string; title: string; done: boolean; dueDate?: string | null };
@@ -180,7 +180,7 @@ export default function ServeurDashPage() {
   const [orderSuccess, setOrderSuccess] = useState<{ tableNumber: number; total: number } | null>(null);
   const [menuCategory, setMenuCategory] = useState<string>("all");
 
-  const hasIA = restaurant?.subscription === "PRO_IA";
+  const hasIA = restaurant?.enabledApps?.includes("nova_ia") ?? false;
 
   // ── Load data ─────────────────────────────────────────────────────────────
   const loadAll = useCallback(async () => {
@@ -366,7 +366,7 @@ export default function ServeurDashPage() {
       });
       setIaSuggestions(res.suggestions);
     } catch (e: any) {
-      setIaError("Suggestion impossible. Abonnement PRO_IA requis ou clé IA manquante.");
+      setIaError("Suggestion impossible. Application non activee ou clé IA manquante.");
     } finally {
       setIaLoading(false);
     }
@@ -1139,7 +1139,7 @@ export default function ServeurDashPage() {
             ) : (
               <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5 text-center space-y-2">
                 <p className="text-2xl">✨</p>
-                <p className="text-sm text-white/50">Suggestions IA disponibles avec l'abonnement <strong className="text-purple-300">PRO_IA</strong></p>
+                <p className="text-sm text-white/50">Suggestions IA disponibles avec l'application <strong className="text-purple-300">Nova IA</strong></p>
               </div>
             )}
           </div>

@@ -212,7 +212,7 @@ export default function NovaStockPage() {
       setStockItems(items.map(it => ({ ...it, currentQty: "", freshExpiry: "" })));
       setStep("fill-qty");
     } catch (e: any) {
-      if (e.message?.includes("403")) setError("Abonnement PRO_IA requis.");
+      if (e.message?.includes("403")) setError("Application non activee.");
       else if (e.message?.includes("503")) setError("Clé API IA non configurée. Contactez l'admin.");
       else setError("Erreur : " + e.message);
       setStep("idle");

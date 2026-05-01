@@ -260,7 +260,7 @@ export default function NovaMenuGeneratorPage() {
     } catch (e: any) {
       console.error("[menu-gen] ERROR:", e);
       const msg = e?.message || String(e);
-      if (msg.includes("403")) setError("Abonnement PRO_IA requis.");
+      if (msg.includes("403")) setError("Application non activee.");
       else if (msg.includes("503")) setError("Clé API IA non configurée. Contactez l'admin.");
       else if (msg.includes("502")) setError("L'IA n'a pas pu parser le menu de l'image. Réessayez ou utilisez une photo plus nette.");
       else if (msg.includes("504") || msg.includes("expiré") || msg.includes("timeout")) setError("Timeout — l'IA met trop de temps. Essayez avec une seule image.");
@@ -313,7 +313,7 @@ export default function NovaMenuGeneratorPage() {
         }
       }
     } catch (e: any) {
-      if (e.message?.includes("403")) setError("Abonnement PRO_IA requis.");
+      if (e.message?.includes("403")) setError("Application non activee.");
       else setError("Erreur lors de l'analyse : " + e.message);
     } finally {
       setImproving(false);

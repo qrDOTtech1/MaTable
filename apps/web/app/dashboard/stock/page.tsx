@@ -108,16 +108,16 @@ export default function StockPage() {
     } catch {}
   }, []);
 
-  // Load last shopping date and subscription status
+  // Load last shopping date and enabledApps status
   const loadLastShopping = useCallback(async () => {
     try {
       const [res, me] = await Promise.all([
         api<{ history: Array<{ completedAt: string | null; createdAt: string }> }>("/api/pro/shopping-history"),
-        api<{ restaurant: { subscription?: string } }>("/api/pro/me")
+        api<{ restaurant: { enabledApps?: string[] } }>("/api/pro/me")
       ]);
       const last = res.history.find(h => h.completedAt);
       if (last?.completedAt) setLastShoppingDate(last.completedAt);
-      setIsNovaActive(me.restaurant.subscription === "PRO_IA");
+      setIsNovaActive(me.restaurant.enabledApps?.includes("nova_stock") ?? false);
     } catch {}
   }, []);
 

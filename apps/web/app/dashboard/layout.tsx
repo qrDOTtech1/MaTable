@@ -4,12 +4,10 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { clearProToken, api } from "@/lib/api";
 
-type Subscription = "STARTER" | "PRO" | "PRO_IA";
-
 export default function DashboardLayoutWrapper({ children }: { children: React.ReactNode }) {
   const [slug, setSlug] = useState<string | null>(null);
   const [restaurantName, setRestaurantName] = useState<string>("");
-  const [subscription, setSubscription] = useState<Subscription>("STARTER");
+  const [enabledApps, setEnabledApps] = useState<string[]>(["reviews"]);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const pathname = usePathname();
 
@@ -29,11 +27,11 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   };
 
   useEffect(() => {
-    api<{ restaurant: { slug?: string | null; name?: string; subscription?: Subscription } }>("/api/pro/me")
+    api<{ restaurant: { slug?: string | null; name?: string }; enabledApps?: string[] }>("/api/pro/me")
       .then((r) => {
         setSlug(r.restaurant.slug ?? null);
         setRestaurantName(r.restaurant.name ?? "");
-        setSubscription(r.restaurant.subscription ?? "STARTER");
+        setEnabledApps(r.enabledApps ?? ["reviews"]);
       })
       .catch(() => {});
   }, []);
@@ -43,24 +41,26 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
     window.location.href = "/login";
   }
 
-  const hasIA = subscription === "PRO_IA";
+  // Helper
+  const has = (app: string) => enabledApps.includes(app);
+  const hasAnyIa = has("nova_ia") || has("nova_stock") || has("nova_contab") || has("nova_finance");
 
-  // Navigation menu
+  // Navigation menu — sections are shown/hidden based on enabledApps
   const navSections = [
     {
       label: "SERVICE",
       items: [
         { href: "/dashboard", icon: "🔴", label: "Live cuisine" },
-        { href: "/dashboard/tables", icon: "🪑", label: "Tables" },
-        { href: "/dashboard/service-calls", icon: "🔔", label: "Appels serveur" },
+        ...(has("orders") ? [{ href: "/dashboard/tables", icon: "🪑", label: "Tables" }] : []),
+        ...(has("orders") ? [{ href: "/dashboard/service-calls", icon: "🔔", label: "Appels serveur" }] : []),
       ],
     },
     {
       label: "CONTENU",
       items: [
         { href: "/dashboard/menu", icon: "🍽️", label: "Menu" },
-        { href: "/dashboard/stock", icon: "📦", label: "Stock & Ingrédients" },
-        { href: "/dashboard/shopping", icon: "🛒", label: "Listes de courses" },
+        ...(has("nova_stock") ? [{ href: "/dashboard/stock", icon: "📦", label: "Stock & Ingredients" }] : []),
+        ...(has("nova_stock") ? [{ href: "/dashboard/shopping", icon: "🛒", label: "Listes de courses" }] : []),
         { href: "/dashboard/servers", icon: "👤", label: "Serveurs" },
         { href: "/dashboard/print", icon: "🖨️", label: "QR Codes" },
       ],
@@ -69,40 +69,33 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
       label: "ANALYSE",
       items: [
         { href: "/dashboard/analytics", icon: "📊", label: "Statistiques" },
-        { href: "/dashboard/novacontab", icon: "🧮", label: "URSSAF & TVA" },
-        { href: "/dashboard/reviews", icon: "⭐", label: "Avis" },
-        { href: "/dashboard/reservations", icon: "📅", label: "Réservations" },
+        ...(has("nova_contab") ? [{ href: "/dashboard/novacontab", icon: "🧮", label: "URSSAF & TVA" }] : []),
+        ...(has("reviews") ? [{ href: "/dashboard/reviews", icon: "⭐", label: "Avis" }] : []),
+        ...(has("reservations") ? [{ href: "/dashboard/reservations", icon: "📅", label: "Reservations" }] : []),
         { href: "/dashboard/invoices", icon: "🧾", label: "Factures" },
       ],
     },
     {
       label: "CONFIG",
       items: [
-        { href: "/dashboard/settings", icon: "⚙️", label: "Paramètres" },
+        { href: "/dashboard/settings", icon: "⚙️", label: "Parametres" },
         { href: "/dashboard/support", icon: "🎧", label: "Support / SAV" },
-        { href: "/dashboard/testimonial", icon: "💬", label: "Témoignage" },
+        { href: "/dashboard/testimonial", icon: "💬", label: "Temoignage" },
       ],
     },
   ];
 
-  const iaSections = hasIA
-    ? [
-        {
-          label: "NOVA IA",
-          accent: true,
-          items: [
-            { href: "/dashboard/ia/stock", icon: "📦", label: "Nova Stock" },
-            { href: "/dashboard/ia/menu-generator", icon: "🍽️", label: "Nova Menu" },
-            { href: "/dashboard/ia/finance", icon: "💹", label: "Nova Finance" },
-            { href: "/dashboard/ia/offers", icon: "🏷️", label: "Offres actives" },
-            { href: "/dashboard/ia/chatbot", icon: "🤖", label: "Chatbot IA" },
-            { href: "/dashboard/ia/magic-scan", icon: "📷", label: "Magic Scan" },
-            { href: "/dashboard/ia/planning", icon: "🗓️", label: "Planning IA" },
-            { href: "/dashboard/ia/descriptions", icon: "✍️", label: "Descriptions IA" },
-          ],
-        },
-      ]
-    : [];
+  // Nova IA section items — only show apps that are enabled
+  const iaItems = [
+    ...(has("nova_stock") ? [{ href: "/dashboard/ia/stock", icon: "📦", label: "Nova Stock" }] : []),
+    ...(has("nova_ia") ? [{ href: "/dashboard/ia/menu-generator", icon: "🍽️", label: "Nova Menu" }] : []),
+    ...(has("nova_finance") ? [{ href: "/dashboard/ia/finance", icon: "💹", label: "Nova Finance" }] : []),
+    ...(has("nova_finance") ? [{ href: "/dashboard/ia/offers", icon: "🏷️", label: "Offres actives" }] : []),
+    ...(has("nova_ia") ? [{ href: "/dashboard/ia/chatbot", icon: "🤖", label: "Chatbot IA" }] : []),
+    ...(has("nova_ia") ? [{ href: "/dashboard/ia/magic-scan", icon: "📷", label: "Magic Scan" }] : []),
+    ...(has("nova_ia") ? [{ href: "/dashboard/ia/planning", icon: "🗓️", label: "Planning IA" }] : []),
+    ...(has("nova_ia") ? [{ href: "/dashboard/ia/descriptions", icon: "✍️", label: "Descriptions IA" }] : []),
+  ];
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
@@ -127,7 +120,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
         </div>
 
         <div className="flex items-center gap-4">
-          {hasIA && (
+          {hasAnyIa && (
             <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-xs text-purple-300 font-semibold">
               ✨ Nova IA actif
             </span>
@@ -142,9 +135,9 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
           <button
             onClick={logout}
             className="text-sm text-white/50 hover:text-white transition-colors"
-            title="Déconnexion"
+            title="Deconnexion"
           >
-            Déconnexion
+            Deconnexion
           </button>
         </div>
       </div>
@@ -178,13 +171,13 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
             </div>
           ))}
 
-          {/* Nova IA section — PRO_IA only */}
-          {iaSections.map((section) => (
-            <div key={section.label}>
+          {/* Nova IA section — only if at least one IA app is enabled */}
+          {iaItems.length > 0 && (
+            <div>
               <p className="text-[10px] font-bold text-purple-400/70 uppercase tracking-wider px-3 py-2 mt-4 flex items-center gap-1.5">
-                <span>✨</span> {section.label}
+                <span>✨</span> NOVA IA
               </p>
-              {section.items.map((item) => {
+              {iaItems.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href);
                 return (
                   <Link
@@ -202,20 +195,20 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
                 );
               })}
             </div>
-          ))}
+          )}
 
-          {/* Upgrade banner for non-IA plans */}
-          {!hasIA && (
+          {/* Upgrade banner for restaurants without any IA */}
+          {!hasAnyIa && (
             <div className="mt-6 mx-1 p-3 rounded-xl bg-gradient-to-br from-purple-500/10 to-violet-500/5 border border-purple-500/20">
               <p className="text-xs font-bold text-purple-300 mb-1">✨ Nova IA</p>
               <p className="text-[11px] text-white/40 mb-2 leading-relaxed">
                 NovaContab IA, Stock, Menu Generator, Chatbot & plus.
               </p>
               <a
-                href="mailto:contact@novavivo.online?subject=Upgrade PRO_IA"
+                href="mailto:contact@novavivo.online?subject=Activer%20Nova%20IA"
                 className="block text-center text-xs font-semibold py-1.5 px-3 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 transition-colors"
               >
-                Découvrir →
+                Decouvrir →
               </a>
             </div>
           )}

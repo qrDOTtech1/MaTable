@@ -26,11 +26,11 @@ export default function ShoppingPage() {
   useEffect(() => {
     Promise.all([
       api<{ history: ShoppingEntry[] }>("/api/pro/shopping-history"),
-      api<{ restaurant: { subscription?: string } }>("/api/pro/me")
+      api<{ restaurant: { enabledApps?: string[] } }>("/api/pro/me")
     ])
       .then(([r, me]) => {
         setHistory(r.history);
-        setIsNovaActive(me.restaurant.subscription === "PRO_IA");
+        setIsNovaActive(me.restaurant.enabledApps?.includes("nova_stock") ?? false);
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
