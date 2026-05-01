@@ -60,7 +60,7 @@ export default function PublicReviewPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Flow State
-  const [step, setStep] = useState<"server" | "tip" | "rating" | "chat" | "drafts" | "google" | "voucher">("server");
+  const [step, setStep] = useState<"server" | "rating" | "chat" | "drafts" | "tip" | "voucher">("server");
   const [selectedServer, setSelectedServer] = useState<Server | null>(null);
   const [rating, setRating] = useState(0);
 
@@ -94,8 +94,7 @@ export default function PublicReviewPage() {
 
     // Handle return from Stripe
     if (searchParams.get("tip") === "success") {
-      setStep("rating");
-      // Could show a toast here "Merci pour le pourboire !"
+      setStep("voucher");
     } else if (searchParams.get("tip") === "cancel") {
       setStep("tip");
     }
@@ -103,10 +102,6 @@ export default function PublicReviewPage() {
 
   const handleServerSelect = (s: Server) => {
     setSelectedServer(s);
-    setStep("tip");
-  };
-
-  const skipTip = () => {
     setStep("rating");
   };
 
@@ -130,7 +125,7 @@ export default function PublicReviewPage() {
     } catch (e: any) {
       alert("Impossible de procéder au pourboire pour le moment.");
       setTipLoading(false);
-      setStep("rating"); // Skip if error
+      setStep("voucher"); // Skip if error
     }
   };
 
@@ -220,11 +215,10 @@ export default function PublicReviewPage() {
 
   const copyAndGoToGoogle = (text: string) => {
     navigator.clipboard.writeText(text);
-    const voucher = normalizeVoucher(config);
-    setStep(voucher ? "voucher" : "google");
     if (config?.googleReviewLink) {
       window.setTimeout(() => window.open(config.googleReviewLink!, "_blank"), 150);
     }
+    setStep("tip");
   };
 
   if (loading) return <div className="p-8 text-center text-white/50">Chargement...</div>;
@@ -259,36 +253,6 @@ export default function PublicReviewPage() {
         </div>
       )}
 
-      {step === "tip" && (
-        <div className="animate-fade-in space-y-6">
-          <div className="text-center">
-            <h2 className="text-xl font-bold mb-2">Un petit pourboire pour {selectedServer?.name} ?</h2>
-            <p className="text-white/50 text-sm">Le service vous a plu ? Laissez un pourboire par carte ou Apple Pay / Google Pay. 100% sécurisé.</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {[200, 300, 500, 1000].map(cents => (
-              <button
-                key={cents}
-                disabled={tipLoading}
-                onClick={() => handleTip(cents)}
-                className="bg-white/5 hover:bg-orange-500/20 border border-white/10 hover:border-orange-500 rounded-2xl p-4 font-bold text-lg transition-colors flex items-center justify-center gap-2"
-              >
-                {(cents / 100).toFixed(2)} €
-              </button>
-            ))}
-          </div>
-
-          <button
-            disabled={tipLoading}
-            onClick={skipTip}
-            className="w-full py-4 text-white/40 hover:text-white transition-colors text-sm font-semibold mt-4"
-          >
-            Non merci, juste l'avis
-          </button>
-        </div>
-      )}
-
       {step === "rating" && (
         <div className="animate-fade-in space-y-6 text-center">
           <h2 className="text-xl font-bold">Quelle note donnez-vous ?</h2>
@@ -303,6 +267,12 @@ export default function PublicReviewPage() {
               </button>
             ))}
           </div>
+          <button
+            onClick={() => setStep("tip")}
+            className="mt-8 text-sm text-white/40 hover:text-white transition-colors underline underline-offset-4"
+          >
+            Passer l'avis et laisser juste un pourboire
+          </button>
         </div>
       )}
 
@@ -365,29 +335,77 @@ export default function PublicReviewPage() {
         </div>
       )}
 
-      {step === "google" && (
-        <div className="animate-fade-in text-center space-y-6 py-12">
-          <div className="text-6xl mb-4">🙌</div>
-          <h2 className="text-2xl font-bold">Un grand merci !</h2>
-          <p className="text-white/50">Votre avis compte énormément pour nous et pour notre équipe.</p>
+      {step === "tip" && (
+        <div className="animate-fade-in space-y-6">
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-bold mb-2">Avant de partir...</h2>
+            <p className="text-white/50 text-sm">Le service de {selectedServer?.name || "l'équipe"} vous a plu ? Laissez un pourboire rapide et 100% sécurisé.</p>
+          </div>
+
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 text-center">
+             <p className="text-xs font-bold text-white/70 mb-4 flex items-center justify-center gap-2">
+               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+               Paiement express disponible
+             </p>
+             <div className="flex justify-center items-center gap-4 mb-6">
+               <div className="px-3 py-1.5 bg-black rounded-lg border border-white/20 flex items-center shadow-sm">
+                 <span className="text-lg"></span> <span className="font-semibold text-sm ml-1">Pay</span>
+               </div>
+               <div className="px-3 py-1.5 bg-black rounded-lg border border-white/20 flex items-center shadow-sm">
+                 <span className="font-bold text-sm">G Pay</span>
+               </div>
+               <div className="px-3 py-1.5 bg-black rounded-lg border border-white/20 flex items-center shadow-sm">
+                 <span className="text-lg">💳</span>
+               </div>
+             </div>
+             
+             <div className="grid grid-cols-2 gap-3">
+               {[200, 300, 500, 1000].map(cents => (
+                 <button
+                   key={cents}
+                   disabled={tipLoading}
+                   onClick={() => handleTip(cents)}
+                   className="bg-white/5 hover:bg-orange-500/20 border border-white/10 hover:border-orange-500 rounded-xl p-3 font-bold text-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                 >
+                   {(cents / 100).toFixed(2)} €
+                 </button>
+               ))}
+             </div>
+          </div>
+
+          <button
+            disabled={tipLoading}
+            onClick={() => setStep("voucher")}
+            className="w-full py-4 text-white/40 hover:text-white transition-colors text-sm font-semibold"
+          >
+            Non merci
+          </button>
         </div>
       )}
 
-      {step === "voucher" && voucher && (
-        <div className="animate-fade-in text-center space-y-6 py-8">
-          <div className="text-6xl mb-4">🎁</div>
-          <h2 className="text-2xl font-bold">Merci pour votre avis !</h2>
-          <p className="text-white/50">Pour vous remercier, voici un cadeau lors de votre prochain passage.</p>
-          
-          <div className="bg-gradient-to-br from-orange-500/20 to-orange-900/20 border border-orange-500/30 rounded-3xl p-8 mt-8">
-            <h3 className="text-xl font-black text-orange-400 mb-2">{voucher.title}</h3>
-            <p className="text-sm text-white/70 mb-6">{voucher.description}</p>
-            <div className="bg-black/40 rounded-xl py-3 px-6 inline-block">
-              <span className="font-mono text-2xl font-black tracking-widest text-white">{voucher.code}</span>
+      {step === "voucher" && (
+        voucher ? (
+          <div className="animate-fade-in text-center space-y-6 py-8">
+            <div className="text-6xl mb-4">🎁</div>
+            <h2 className="text-2xl font-bold">Un grand merci !</h2>
+            <p className="text-white/50">Pour vous remercier, voici un cadeau lors de votre prochain passage.</p>
+            
+            <div className="bg-gradient-to-br from-orange-500/20 to-orange-900/20 border border-orange-500/30 rounded-3xl p-8 mt-8">
+              <h3 className="text-xl font-black text-orange-400 mb-2">{voucher.title}</h3>
+              <p className="text-sm text-white/70 mb-6">{voucher.description}</p>
+              <div className="bg-black/40 rounded-xl py-3 px-6 inline-block">
+                <span className="font-mono text-2xl font-black tracking-widest text-white">{voucher.code}</span>
+              </div>
+              <p className="text-[10px] text-white/30 mt-6 uppercase tracking-wider">Sur présentation de cet écran</p>
             </div>
-            <p className="text-[10px] text-white/30 mt-6 uppercase tracking-wider">Sur présentation de cet écran</p>
           </div>
-        </div>
+        ) : (
+          <div className="animate-fade-in text-center space-y-6 py-12">
+            <div className="text-6xl mb-4">🙌</div>
+            <h2 className="text-2xl font-bold">Un grand merci !</h2>
+            <p className="text-white/50">Votre visite compte énormément pour nous et pour notre équipe. À très bientôt !</p>
+          </div>
+        )
       )}
 
     </div>
