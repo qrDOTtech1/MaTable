@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import { api, API_URL, redirectOn401 } from "@/lib/api";
+import { useRouter } from "next/navigation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type OrderItem = { menuItemId?: string; name: string; quantity: number; priceCents: number };
@@ -42,6 +43,8 @@ export default function DashboardPage() {
   const [toast, setToast] = useState<string | null>(null);
   const prevPendingRef = useRef(0);
 
+  const router = useRouter();
+
   // ── Rupture panel ─────────────────────────────────────────────────────────
   const [showRupture, setShowRupture] = useState(false);
   const [ruptureSearch, setRuptureSearch] = useState("");
@@ -67,12 +70,19 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    api<{ restaurant: { id: string; name: string } }>("/api/pro/me")
-      .then((r) => { setRestaurantId(r.restaurant.id); setRestaurantName(r.restaurant.name); })
+    api<{ restaurant: { id: string; name: string }; enabledApps: string[] }>("/api/pro/me")
+      .then((r) => { 
+        if (!r.enabledApps?.includes("orders")) {
+          router.replace("/dashboard/reviews");
+          return;
+        }
+        setRestaurantId(r.restaurant.id); 
+        setRestaurantName(r.restaurant.name); 
+      })
       .catch(redirectOn401);
     loadOrders();
     loadMenu();
-  }, [loadOrders, loadMenu]);
+  }, [loadOrders, loadMenu, router]);
 
   // ── Tab title + pending count ──────────────────────────────────────────────
   const pendingOrders = orders.filter((o) => o.status === "PENDING");
