@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useRef } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { API_URL } from "@/lib/api";
+import { motion, AnimatePresence } from "framer-motion";
 
 type Server = { id: string; name: string; photoUrl: string | null };
 type Config = {
@@ -62,20 +63,20 @@ export default function PublicReviewPage() {
   // Flow State
   const [step, setStep] = useState<"server" | "rating" | "chat" | "drafts" | "tip" | "voucher">("server");
   const [selectedServer, setSelectedServer] = useState<Server | null>(null);
-  const [rating, setRating] = useState(0);
+  const [ratings, setRatings] = useState({ food: 0, service: 0, atmosphere: 0, value: 0 });
 
   // Tip State
   const searchParams = useSearchParams();
   const [tipLoading, setTipLoading] = useState(false);
+  const [customTip, setCustomTip] = useState("");
   
   // Chat State
-  const questions = [
-    "Qu'avez-vous pensé de l'accueil ?",
-    "Comment étaient les plats ?",
-    "Un mot sur l'ambiance ?"
-  ];
-  const [currentQ, setCurrentQ] = useState(0);
-  const [answers, setAnswers] = useState<string[]>([]);
+  const [chatHistory, setChatHistory] = useState<{role: "ai"|"user", content: string}[]>([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [currentAiText, setCurrentAiText] = useState("");
+  const [currentChoices, setCurrentChoices] = useState<string[]>([]);
+  const [freeText, setFreeText] = useState("");
+  const chatEndRef = useRef<HTMLDivElement>(null);
   
   // AI Drafts State
   const [generating, setGenerating] = useState(false);
@@ -129,37 +130,29 @@ export default function PublicReviewPage() {
     }
   };
 
-  const handleRatingSelect = (r: number) => {
-    setRating(r);
+  const handleRatingsSubmit = () => {
     setStep("chat");
+    startAiChat([]);
   };
 
-  const handleAnswer = (ans: string) => {
-    const newAnswers = [...answers, ans];
-    setAnswers(newAnswers);
-    if (currentQ < questions.length - 1) {
-      setCurrentQ(currentQ + 1);
-    } else {
-      setStep("drafts");
-      generateDrafts(newAnswers);
-    }
-  };
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatHistory, currentAiText]);
 
-  const generateDrafts = (finalAnswers: string[]) => {
-    setGenerating(true);
-    setDrafts(null);
-    setLiveText("");
+  const startAiChat = (history: {role: "ai"|"user", content: string}[]) => {
+    setChatLoading(true);
+    setCurrentAiText("");
+    setCurrentChoices([]);
+    
     let streamedText = "";
-    let receivedDone = false;
-    // Use the SSE endpoint /api/ia/review-draft
-    fetch(`${API_URL}/api/ia/review-draft`, {
+    fetch(`${API_URL}/api/ia/review-chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         restaurantId: config?.restaurant.id,
-        serverName: selectedServer?.name,
-        rating,
-        answers: finalAnswers
+        serverName: selectedServer?.name || "l'équipe",
+        ratings,
+        history
       })
     })
     .then(async (res) => {
@@ -169,11 +162,7 @@ export default function PublicReviewPage() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
-          if (!receivedDone) {
-            const parsed = parseDraftsFromText(streamedText);
-            if (parsed) setDrafts(parsed);
-          }
-          setGenerating(false);
+          setChatLoading(false);
           break;
         }
         partial += new TextDecoder().decode(value);
@@ -182,35 +171,58 @@ export default function PublicReviewPage() {
         for (const line of lines) {
           if (line.startsWith("data: ")) {
             let data: any;
-            try {
-              data = JSON.parse(line.slice(6));
-            } catch {
-              continue;
-            }
+            try { data = JSON.parse(line.slice(6)); } catch { continue; }
+            
             if (data.type === "chunk" && data.text) {
               streamedText += data.text;
-              setLiveText(prev => prev + data.text);
+              if (!streamedText.includes("{")) {
+                // It's a question
+                const parts = streamedText.split("|");
+                const questionPart = parts[0].replace(/QUESTION:\s*/i, "").trim();
+                setCurrentAiText(questionPart);
+                if (parts.length > 1) {
+                  setCurrentChoices(parts.slice(1).map((s: string) => s.trim()).filter(Boolean));
+                }
+              }
             } else if (data.type === "done") {
-              receivedDone = true;
-              const parsed =
-                typeof data.version1 === "string" && typeof data.version2 === "string"
-                  ? { version1: data.version1.trim(), version2: data.version2.trim() }
-                  : parseDraftsFromText(streamedText);
-              if (parsed) setDrafts(parsed);
-              else alert("L'IA a répondu, mais le format est illisible. Réessayez.");
-              setGenerating(false);
+              const fullOutput = typeof data.text === "string" ? data.text : streamedText;
+              
+              if (fullOutput.includes("{")) {
+                // It's a draft
+                setStep("drafts");
+                const parsed = parseDraftsFromText(fullOutput);
+                if (parsed) setDrafts(parsed);
+                else alert("Erreur format IA");
+              } else {
+                // It's a question, add to history
+                const parts = fullOutput.split("|");
+                const q = parts[0].replace(/QUESTION:\s*/i, "").trim();
+                setChatHistory(prev => [...prev, { role: "ai", content: q }]);
+                setCurrentAiText("");
+                if (parts.length > 1) {
+                  setCurrentChoices(parts.slice(1).map((s: string) => s.trim()).filter(Boolean));
+                }
+              }
             } else if (data.type === "error") {
-              alert("Erreur de génération IA");
-              setGenerating(false);
+              alert("Erreur IA");
             }
           }
         }
       }
     })
     .catch(() => {
-      alert("Erreur réseau de l'IA");
-      setGenerating(false);
+      alert("Erreur réseau");
+      setChatLoading(false);
     });
+  };
+
+  const handleUserReply = (ans: string) => {
+    if (!ans.trim()) return;
+    const newHistory = [...chatHistory, { role: "user" as const, content: ans }];
+    setChatHistory(newHistory);
+    setCurrentChoices([]);
+    setFreeText("");
+    startAiChat(newHistory);
   };
 
   const copyAndGoToGoogle = (text: string) => {
@@ -219,6 +231,24 @@ export default function PublicReviewPage() {
       window.setTimeout(() => window.open(config.googleReviewLink!, "_blank"), 150);
     }
     setStep("tip");
+  };
+
+  const StarRow = ({ label, icon, value, onChange }: { label: string, icon: React.ReactNode, value: number, onChange: (v: number) => void }) => {
+    return (
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="text-white/40 text-xl w-6 flex justify-center">{icon}</div>
+          <span className="text-sm font-semibold text-white/80">{label}</span>
+        </div>
+        <div className="flex gap-1">
+          {[1, 2, 3, 4, 5].map(r => (
+             <button key={r} onClick={() => onChange(r)} className={`text-2xl transition-transform hover:scale-110 ${r <= value ? "text-yellow-400" : "text-white/10"}`}>
+               ★
+             </button>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   if (loading) return <div className="p-8 text-center text-white/50">Chargement...</div>;
@@ -254,44 +284,111 @@ export default function PublicReviewPage() {
       )}
 
       {step === "rating" && (
-        <div className="animate-fade-in space-y-6 text-center">
-          <h2 className="text-xl font-bold">Quelle note donnez-vous ?</h2>
-          <div className="flex justify-center gap-2">
-            {[1, 2, 3, 4, 5].map(r => (
-              <button 
-                key={r} 
-                onClick={() => handleRatingSelect(r)}
-                className="text-5xl hover:scale-110 transition-transform hover:text-orange-500 text-white/20"
-              >
-                ★
-              </button>
-            ))}
+        <div className="animate-fade-in space-y-6">
+          <div className="text-center mb-8">
+            <h2 className="text-xl font-bold">Votre expérience ?</h2>
+            <p className="text-sm text-white/50 mt-1">Notez les différents aspects de votre repas.</p>
           </div>
-          <button
-            onClick={() => setStep("tip")}
-            className="mt-8 text-sm text-white/40 hover:text-white transition-colors underline underline-offset-4"
-          >
-            Passer l'avis et laisser juste un pourboire
-          </button>
+          
+          <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] p-6 rounded-3xl space-y-6 shadow-2xl">
+            <StarRow label="Cuisine" icon="🍽️" value={ratings.food} onChange={v => setRatings(r => ({ ...r, food: v }))} />
+            <StarRow label="Service" icon="😊" value={ratings.service} onChange={v => setRatings(r => ({ ...r, service: v }))} />
+            <StarRow label="Ambiance" icon="🏠" value={ratings.atmosphere} onChange={v => setRatings(r => ({ ...r, atmosphere: v }))} />
+            <StarRow label="Qualité/Prix" icon="💰" value={ratings.value} onChange={v => setRatings(r => ({ ...r, value: v }))} />
+          </div>
+
+          <div className="pt-4">
+            <button
+              disabled={!ratings.food || !ratings.service || !ratings.atmosphere || !ratings.value}
+              onClick={handleRatingsSubmit}
+              className="w-full py-4 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:hover:bg-orange-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-orange-500/20"
+            >
+              Continuer
+            </button>
+            <button
+              onClick={() => setStep("tip")}
+              className="w-full mt-4 text-sm text-white/40 hover:text-white transition-colors underline underline-offset-4"
+            >
+              Passer l'avis et laisser juste un pourboire
+            </button>
+          </div>
         </div>
       )}
 
       {step === "chat" && (
-        <div className="animate-fade-in space-y-6">
-          <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
-            <p className="text-orange-400 font-bold mb-2">Assistant IA</p>
-            <p className="text-lg">{questions[currentQ]}</p>
+        <div className="animate-fade-in flex flex-col h-[70vh]">
+          <div className="text-center mb-4">
+            <h2 className="text-xl font-bold">Assistant IA</h2>
+            <p className="text-sm text-white/50">L'IA rédige votre avis à partir de vos réponses.</p>
           </div>
+          
+          <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2 scrollbar-none">
+            {chatHistory.map((msg, i) => (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                key={i} 
+                className={`flex ${msg.role === "ai" ? "justify-start" : "justify-end"}`}
+              >
+                <div className={`px-4 py-3 max-w-[85%] rounded-2xl text-sm ${msg.role === "ai" ? "bg-white/10 text-white rounded-tl-sm" : "bg-orange-600 text-white rounded-tr-sm"}`}>
+                  {msg.content}
+                </div>
+              </motion.div>
+            ))}
+            
+            {(currentAiText || chatLoading) && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex justify-start"
+              >
+                <div className="px-4 py-3 max-w-[85%] rounded-2xl text-sm bg-white/10 text-white rounded-tl-sm flex items-center gap-2">
+                  {currentAiText || <span className="flex gap-1"><span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" /><span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{animationDelay: "150ms"}}/><span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{animationDelay: "300ms"}}/></span>}
+                </div>
+              </motion.div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
           <div className="space-y-3">
-            {currentQ === 0 && ["Excellent", "Très bien", "Moyen", "À revoir"].map(ans => (
-              <button key={ans} onClick={() => handleAnswer(ans)} className="w-full text-left px-6 py-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 font-semibold">{ans}</button>
-            ))}
-            {currentQ === 1 && ["Délicieux", "Très bon", "Correct", "Décevant"].map(ans => (
-              <button key={ans} onClick={() => handleAnswer(ans)} className="w-full text-left px-6 py-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 font-semibold">{ans}</button>
-            ))}
-            {currentQ === 2 && ["Superbe", "Cosy", "Animée", "Calme"].map(ans => (
-              <button key={ans} onClick={() => handleAnswer(ans)} className="w-full text-left px-6 py-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 font-semibold">{ans}</button>
-            ))}
+            <AnimatePresence>
+              {currentChoices.length > 0 && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="flex flex-wrap gap-2"
+                >
+                  {currentChoices.map(ans => (
+                    <button 
+                      key={ans} 
+                      onClick={() => handleUserReply(ans)} 
+                      className="px-4 py-2 rounded-xl bg-orange-500/20 text-orange-300 border border-orange-500/30 font-semibold text-sm hover:bg-orange-500/30 transition-colors"
+                    >
+                      {ans}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+            
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                value={freeText}
+                onChange={e => setFreeText(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleUserReply(freeText)}
+                disabled={chatLoading}
+                placeholder="Écrire une réponse..."
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-orange-500/50 transition-colors disabled:opacity-50"
+              />
+              <button 
+                onClick={() => handleUserReply(freeText)}
+                disabled={!freeText.trim() || chatLoading}
+                className="w-12 h-[46px] flex items-center justify-center bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white rounded-xl transition-colors shrink-0"
+              >
+                ↑
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -359,7 +456,8 @@ export default function PublicReviewPage() {
                </div>
              </div>
              
-             <div className="grid grid-cols-2 gap-3">
+             
+             <div className="grid grid-cols-2 gap-3 mb-3">
                {[200, 300, 500, 1000].map(cents => (
                  <button
                    key={cents}
@@ -370,6 +468,24 @@ export default function PublicReviewPage() {
                    {(cents / 100).toFixed(2)} €
                  </button>
                ))}
+             </div>
+
+             <div className="flex gap-2">
+                <input
+                  type="number" min="0" step="0.50" placeholder="Montant libre (€)"
+                  value={customTip}
+                  onChange={(e) => setCustomTip(e.target.value)}
+                  className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 text-center"
+                />
+                {parseFloat(customTip) > 0 && (
+                  <button
+                    onClick={() => handleTip(Math.round(parseFloat(customTip) * 100))}
+                    disabled={tipLoading}
+                    className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-lg text-sm transition-colors shrink-0"
+                  >
+                    Valider
+                  </button>
+                )}
              </div>
           </div>
 
