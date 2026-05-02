@@ -285,18 +285,7 @@ export default function LandingPage() {
           </div>
         </motion.section>
 
-        {/* ── Brand SEO Clarifier ───────────────────────────────────────────── */}
-        <section className="border-y border-white/[0.06] bg-[#0a0a0a]/70 px-6 py-8">
-          <div className="mx-auto flex max-w-6xl flex-col gap-3 text-center md:flex-row md:items-center md:justify-between md:text-left">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-400">Site officiel</p>
-              <h2 className="mt-1 text-2xl font-black text-white md:text-3xl">MaTable Pro, aussi recherché “matable” ou “matablepro”.</h2>
-            </div>
-            <p className="max-w-xl text-sm font-semibold leading-relaxed text-white/50">
-              Si vous cherchez MaTable, matablepro ou matable.pro, vous êtes au bon endroit : le logiciel restaurant QR, caisse, serveur, avis Google IA, stock et analytics.
-            </p>
-          </div>
-        </section>
+
 
         {/* ── Stats ───────────────────────────────────────────────────────────── */}
         <section className="border-y border-white/[0.06] bg-[#0a0a0a]/50 backdrop-blur-sm relative z-10">
