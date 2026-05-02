@@ -11,12 +11,119 @@ type CustomerReview = { id: string; serverName: string; ratings: any; reviewText
 type ServerTip = { id: string; serverName: string; amountCents: number; createdAt: string };
 type RestaurantConfig = { id: string; slug: string; name: string; googleReviewLink?: string; reviewVoucherConfig?: { active: boolean; title: string; description: string; code: string } };
 
+type DayStats = {
+  date: string;
+  count: number;
+  avg: { food: number; service: number; atmosphere: number; value: number };
+  best: string | null;
+  worst: string | null;
+};
+type ReviewStats = {
+  totalReviews: number;
+  avg: { food: number; service: number; atmosphere: number; value: number; global: number };
+  history: DayStats[];
+  today: { date: string; count: number; comments: string[] };
+};
+
+// ── Animated Radar Octagon ────────────────────────────────────────────────────
+function RadarOctagon({ avg }: { avg: { food: number; service: number; atmosphere: number; value: number } }) {
+  const [animated, setAnimated] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setAnimated(true), 100); return () => clearTimeout(t); }, [avg]);
+  useEffect(() => { setAnimated(false); }, [avg]);
+
+  const labels = [
+    { key: "food", label: "Cuisine", angle: -90 },
+    { key: "service", label: "Service", angle: 0 },
+    { key: "value", label: "Prix", angle: 90 },
+    { key: "atmosphere", label: "Ambiance", angle: 180 },
+  ] as const;
+
+  const cx = 150, cy = 150, maxR = 110;
+
+  const toXY = (angle: number, r: number) => {
+    const rad = (angle * Math.PI) / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  };
+
+  // Grid rings
+  const rings = [1, 2, 3, 4, 5];
+
+  // Data polygon points
+  const points = labels.map((l) => {
+    const val = animated ? (avg[l.key] || 0) : 0;
+    const r = (val / 5) * maxR;
+    return toXY(l.angle, r);
+  });
+  const polyStr = points.map((p) => `${p.x},${p.y}`).join(" ");
+
+  return (
+    <div className="flex justify-center">
+      <svg viewBox="0 0 300 300" className="w-64 h-64">
+        {/* Grid rings */}
+        {rings.map((r) => {
+          const radius = (r / 5) * maxR;
+          const ringPts = labels.map((l) => toXY(l.angle, radius));
+          return (
+            <polygon
+              key={r}
+              points={ringPts.map((p) => `${p.x},${p.y}`).join(" ")}
+              fill="none"
+              stroke="rgba(255,255,255,0.06)"
+              strokeWidth="1"
+            />
+          );
+        })}
+        {/* Axes */}
+        {labels.map((l) => {
+          const end = toXY(l.angle, maxR);
+          return <line key={l.key} x1={cx} y1={cy} x2={end.x} y2={end.y} stroke="rgba(255,255,255,0.08)" strokeWidth="1" />;
+        })}
+        {/* Data polygon */}
+        <polygon
+          points={polyStr}
+          fill="rgba(249,115,22,0.15)"
+          stroke="rgba(249,115,22,0.8)"
+          strokeWidth="2.5"
+          strokeLinejoin="round"
+          style={{ transition: "all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)" }}
+        />
+        {/* Data dots */}
+        {points.map((p, i) => (
+          <circle
+            key={i}
+            cx={p.x}
+            cy={p.y}
+            r="4"
+            fill="#f97316"
+            stroke="#0a0a0a"
+            strokeWidth="2"
+            style={{ transition: "all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)" }}
+          />
+        ))}
+        {/* Labels */}
+        {labels.map((l) => {
+          const pos = toXY(l.angle, maxR + 22);
+          const val = avg[l.key] || 0;
+          return (
+            <g key={l.key}>
+              <text x={pos.x} y={pos.y - 6} textAnchor="middle" className="text-[11px] font-bold fill-white/70">{l.label}</text>
+              <text x={pos.x} y={pos.y + 8} textAnchor="middle" className="text-[10px] fill-orange-400/80 font-mono">{val.toFixed(1)}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
 export default function ReviewsPage() {
   const [dishReviews, setDishReviews] = useState<DishReview[]>([]);
   const [serverReviews, setServerReviews] = useState<ServerReview[]>([]);
   const [customerReviews, setCustomerReviews] = useState<CustomerReview[]>([]);
   const [serverTips, setServerTips] = useState<ServerTip[]>([]);
-  const [tab, setTab] = useState<"dishes" | "servers" | "customers" | "campaign">("customers");
+  const [tab, setTab] = useState<"synthesis" | "dishes" | "servers" | "customers" | "campaign">("synthesis");
+  const [stats, setStats] = useState<ReviewStats | null>(null);
+  const [selectedDay, setSelectedDay] = useState<DayStats | null>(null);
   const [restaurant, setRestaurant] = useState<RestaurantConfig | null>(null);
   const [qrUrl, setQrUrl] = useState<string>("");
 
@@ -29,6 +136,9 @@ export default function ReviewsPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    api<ReviewStats>("/api/pro/reviews/stats")
+      .then((r) => setStats(r))
+      .catch(() => {});
     api<{ reviews: DishReview[] }>("/api/pro/reviews/dishes")
       .then((r) => setDishReviews(r.reviews))
       .catch(() => {});
@@ -81,13 +191,136 @@ export default function ReviewsPage() {
     <div className="max-w-4xl">
       <h1 className="text-2xl font-bold mb-6">Avis & Réputation</h1>
       <div className="flex gap-2 mb-6 border-b border-white/10 pb-2 overflow-x-auto scrollbar-none">
+        <button className={`shrink-0 pb-2 px-2 text-sm font-bold ${tab === "synthesis" ? "border-b-2 border-orange-500 text-orange-500" : "text-white/50"}`} onClick={() => setTab("synthesis")}>Synthese</button>
         <button className={`shrink-0 pb-2 px-2 text-sm font-bold ${tab === "customers" ? "border-b-2 border-orange-500 text-orange-500" : "text-white/50"}`} onClick={() => setTab("customers")}>Avis des clients ({customerReviews.length})</button>
         <button className={`shrink-0 pb-2 px-2 text-sm font-bold ${tab === "dishes" ? "border-b-2 border-orange-500 text-orange-500" : "text-white/50"}`} onClick={() => setTab("dishes")}>Plats ({dishReviews.length})</button>
         <button className={`shrink-0 pb-2 px-2 text-sm font-bold ${tab === "servers" ? "border-b-2 border-orange-500 text-orange-500" : "text-white/50"}`} onClick={() => setTab("servers")}>Serveurs ({serverReviews.length})</button>
         <button className={`shrink-0 pb-2 px-2 text-sm font-bold flex items-center gap-2 ${tab === "campaign" ? "border-b-2 border-orange-500 text-orange-500" : "text-white/50"}`} onClick={() => setTab("campaign")}>
-          ⚙️ Paramètres IA
+          Parametres IA
         </button>
       </div>
+
+      {tab === "synthesis" && (
+        <div className="space-y-8">
+          {!stats ? (
+            <p className="text-sm text-white/50 text-center py-8">Chargement des statistiques...</p>
+          ) : stats.totalReviews === 0 ? (
+            <div className="text-center py-12 space-y-3">
+              <div className="text-5xl">📊</div>
+              <p className="text-white/50">Aucun avis pour le moment. Les statistiques apparaitront ici des le premier avis.</p>
+            </div>
+          ) : (
+            <>
+              {/* Header stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="card text-center py-4">
+                  <div className="text-3xl font-black text-white">{stats.totalReviews}</div>
+                  <div className="text-xs text-white/50 mt-1">Avis total</div>
+                </div>
+                <div className="card text-center py-4">
+                  <div className="text-3xl font-black text-orange-400">{stats.avg.global}/5</div>
+                  <div className="text-xs text-white/50 mt-1">Note globale</div>
+                </div>
+                <div className="card text-center py-4">
+                  <div className="text-3xl font-black text-emerald-400">{stats.today.count}</div>
+                  <div className="text-xs text-white/50 mt-1">Avis aujourd'hui</div>
+                </div>
+                <div className="card text-center py-4">
+                  <div className="text-3xl font-black text-white">{stats.history.length}</div>
+                  <div className="text-xs text-white/50 mt-1">Jours actifs</div>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-8">
+                {/* Radar octogone */}
+                <div className="card p-6">
+                  <h3 className="font-bold text-white mb-4 text-center">{selectedDay ? `Journee du ${new Date(selectedDay.date).toLocaleDateString("fr-FR")}` : "Moyenne globale"}</h3>
+                  <RadarOctagon avg={selectedDay?.avg ?? stats.avg} />
+                  {selectedDay && (
+                    <button onClick={() => setSelectedDay(null)} className="block mx-auto mt-4 text-xs text-orange-400 hover:underline">
+                      Retour a la moyenne globale
+                    </button>
+                  )}
+                </div>
+
+                {/* Synthese du jour */}
+                <div className="space-y-4">
+                  <div className="card p-6">
+                    <h3 className="font-bold text-white mb-3">Synthese du jour</h3>
+                    {stats.today.count === 0 ? (
+                      <p className="text-sm text-white/40">Pas encore d'avis aujourd'hui.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {stats.history[0] && stats.history[0].date === stats.today.date && (
+                          <>
+                            {stats.history[0].best && (
+                              <div className="flex items-start gap-2">
+                                <span className="text-emerald-400 text-lg leading-none mt-0.5">+</span>
+                                <div>
+                                  <div className="text-xs text-emerald-400 font-bold uppercase tracking-wider">Point fort</div>
+                                  <p className="text-sm text-white/70">{stats.history[0].best}</p>
+                                </div>
+                              </div>
+                            )}
+                            {stats.history[0].worst && (
+                              <div className="flex items-start gap-2">
+                                <span className="text-red-400 text-lg leading-none mt-0.5">-</span>
+                                <div>
+                                  <div className="text-xs text-red-400 font-bold uppercase tracking-wider">A ameliorer</div>
+                                  <p className="text-sm text-white/70">{stats.history[0].worst}</p>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        {stats.today.comments.length > 0 && (
+                          <div className="pt-2 border-t border-white/5">
+                            <div className="text-xs text-white/30 font-bold uppercase tracking-wider mb-2">Verbatims clients</div>
+                            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                              {stats.today.comments.map((c, i) => (
+                                <div key={i} className="text-xs text-white/60 bg-white/5 px-3 py-2 rounded-lg">"{c}"</div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Historique par jour */}
+              <div className="card p-6">
+                <h3 className="font-bold text-white mb-4">Historique (30 derniers jours)</h3>
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {stats.history.map((day) => {
+                    const dayAvgGlobal = +((day.avg.food + day.avg.service + day.avg.atmosphere + day.avg.value) / 4).toFixed(1);
+                    return (
+                      <button
+                        key={day.date}
+                        onClick={() => setSelectedDay(day)}
+                        className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all ${selectedDay?.date === day.date ? "bg-orange-500/10 border-orange-500/30" : "bg-white/[0.02] border-white/5 hover:border-white/15 hover:bg-white/5"}`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="text-sm font-bold text-white/70 w-24">{new Date(day.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}</div>
+                          <div className="text-xs text-white/40">{day.count} avis</div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          {day.best && <span className="text-xs text-emerald-400/70 hidden md:block">+ {day.best}</span>}
+                          {day.worst && <span className="text-xs text-red-400/70 hidden md:block">- {day.worst}</span>}
+                          <div className={`text-sm font-bold px-2 py-0.5 rounded ${dayAvgGlobal >= 4 ? "text-emerald-400 bg-emerald-500/10" : dayAvgGlobal >= 3 ? "text-orange-400 bg-orange-500/10" : "text-red-400 bg-red-500/10"}`}>
+                            {dayAvgGlobal}/5
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {tab === "campaign" && (
         <div className="grid md:grid-cols-2 gap-8">
