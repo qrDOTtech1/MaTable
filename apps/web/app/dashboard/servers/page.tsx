@@ -213,9 +213,16 @@ export default function ServersPage() {
               {/* Photo Upload Section */}
               <div className="rounded-lg border border-white/10 bg-white/5 p-6 flex items-center gap-6">
                 <div className="relative group">
-                  <div className="w-20 h-20 rounded-full bg-white/10 overflow-hidden flex items-center justify-center text-3xl shrink-0">
+                   <div className="w-20 h-20 rounded-full bg-white/10 overflow-hidden flex items-center justify-center text-3xl shrink-0">
                     {servers.find(s => s.id === editingId)?.photoUrl ? (
-                      <img src={servers.find(s => s.id === editingId)?.photoUrl as string} alt="" className="w-full h-full object-cover" />
+                      <img
+                        src={(() => {
+                          const u = servers.find(s => s.id === editingId)?.photoUrl as string;
+                          return u.startsWith("http") ? u : `${API_URL}${u}`;
+                        })()}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       "👤"
                     )}
