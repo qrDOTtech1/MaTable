@@ -6,7 +6,8 @@ import QRCode from "qrcode";
 
 type DishReview = { id: string; rating: number; comment?: string; menuItem: { name: string }; createdAt: string };
 type ServerReview = { id: string; rating: number; comment?: string; server: { name: string }; createdAt: string };
-type CustomerReview = { id: string; serverName: string; ratings: any; reviewText: string; createdAt: string };
+type ChatMessage = { role: "ai" | "user"; content: string };
+type CustomerReview = { id: string; serverName: string; ratings: any; reviewText: string; chatHistory?: ChatMessage[] | null; createdAt: string };
 type ServerTip = { id: string; serverName: string; amountCents: number; createdAt: string };
 type RestaurantConfig = { id: string; slug: string; name: string; googleReviewLink?: string; reviewVoucherConfig?: { active: boolean; title: string; description: string; code: string } };
 
@@ -195,6 +196,21 @@ export default function ReviewsPage() {
                       {ratings.service != null && <span className="px-2 py-1 rounded bg-white/5">😊 {ratings.service}/5</span>}
                       {ratings.atmosphere != null && <span className="px-2 py-1 rounded bg-white/5">🏠 {ratings.atmosphere}/5</span>}
                       {ratings.value != null && <span className="px-2 py-1 rounded bg-white/5">💰 {ratings.value}/5</span>}
+                    </div>
+                  )}
+                  {/* Chat history — questions IA + réponses client */}
+                  {r.chatHistory && r.chatHistory.length > 0 && (
+                    <div className="pt-1">
+                      <div className="text-[10px] uppercase tracking-wider text-white/30 font-bold mb-2">Conversation</div>
+                      <div className="space-y-1.5">
+                        {r.chatHistory.map((msg, i) => (
+                          <div key={i} className={`flex ${msg.role === "ai" ? "justify-start" : "justify-end"}`}>
+                            <div className={`px-3 py-1.5 rounded-xl text-xs max-w-[85%] ${msg.role === "ai" ? "bg-white/5 text-white/50" : "bg-orange-500/15 text-orange-300 font-medium"}`}>
+                              {msg.content}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                   {versions.length > 0 && (
