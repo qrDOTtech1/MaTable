@@ -60,8 +60,9 @@ export default function PublicReviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Flow State
-  const [step, setStep] = useState<"server" | "rating" | "chat" | "drafts" | "tip" | "claim" | "voucher">("server");
+  // Flow State — if returning from Stripe tip success, start on a loading hold until config arrives
+  const tipParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tip") : null;
+  const [step, setStep] = useState<"server" | "rating" | "chat" | "drafts" | "tip" | "claim" | "voucher">(tipParam === "success" ? "claim" : "server");
   const [selectedServer, setSelectedServer] = useState<Server | null>(null);
   const [ratings, setRatings] = useState({ food: 0, service: 0, atmosphere: 0, value: 0 });
 
@@ -101,13 +102,20 @@ export default function PublicReviewPage() {
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
 
-    // Handle return from Stripe
-    if (searchParams.get("tip") === "success") {
-      setStep("claim");
-    } else if (searchParams.get("tip") === "cancel") {
+    // Handle return from Stripe — wait for config to load before setting step
+    const tipStatus = searchParams.get("tip");
+    if (tipStatus === "cancel") {
       setStep("tip");
     }
+    // "success" is handled below once config is loaded
   }, [params.slug, searchParams]);
+
+  // When returning from Stripe tip success, go to claim step (needs config loaded)
+  useEffect(() => {
+    if (config && searchParams.get("tip") === "success") {
+      setStep("claim");
+    }
+  }, [config, searchParams]);
 
   const handleServerSelect = (s: Server) => {
     setSelectedServer(s);
