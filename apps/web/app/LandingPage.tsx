@@ -97,6 +97,7 @@ const comparisons = [
 
 function PricingBuilder() {
   const [selected, setSelected] = useState<string[]>(["avis"]);
+  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
 
   const toggleModule = (id: string) => {
     if (id === "avis") return; // always required
@@ -105,19 +106,27 @@ function PricingBuilder() {
     );
   };
 
+  const isAnnual = billing === "annual";
+  const annualDiscount = 5; // -5% si paiement annuel
+
   const selectedCount = selected.length;
-  let discountPercent = 0;
-  if (selectedCount === 2) discountPercent = 10;
-  if (selectedCount === 3) discountPercent = 15;
-  if (selectedCount >= 4) discountPercent = 20;
+  let volumePercent = 0;
+  if (selectedCount === 2) volumePercent = 10;
+  if (selectedCount === 3) volumePercent = 15;
+  if (selectedCount >= 4) volumePercent = 20;
 
   const rawTotal = selected.reduce((sum, id) => {
     const mod = MODULES.find(m => m.id === id);
     return sum + (mod ? mod.price : 0);
   }, 0);
 
-  const discountAmount = rawTotal * (discountPercent / 100);
-  const finalTotal = rawTotal - discountAmount;
+  const volumeAmount = rawTotal * (volumePercent / 100);
+  const afterVolume = rawTotal - volumeAmount;
+  const annualAmount = isAnnual ? afterVolume * (annualDiscount / 100) : 0;
+  const finalMonthly = afterVolume - annualAmount;
+  const finalDisplay = isAnnual ? +(finalMonthly * 12).toFixed(2) : finalMonthly;
+
+  const fmt = (n: number) => Number.isInteger(n) ? String(n) : n.toFixed(2);
 
   return (
     <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-8">
@@ -125,6 +134,7 @@ function PricingBuilder() {
       <div className="space-y-3">
         {MODULES.map(mod => {
           const isSelected = selected.includes(mod.id);
+          const displayPrice = isAnnual ? +(mod.price * (1 - annualDiscount / 100)).toFixed(2) : mod.price;
           return (
             <div 
               key={mod.id} 
@@ -145,13 +155,13 @@ function PricingBuilder() {
                   <h3 className="font-bold text-lg text-white flex items-center gap-2 flex-wrap">
                     {mod.name}
                     {mod.required && <span className="text-[10px] uppercase tracking-wider bg-white/10 px-2 py-0.5 rounded text-white/50">Base obligatoire</span>}
-
                   </h3>
                   <p className="text-sm text-white/50">{mod.desc}</p>
                 </div>
               </div>
               <div className="text-right">
-                <div className="font-bold text-xl text-white">{Number.isInteger(mod.price) ? mod.price : mod.price.toFixed(2)}€</div>
+                {isAnnual && <div className="text-xs text-white/30 line-through mb-0.5">{fmt(mod.price)}€</div>}
+                <div className="font-bold text-xl text-white">{fmt(displayPrice)}€</div>
                 <div className="text-xs text-white/40">/ mois</div>
               </div>
             </div>
@@ -162,17 +172,40 @@ function PricingBuilder() {
       {/* Résumé fixe */}
       <div className="relative">
         <div className="sticky top-24 rounded-3xl bg-[#111] border border-white/10 p-8 shadow-2xl">
-          <h3 className="text-xl font-bold mb-6 border-b border-white/10 pb-4">Votre Abonnement</h3>
+          {/* Switch Mensuel / Annuel */}
+          <div className="flex items-center justify-center gap-3 mb-6 pb-4 border-b border-white/10">
+            <button
+              onClick={() => setBilling("monthly")}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${!isAnnual ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20" : "bg-white/5 text-white/50 hover:text-white"}`}
+            >
+              Mensuel
+            </button>
+            <button
+              onClick={() => setBilling("annual")}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${isAnnual ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20" : "bg-white/5 text-white/50 hover:text-white"}`}
+            >
+              Annuel
+              <span className="text-[10px] uppercase tracking-wider bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-black">-5%</span>
+            </button>
+          </div>
+
+          <h3 className="text-xl font-bold mb-6">Votre Abonnement</h3>
           
           <div className="space-y-4 mb-6">
             <div className="flex justify-between text-white/70">
               <span>Applications ({selectedCount})</span>
-              <span>{Number.isInteger(rawTotal) ? rawTotal : rawTotal.toFixed(2)} €</span>
+              <span>{fmt(rawTotal)} €/mois</span>
             </div>
-            {discountPercent > 0 && (
+            {volumePercent > 0 && (
               <div className="flex justify-between text-emerald-400 font-medium">
-                <span>Remise volume (-{discountPercent}%)</span>
-                <span>-{Number.isInteger(discountAmount) ? discountAmount : discountAmount.toFixed(2)} €</span>
+                <span>Remise volume (-{volumePercent}%)</span>
+                <span>-{fmt(volumeAmount)} €</span>
+              </div>
+            )}
+            {isAnnual && (
+              <div className="flex justify-between text-emerald-400 font-medium">
+                <span>Remise annuelle (-{annualDiscount}%)</span>
+                <span>-{fmt(annualAmount)} €</span>
               </div>
             )}
           </div>
@@ -181,8 +214,10 @@ function PricingBuilder() {
             <div className="flex items-end justify-between">
               <span className="text-white/60">Total HT</span>
               <div className="text-right">
-                <div className="text-5xl font-black text-white">{Number.isInteger(finalTotal) ? finalTotal : finalTotal.toFixed(2)} €</div>
-                <div className="text-sm text-white/40 mt-1">/ mois sans engagement</div>
+                <div className="text-5xl font-black text-white">{fmt(finalDisplay)} €</div>
+                <div className="text-sm text-white/40 mt-1">
+                  {isAnnual ? `soit ${fmt(finalMonthly)} €/mois · facture annuelle` : "/ mois"}
+                </div>
               </div>
             </div>
           </div>
@@ -190,7 +225,7 @@ function PricingBuilder() {
           <Link href="/register" className="block w-full py-4 bg-orange-500 hover:bg-orange-400 text-white rounded-xl font-bold text-lg text-center transition-all shadow-xl shadow-orange-500/20 hover:-translate-y-1">
             Créer mon compte
           </Link>
-          <p className="text-center text-xs text-white/40 mt-4">14 jours d'essai offerts. Pas de CB requise.</p>
+          <p className="text-center text-xs text-white/40 mt-4">14 jours d'essai offerts · Engagement 12 mois minimum.</p>
         </div>
       </div>
     </div>
