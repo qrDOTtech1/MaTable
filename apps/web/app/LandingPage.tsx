@@ -16,12 +16,13 @@ const stats = [
 ];
 
 const MODULES = [
-  { id: "avis", name: "Avis Google & Réputation", desc: "Campagne QR, IA rédactionnelle, Bons de réduction auto.", price: 45.99, required: true },
-  { id: "qr", name: "Commande & Paiement", desc: "Menu digital QR, paiement fractionné ou espèces, tickets.", price: 59.99, required: false },
-  { id: "server", name: "Portail Serveur (Live)", desc: "Gestion des tables, suivi cuisine, appels serveur instantanés.", price: 39.99, required: false },
-  { id: "stock", name: "Nova Stock IA", desc: "Listes de courses auto, alertes de ruptures, food cost.", price: 49.99, required: false },
-  { id: "sommelier", name: "Nova Sommelier IA", desc: "Accords mets-vins, up-selling, et optimisation de la carte.", price: 29.99, required: false },
-  { id: "contab", name: "Nova Contab IA", desc: "Exports comptables, TVA, rapports de fin de mois intelligents.", price: 29.99, required: false },
+  { id: "avis", name: "Avis Google & Réputation", desc: "Campagne QR, IA rédactionnelle, Bons de réduction auto.", price: 79, required: true },
+  { id: "qr", name: "Commande & Paiement", desc: "Menu digital QR, paiement fractionné ou espèces, tickets.", price: 99, required: false },
+  { id: "server", name: "Portail Serveur (Live)", desc: "Gestion des tables, suivi cuisine, appels serveur instantanés.", price: 69, required: false },
+  { id: "stock", name: "Nova Stock IA", desc: "Listes de courses auto, alertes de ruptures, food cost.", price: 89, required: false },
+  { id: "sommelier", name: "Nova Sommelier IA", desc: "Accords mets-vins, up-selling, et optimisation de la carte.", price: 69, required: false },
+  { id: "contab", name: "Nova Contab IA", desc: "Exports comptables, TVA, rapports de fin de mois intelligents.", price: 69, required: false },
+  { id: "nova-premium", name: "Nova IA Premium", desc: "Accès complet à tous les modules IA Nova : Stock, Sommelier, Contab, Finance, Planning.", price: 129, required: false },
 ];
 
 const features = [
@@ -149,7 +150,7 @@ function PricingBuilder() {
                 </div>
               </div>
               <div className="text-right">
-                <div className="font-bold text-xl text-white">{mod.price.toFixed(2)}€</div>
+                <div className="font-bold text-xl text-white">{Number.isInteger(mod.price) ? mod.price : mod.price.toFixed(2)}€</div>
                 <div className="text-xs text-white/40">/ mois</div>
               </div>
             </div>
@@ -165,12 +166,12 @@ function PricingBuilder() {
           <div className="space-y-4 mb-6">
             <div className="flex justify-between text-white/70">
               <span>Applications ({selectedCount})</span>
-              <span>{rawTotal.toFixed(2)} €</span>
+              <span>{Number.isInteger(rawTotal) ? rawTotal : rawTotal.toFixed(2)} €</span>
             </div>
             {discountPercent > 0 && (
               <div className="flex justify-between text-emerald-400 font-medium">
                 <span>Remise volume (-{discountPercent}%)</span>
-                <span>-{discountAmount.toFixed(2)} €</span>
+                <span>-{Number.isInteger(discountAmount) ? discountAmount : discountAmount.toFixed(2)} €</span>
               </div>
             )}
           </div>
@@ -179,7 +180,7 @@ function PricingBuilder() {
             <div className="flex items-end justify-between">
               <span className="text-white/60">Total HT</span>
               <div className="text-right">
-                <div className="text-5xl font-black text-white">{finalTotal.toFixed(2)} €</div>
+                <div className="text-5xl font-black text-white">{Number.isInteger(finalTotal) ? finalTotal : finalTotal.toFixed(2)} €</div>
                 <div className="text-sm text-white/40 mt-1">/ mois sans engagement</div>
               </div>
             </div>
