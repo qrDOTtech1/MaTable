@@ -18,11 +18,11 @@ const stats = [
 const MODULES = [
   { id: "avis", name: "Avis Google & Réputation", desc: "Campagne QR, IA rédactionnelle, Bons de réduction auto.", price: 79, required: true },
   { id: "qr", name: "Commande & Paiement", desc: "Menu digital QR, paiement fractionné ou espèces, tickets.", price: 99, required: false },
-  { id: "server", name: "Portail Serveur (Live)", desc: "Gestion des tables, suivi cuisine, appels serveur instantanés.", price: 69, required: false },
-  { id: "stock", name: "Nova Stock IA", desc: "Listes de courses auto, alertes de ruptures, food cost.", price: 89, required: false },
-  { id: "sommelier", name: "Nova Sommelier IA", desc: "Accords mets-vins, up-selling, et optimisation de la carte.", price: 69, required: false },
-  { id: "contab", name: "Nova Contab IA", desc: "Exports comptables, TVA, rapports de fin de mois intelligents.", price: 69, required: false },
-  { id: "nova-premium", name: "Nova IA Premium", desc: "Accès complet à tous les modules IA Nova : Stock, Sommelier, Contab, Finance, Planning.", price: 129, required: false },
+  { id: "server", name: "Portail Serveur (Live)", desc: "Portail serveur, portail cuisine dédié et portail caisse — gestion des tables, suivi commandes en temps réel, appels instantanés.", price: 69, required: false },
+  { id: "stock", name: "Nova Stock IA", desc: "Listes de courses auto, alertes de ruptures, food cost. Quota mensuel inclus.", price: 89, required: false },
+  { id: "finance", name: "Nova Finance IA", desc: "Food cost réel, KPIs, marges, prévisions CA et recommandations de rentabilité. Quota mensuel inclus.", price: 69, required: false },
+  { id: "contab", name: "Nova Contab IA", desc: "Exports comptables, TVA, rapports de fin de mois intelligents. Quota mensuel inclus.", price: 69, required: false },
+  { id: "nova-premium", name: "Nova IA Premium", desc: "Tous les modules IA (Stock, Finance, Contab, Planning…) pour 129€/mois — utilisation illimitée incluse. Sans ce pack, chaque app IA est limitée en requêtes/mois ; au-delà du quota, facturation à l'usage.", price: 129, required: false },
 ];
 
 const features = [
@@ -142,9 +142,10 @@ function PricingBuilder() {
                   {isSelected && <span className="text-black text-sm font-bold">✓</span>}
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                  <h3 className="font-bold text-lg text-white flex items-center gap-2 flex-wrap">
                     {mod.name}
                     {mod.required && <span className="text-[10px] uppercase tracking-wider bg-white/10 px-2 py-0.5 rounded text-white/50">Base obligatoire</span>}
+                    {mod.id === "nova-premium" && <span className="text-[10px] uppercase tracking-wider bg-orange-500/20 px-2 py-0.5 rounded text-orange-400">Tout inclus · Sans quota</span>}
                   </h3>
                   <p className="text-sm text-white/50">{mod.desc}</p>
                 </div>
