@@ -61,7 +61,7 @@ export default function PublicReviewPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Flow State
-  const [step, setStep] = useState<"server" | "rating" | "chat" | "drafts" | "tip" | "voucher">("server");
+  const [step, setStep] = useState<"server" | "rating" | "chat" | "drafts" | "tip" | "claim" | "voucher">("server");
   const [selectedServer, setSelectedServer] = useState<Server | null>(null);
   const [ratings, setRatings] = useState({ food: 0, service: 0, atmosphere: 0, value: 0 });
 
@@ -83,6 +83,14 @@ export default function PublicReviewPage() {
   const [drafts, setDrafts] = useState<Drafts | null>(null);
   const [liveText, setLiveText] = useState("");
 
+  // Voucher claim state
+  const [claimEmail, setClaimEmail] = useState("");
+  const [claimCode, setClaimCode] = useState("");
+  const [claimStep, setClaimStep] = useState<"email" | "code" | "already">("email");
+  const [claimLoading, setClaimLoading] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
+  const [claimedVoucher, setClaimedVoucher] = useState<{active?: boolean|string; title?: string; description?: string; code?: string} | null>(null);
+
   useEffect(() => {
     fetch(`${API_URL}/api/r/${params.slug}/review-campaign`)
       .then(res => {
@@ -95,7 +103,7 @@ export default function PublicReviewPage() {
 
     // Handle return from Stripe
     if (searchParams.get("tip") === "success") {
-      setStep("voucher");
+      setStep("claim");
     } else if (searchParams.get("tip") === "cancel") {
       setStep("tip");
     }
@@ -493,7 +501,7 @@ export default function PublicReviewPage() {
 
           <button
             disabled={tipLoading}
-            onClick={() => setStep("voucher")}
+            onClick={() => setStep("claim")}
             className="w-full py-4 text-white/40 hover:text-white transition-colors text-sm font-semibold"
           >
             Non merci
@@ -501,18 +509,164 @@ export default function PublicReviewPage() {
         </div>
       )}
 
-      {step === "voucher" && (
-        voucher ? (
+      {step === "claim" && (
+        <div className="animate-fade-in space-y-6 py-4">
+          {/* Si pas de voucher configuré, skip directement */}
+          {!voucher ? (
+            (() => { if (typeof window !== "undefined") setTimeout(() => setStep("voucher"), 0); return null; })()
+          ) : claimStep === "already" ? (
+            <>
+              <div className="text-center space-y-4 py-4">
+                <div className="text-5xl mb-2">😊</div>
+                <h2 className="text-xl font-bold">Merci pour votre fidelite !</h2>
+                <p className="text-white/50 text-sm max-w-xs mx-auto">Vous avez deja profite d'une offre pour cet etablissement.</p>
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 mt-4">
+                  <p className="text-sm text-orange-400 font-semibold">Revenez bientot nous donner un nouvel avis — de nouvelles offres pourraient etre disponibles !</p>
+                </div>
+              </div>
+              <button onClick={() => setStep("voucher")} className="w-full py-3 text-white/40 hover:text-white transition-colors text-sm font-semibold mt-4">
+                Continuer
+              </button>
+            </>
+          ) : claimStep === "email" ? (
+            <>
+              <div className="text-center mb-4">
+                <div className="text-5xl mb-4">🎁</div>
+                <h2 className="text-xl font-bold mb-2">Recevez votre récompense !</h2>
+                <p className="text-white/50 text-sm">Entrez votre email pour recevoir un code de vérification et débloquer votre cadeau.</p>
+              </div>
+
+              {claimError && (
+                <div className="px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400 text-center">
+                  {claimError}
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <input
+                  type="email"
+                  value={claimEmail}
+                  onChange={e => { setClaimEmail(e.target.value); setClaimError(null); }}
+                  placeholder="votre@email.com"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-center placeholder-white/30 focus:outline-none focus:border-orange-500/50 transition-colors"
+                />
+                <button
+                  disabled={claimLoading || !claimEmail.includes("@")}
+                  onClick={async () => {
+                    setClaimLoading(true);
+                    setClaimError(null);
+                    try {
+                      const res = await fetch(`${API_URL}/api/r/${params.slug}/voucher-request`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: claimEmail }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) {
+                        if (data.error === "already_claimed") {
+                          setClaimError(null);
+                          setClaimStep("already");
+                        } else {
+                          setClaimError(data.message || "Erreur lors de l'envoi.");
+                        }
+                      } else {
+                        setClaimStep("code");
+                      }
+                    } catch {
+                      setClaimError("Erreur reseau. Reessayez.");
+                    } finally {
+                      setClaimLoading(false);
+                    }
+                  }}
+                  className="w-full py-4 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-bold rounded-xl transition-all"
+                >
+                  {claimLoading ? "Envoi en cours..." : "Recevoir le code"}
+                </button>
+              </div>
+
+              <button onClick={() => setStep("voucher")} className="w-full text-sm text-white/30 hover:text-white/60 transition-colors pt-2">
+                Passer
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="text-center mb-4">
+                <div className="text-5xl mb-4">📩</div>
+                <h2 className="text-xl font-bold mb-2">Verifiez votre email</h2>
+                <p className="text-white/50 text-sm">Un code a 6 chiffres a ete envoye a <strong className="text-white">{claimEmail}</strong></p>
+              </div>
+
+              {claimError && (
+                <div className="px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400 text-center">
+                  {claimError}
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={claimCode}
+                  onChange={e => { setClaimCode(e.target.value.replace(/\D/g, "")); setClaimError(null); }}
+                  placeholder="000000"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-white text-center text-3xl font-mono tracking-[0.5em] placeholder-white/20 focus:outline-none focus:border-orange-500/50 transition-colors"
+                />
+                <button
+                  disabled={claimLoading || claimCode.length !== 6}
+                  onClick={async () => {
+                    setClaimLoading(true);
+                    setClaimError(null);
+                    try {
+                      const res = await fetch(`${API_URL}/api/r/${params.slug}/voucher-verify`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: claimEmail, code: claimCode }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) {
+                        setClaimError(data.message || "Code incorrect.");
+                      } else {
+                        setClaimedVoucher(data.voucher);
+                        setStep("voucher");
+                      }
+                    } catch {
+                      setClaimError("Erreur reseau. Reessayez.");
+                    } finally {
+                      setClaimLoading(false);
+                    }
+                  }}
+                  className="w-full py-4 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-bold rounded-xl transition-all"
+                >
+                  {claimLoading ? "Verification..." : "Valider"}
+                </button>
+              </div>
+
+              <button
+                onClick={() => { setClaimStep("email"); setClaimCode(""); setClaimError(null); }}
+                className="w-full text-sm text-white/30 hover:text-white/60 transition-colors pt-2"
+              >
+                Changer d'email
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {step === "voucher" && (() => {
+        const v = claimedVoucher ?? voucher;
+        const claimed = !!claimedVoucher;
+        return v && claimed ? (
           <div className="animate-fade-in text-center space-y-6 py-8">
             <div className="text-6xl mb-4">🎁</div>
             <h2 className="text-2xl font-bold">Un grand merci !</h2>
             <p className="text-white/50">Pour vous remercier, voici un cadeau lors de votre prochain passage.</p>
             
             <div className="bg-gradient-to-br from-orange-500/20 to-orange-900/20 border border-orange-500/30 rounded-3xl p-8 mt-8">
-              <h3 className="text-xl font-black text-orange-400 mb-2">{voucher.title}</h3>
-              <p className="text-sm text-white/70 mb-6">{voucher.description}</p>
+              <h3 className="text-xl font-black text-orange-400 mb-2">{v.title}</h3>
+              <p className="text-sm text-white/70 mb-6">{v.description}</p>
               <div className="bg-black/40 rounded-xl py-3 px-6 inline-block">
-                <span className="font-mono text-2xl font-black tracking-widest text-white">{voucher.code}</span>
+                <span className="font-mono text-2xl font-black tracking-widest text-white">{v.code}</span>
               </div>
               <p className="text-[10px] text-white/30 mt-6 uppercase tracking-wider">Sur présentation de cet écran</p>
             </div>
@@ -523,8 +677,8 @@ export default function PublicReviewPage() {
             <h2 className="text-2xl font-bold">Un grand merci !</h2>
             <p className="text-white/50">Votre visite compte énormément pour nous et pour notre équipe. À très bientôt !</p>
           </div>
-        )
-      )}
+        );
+      })()}
 
     </div>
   );
