@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, API_URL, redirectOn401 } from "@/lib/api";
+import { api, apiUpload, API_URL, redirectOn401 } from "@/lib/api";
 
 type Server = {
   id: string;
@@ -89,25 +89,11 @@ export default function ServersPage() {
     if (!file || !editingId) return;
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      // 1. Upload photo via public API route
-      const uploadRes = await fetch(`${API_URL}/api/pro/uploads/restaurant-photo`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${localStorage.getItem("matable_pro_token")}` },
-        body: formData,
-      });
-
-      if (!uploadRes.ok) throw new Error("Erreur upload");
-      const { path } = await uploadRes.json();
-      
-      // 2. Patch server
-      await api(`/api/pro/servers/${editingId}`, {
-        method: "PATCH",
-        body: JSON.stringify({ photoUrl: `${API_URL}${path}` })
-      });
-      
+      const res = await apiUpload<{ ok: boolean; photoUrl: string }>(
+        `/api/pro/servers/${editingId}/photo`,
+        [file],
+      );
+      if (!res.ok) throw new Error("Erreur upload");
       await reload();
     } catch (err) {
       setError("Erreur lors de l'envoi de la photo.");
