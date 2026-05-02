@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, redirectOn401 } from "@/lib/api";
+import { api, API_URL, redirectOn401 } from "@/lib/api";
 
 type Server = {
   id: string;
@@ -81,6 +81,36 @@ export default function ServersPage() {
       setEditingSchedules(res.schedules);
     } catch (err) {
       setError("Erreur chargement planning");
+    }
+  };
+
+  const uploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingId) return;
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // 1. Upload photo via public API route
+      const uploadRes = await fetch(`${API_URL}/api/pro/photo`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${localStorage.getItem("matable_pro_token")}` },
+        body: formData,
+      });
+
+      if (!uploadRes.ok) throw new Error("Erreur upload");
+      const { path } = await uploadRes.json();
+      
+      // 2. Patch server
+      await api(`/api/pro/servers/${editingId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ photoUrl: `${API_URL}${path}` })
+      });
+      
+      await reload();
+    } catch (err) {
+      setError("Erreur lors de l'envoi de la photo.");
     }
   };
 
@@ -193,13 +223,40 @@ export default function ServersPage() {
 
         <div>
           {editingId ? (
-            <div className="rounded-lg border border-orange-500/30 bg-white/5 p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="font-bold text-orange-400">Planning de {servers.find(s => s.id === editingId)?.name}</h2>
-                <button className="text-xs font-bold text-orange-400 px-2 py-1 bg-orange-500/20 rounded hover:bg-orange-500/30 transition-colors" onClick={addScheduleRow}>
-                  + AJOUTER UN CRÉNEAU
-                </button>
+            <div className="space-y-6">
+              {/* Photo Upload Section */}
+              <div className="rounded-lg border border-white/10 bg-white/5 p-6 flex items-center gap-6">
+                <div className="relative group">
+                  <div className="w-20 h-20 rounded-full bg-white/10 overflow-hidden flex items-center justify-center text-3xl shrink-0">
+                    {servers.find(s => s.id === editingId)?.photoUrl ? (
+                      <img src={servers.find(s => s.id === editingId)?.photoUrl as string} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      "👤"
+                    )}
+                  </div>
+                  <label className="absolute inset-0 bg-black/50 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity text-xs font-bold">
+                    Changer
+                    <input type="file" accept="image/*" className="hidden" onChange={uploadPhoto} />
+                  </label>
+                </div>
+                <div>
+                  <h3 className="font-bold text-white mb-1">Photo du serveur</h3>
+                  <p className="text-xs text-white/50 mb-3">S'affiche pour vos clients lorsqu'ils laissent un avis ou un pourboire.</p>
+                  <label className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded cursor-pointer transition-colors font-semibold">
+                    Importer une photo
+                    <input type="file" accept="image/*" className="hidden" onChange={uploadPhoto} />
+                  </label>
+                </div>
               </div>
+
+              {/* Planning Section */}
+              <div className="rounded-lg border border-orange-500/30 bg-white/5 p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-bold text-orange-400">Planning de {servers.find(s => s.id === editingId)?.name}</h2>
+                  <button className="text-xs font-bold text-orange-400 px-2 py-1 bg-orange-500/20 rounded hover:bg-orange-500/30 transition-colors" onClick={addScheduleRow}>
+                    + AJOUTER UN CRÉNEAU
+                  </button>
+                </div>
 
               <div className="space-y-2">
                 {editingSchedules.length === 0 && (
@@ -254,6 +311,7 @@ export default function ServersPage() {
                     {pinSaving ? "…" : "Sauver PIN"}
                   </button>
                 </div>
+              </div>
               </div>
             </div>
           ) : (
