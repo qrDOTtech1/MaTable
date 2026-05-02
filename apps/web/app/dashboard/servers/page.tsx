@@ -93,7 +93,7 @@ export default function ServersPage() {
       formData.append("file", file);
 
       // 1. Upload photo via public API route
-      const uploadRes = await fetch(`${API_URL}/api/pro/photo`, {
+      const uploadRes = await fetch(`${API_URL}/api/pro/uploads/restaurant-photo`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${localStorage.getItem("matable_pro_token")}` },
         body: formData,
