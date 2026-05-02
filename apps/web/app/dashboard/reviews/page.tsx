@@ -167,23 +167,45 @@ export default function ReviewsPage() {
               const ratings = r.ratings || {};
               const vals = Object.values(ratings) as number[];
               const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+
+              // Parse review text — may be JSON { version1, version2 } or plain text
+              let versions: string[] = [];
+              if (r.reviewText) {
+                try {
+                  const parsed = JSON.parse(r.reviewText);
+                  if (parsed.version1) versions.push(parsed.version1);
+                  if (parsed.version2) versions.push(parsed.version2);
+                } catch {
+                  versions = [r.reviewText];
+                }
+              }
+
               return (
                 <div key={r.id} className="card space-y-3">
                   <div className="flex items-start justify-between">
-                    <div className="text-sm text-orange-400 font-bold">{avg > 0 ? `${avg.toFixed(1)}/5 globale` : 'Nouvel avis'}</div>
+                    <div className="text-sm text-orange-400 font-bold">{avg > 0 ? `${avg.toFixed(1)}/5` : 'Nouvel avis'}</div>
                     <div className="text-xs text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</div>
                   </div>
-                  {r.serverName && <div className="text-xs text-white/50">Serveur: {r.serverName}</div>}
+                  <div className="flex items-center gap-3">
+                    {r.serverName && <div className="text-xs text-white/50">Serveur : <span className="text-white/70 font-semibold">{r.serverName}</span></div>}
+                  </div>
                   {ratings && (
                     <div className="flex flex-wrap gap-2 text-xs">
-                      {ratings.food && <span className="px-2 py-1 rounded bg-white/5">🍽️ {ratings.food}</span>}
-                      {ratings.service && <span className="px-2 py-1 rounded bg-white/5">😊 {ratings.service}</span>}
-                      {ratings.atmosphere && <span className="px-2 py-1 rounded bg-white/5">🏠 {ratings.atmosphere}</span>}
-                      {ratings.value && <span className="px-2 py-1 rounded bg-white/5">💰 {ratings.value}</span>}
+                      {ratings.food != null && <span className="px-2 py-1 rounded bg-white/5">🍽️ {ratings.food}/5</span>}
+                      {ratings.service != null && <span className="px-2 py-1 rounded bg-white/5">😊 {ratings.service}/5</span>}
+                      {ratings.atmosphere != null && <span className="px-2 py-1 rounded bg-white/5">🏠 {ratings.atmosphere}/5</span>}
+                      {ratings.value != null && <span className="px-2 py-1 rounded bg-white/5">💰 {ratings.value}/5</span>}
                     </div>
                   )}
-                  {r.reviewText && (
-                    <p className="text-sm text-white/70 bg-black/20 p-3 rounded-xl whitespace-pre-wrap">{r.reviewText}</p>
+                  {versions.length > 0 && (
+                    <div className="space-y-2 pt-1">
+                      {versions.map((txt, i) => (
+                        <div key={i} className="bg-black/20 border border-white/5 p-3 rounded-xl">
+                          {versions.length > 1 && <div className="text-[10px] uppercase tracking-wider text-orange-400/60 font-bold mb-1">Version {i + 1}</div>}
+                          <p className="text-sm text-white/70 leading-relaxed">{txt}</p>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               );
