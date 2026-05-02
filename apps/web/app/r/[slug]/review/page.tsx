@@ -273,8 +273,10 @@ export default function PublicReviewPage() {
                 onClick={() => handleServerSelect(s)}
                 className="bg-white/5 border border-white/10 hover:border-orange-500 rounded-2xl p-4 flex flex-col items-center gap-3 transition-colors"
               >
-                <div className="w-16 h-16 rounded-full bg-white/10 overflow-hidden flex items-center justify-center text-xl font-bold text-white/40">
-                  {s.photoUrl ? <img src={s.photoUrl} alt={s.name} className="w-full h-full object-cover" /> : s.name.charAt(0)}
+                 <div className="w-16 h-16 rounded-full bg-white/10 overflow-hidden flex items-center justify-center text-xl font-bold text-white/40">
+                  {s.photoUrl
+                    ? <img src={s.photoUrl.startsWith("http") ? s.photoUrl : `${API_URL}${s.photoUrl}`} alt={s.name} className="w-full h-full object-cover" />
+                    : s.name.charAt(0)}
                 </div>
                 <span className="font-semibold">{s.name}</span>
               </button>
