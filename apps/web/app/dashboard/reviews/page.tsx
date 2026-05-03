@@ -380,7 +380,59 @@ export default function ReviewsPage() {
                 <Link href={`/r/${restaurant.slug}/review`} target="_blank" className="text-orange-400 text-sm hover:underline font-bold">
                   Ouvrir la page de test ↗
                 </Link>
-                <button onClick={() => window.print()} className="mt-6 bg-white/10 hover:bg-white/20 px-6 py-2 rounded-xl text-sm font-bold transition-colors">
+                <button onClick={() => {
+                  const restoName = restaurant?.name || "Notre Restaurant";
+                  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>QR Code Avis - ${restoName}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @page { size: A4 portrait; margin: 0; }
+  html, body { width: 100%; height: 100%; font-family: 'Inter', Arial, sans-serif; background: #fff; color: #1a1a1a; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+  .container { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px; }
+  .logo-text { font-size: 18px; font-weight: 600; color: #f97316; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px; }
+  .resto-name { font-size: 42px; font-weight: 900; color: #1a1a1a; margin-bottom: 12px; line-height: 1.1; }
+  .divider { width: 80px; height: 4px; background: #f97316; border-radius: 4px; margin: 20px auto 36px; }
+  .qr-wrapper { background: #fff; border: 3px solid #f0f0f0; border-radius: 24px; padding: 24px; margin-bottom: 40px; }
+  .qr-wrapper img { width: 220px; height: 220px; display: block; }
+  .message { font-size: 28px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px; line-height: 1.3; }
+  .sub-message { font-size: 16px; color: #888; font-weight: 400; margin-top: 8px; }
+  .footer-print { position: fixed; bottom: 30px; left: 0; right: 0; text-align: center; font-size: 12px; color: #bbb; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="logo-text">MaTable Pro</div>
+  <div class="resto-name">${restoName}</div>
+  <div class="divider"></div>
+  <div class="qr-wrapper"><img src="${qrUrl}" alt="QR Code" /></div>
+  <div class="message">Laissez-nous un avis en 2 minutes ! 😊</div>
+  <div class="sub-message">Scannez le QR code avec votre téléphone</div>
+</div>
+<div class="footer-print">matable.pro</div>
+</body>
+</html>`;
+                  // Use hidden iframe to avoid popup blockers
+                  let iframe = document.getElementById("qr-print-frame") as HTMLIFrameElement | null;
+                  if (iframe) iframe.remove();
+                  iframe = document.createElement("iframe");
+                  iframe.id = "qr-print-frame";
+                  iframe.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;";
+                  document.body.appendChild(iframe);
+                  const doc = iframe.contentDocument || iframe.contentWindow?.document;
+                  if (!doc) return;
+                  doc.open();
+                  doc.write(html);
+                  doc.close();
+                  setTimeout(() => {
+                    iframe!.contentWindow?.focus();
+                    iframe!.contentWindow?.print();
+                  }, 600);
+                }} className="mt-6 bg-white/10 hover:bg-white/20 px-6 py-2 rounded-xl text-sm font-bold transition-colors">
                   🖨️ Imprimer ce QR Code
                 </button>
               </>
