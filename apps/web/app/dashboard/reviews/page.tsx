@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { api } from "@/lib/api";
 import Link from "next/link";
 import QRCode from "qrcode";
@@ -10,6 +10,7 @@ type ChatMessage = { role: "ai" | "user"; content: string };
 type CustomerReview = { id: string; serverName: string; ratings: any; reviewText: string; chatHistory?: ChatMessage[] | null; createdAt: string };
 type ServerTip = { id: string; serverName: string; amountCents: number; createdAt: string };
 type RestaurantConfig = { id: string; slug: string; name: string; googleReviewLink?: string; reviewVoucherConfig?: { active: boolean; title: string; description: string; code: string } };
+type ServerData = { id: string; name: string; photoUrl: string | null; active: boolean; avgRating: number | null; reviewsCount: number };
 
 type DayStats = {
   date: string;
@@ -116,6 +117,36 @@ function RadarOctagon({ avg }: { avg: { food: number; service: number; atmospher
   );
 }
 
+// ── Mini Sparkline Component ──────────────────────────────────────────────────
+function Sparkline({ data, color = "#f97316", height = 40 }: { data: number[]; color?: string; height?: number }) {
+  if (data.length < 2) return null;
+  const max = Math.max(...data, 0.1);
+  const min = Math.min(...data, 0);
+  const range = max - min || 1;
+  const w = 200;
+  const pts = data.map((v, i) => ({
+    x: (i / (data.length - 1)) * w,
+    y: height - ((v - min) / range) * (height - 4) - 2,
+  }));
+  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
+  const area = `${line} L${w},${height} L0,${height} Z`;
+
+  return (
+    <svg viewBox={`0 0 ${w} ${height}`} className="w-full" style={{ height }}>
+      <defs>
+        <linearGradient id={`sparkGrad-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#sparkGrad-${color.replace("#", "")})`} />
+      <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Last point dot */}
+      <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="3" fill={color} stroke="#0a0a0a" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
 export default function ReviewsPage() {
   const [dishReviews, setDishReviews] = useState<DishReview[]>([]);
   const [serverReviews, setServerReviews] = useState<ServerReview[]>([]);
@@ -126,6 +157,7 @@ export default function ReviewsPage() {
   const [selectedDay, setSelectedDay] = useState<DayStats | null>(null);
   const [restaurant, setRestaurant] = useState<RestaurantConfig | null>(null);
   const [qrUrl, setQrUrl] = useState<string>("");
+  const [serversList, setServersList] = useState<ServerData[]>([]);
 
   // Campaign Form State
   const [googleLink, setGoogleLink] = useState("");
@@ -151,6 +183,9 @@ export default function ReviewsPage() {
         setServerTips(r.tips);
       })
       .catch(() => {});
+    api<{ servers: ServerData[] }>("/api/pro/servers")
+      .then((r) => setServersList(r.servers))
+      .catch(() => {});
     api<{ restaurant: RestaurantConfig }>("/api/pro/me")
       .then((r) => {
         setRestaurant(r.restaurant);
@@ -168,6 +203,46 @@ export default function ReviewsPage() {
       })
       .catch(() => {});
   }, []);
+
+  // ── Compute trend data from stats history ──────────────────────────────────
+  const trendData = useMemo(() => {
+    if (!stats || stats.history.length < 2) return null;
+    // Reverse to chronological order (history is desc)
+    const hist = [...stats.history].reverse();
+    return {
+      food: hist.map(d => d.avg.food),
+      service: hist.map(d => d.avg.service),
+      atmosphere: hist.map(d => d.avg.atmosphere),
+      value: hist.map(d => d.avg.value),
+      global: hist.map(d => +((d.avg.food + d.avg.service + d.avg.atmosphere + d.avg.value) / 4).toFixed(2)),
+      reviewsPerDay: hist.map(d => d.count),
+      labels: hist.map(d => new Date(d.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })),
+    };
+  }, [stats]);
+
+  // ── Server leaderboard from tips ───────────────────────────────────────────
+  const serverLeaderboard = useMemo(() => {
+    // Aggregate tips per server
+    const tipsByServer = new Map<string, number>();
+    for (const t of serverTips) {
+      tipsByServer.set(t.serverName, (tipsByServer.get(t.serverName) || 0) + t.amountCents);
+    }
+
+    // Merge with serversList data
+    const board = serversList
+      .filter(s => s.active)
+      .map(s => ({
+        id: s.id,
+        name: s.name,
+        photoUrl: s.photoUrl,
+        avgRating: s.avgRating,
+        reviewsCount: s.reviewsCount,
+        totalTipsCents: tipsByServer.get(s.name) || 0,
+      }))
+      .sort((a, b) => (b.avgRating || 0) - (a.avgRating || 0));
+
+    return board;
+  }, [serversList, serverTips]);
 
   async function saveCampaign() {
     setSaving(true);
@@ -289,6 +364,94 @@ export default function ReviewsPage() {
                 </div>
               </div>
 
+              {/* ── Trend Analysis ──────────────────────────────────────────── */}
+              {trendData && (
+                <div className="card p-6">
+                  <h3 className="font-bold text-white mb-4">Tendances</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-white/50 font-semibold">Note globale</span>
+                        <span className="text-xs font-mono text-orange-400">{trendData.global[trendData.global.length - 1]}/5</span>
+                      </div>
+                      <Sparkline data={trendData.global} color="#f97316" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-white/50 font-semibold">Cuisine</span>
+                        <span className="text-xs font-mono text-amber-400">{trendData.food[trendData.food.length - 1]}/5</span>
+                      </div>
+                      <Sparkline data={trendData.food} color="#f59e0b" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-white/50 font-semibold">Service</span>
+                        <span className="text-xs font-mono text-blue-400">{trendData.service[trendData.service.length - 1]}/5</span>
+                      </div>
+                      <Sparkline data={trendData.service} color="#60a5fa" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-white/50 font-semibold">Ambiance</span>
+                        <span className="text-xs font-mono text-purple-400">{trendData.atmosphere[trendData.atmosphere.length - 1]}/5</span>
+                      </div>
+                      <Sparkline data={trendData.atmosphere} color="#a78bfa" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-white/50 font-semibold">Qualite/Prix</span>
+                        <span className="text-xs font-mono text-emerald-400">{trendData.value[trendData.value.length - 1]}/5</span>
+                      </div>
+                      <Sparkline data={trendData.value} color="#34d399" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-white/50 font-semibold">Avis/jour</span>
+                        <span className="text-xs font-mono text-white/70">{trendData.reviewsPerDay[trendData.reviewsPerDay.length - 1]}</span>
+                      </div>
+                      <Sparkline data={trendData.reviewsPerDay} color="#94a3b8" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Server Leaderboard ────────────────────────────────────── */}
+              {serverLeaderboard.length > 0 && (
+                <div className="card p-6">
+                  <h3 className="font-bold text-white mb-4">Classement Serveurs</h3>
+                  <div className="space-y-3">
+                    {serverLeaderboard.map((s, i) => {
+                      const medal = i === 0 ? "text-yellow-400" : i === 1 ? "text-slate-300" : i === 2 ? "text-amber-600" : "text-white/20";
+                      return (
+                        <div key={s.id} className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                          <div className={`text-lg font-black w-8 text-center ${medal}`}>
+                            {i < 3 ? ["1er", "2e", "3e"][i] : `${i + 1}e`}
+                          </div>
+                          <div className="w-10 h-10 rounded-full bg-white/10 overflow-hidden flex items-center justify-center text-sm font-bold text-white/40 shrink-0">
+                            {s.photoUrl
+                              ? <img src={s.photoUrl} alt={s.name} className="w-full h-full object-cover" />
+                              : s.name.charAt(0)
+                            }
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-sm truncate">{s.name}</div>
+                            <div className="text-xs text-white/40">{s.reviewsCount} avis</div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className={`text-sm font-bold ${(s.avgRating || 0) >= 4 ? "text-emerald-400" : (s.avgRating || 0) >= 3 ? "text-orange-400" : "text-red-400"}`}>
+                              {s.avgRating ? `${s.avgRating.toFixed(1)}/5` : "-"}
+                            </div>
+                            {s.totalTipsCents > 0 && (
+                              <div className="text-[10px] text-emerald-400/70">{(s.totalTipsCents / 100).toFixed(0)} EUR tips</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Historique par jour */}
               <div className="card p-6">
                 <h3 className="font-bold text-white mb-4">Historique (30 derniers jours)</h3>
@@ -382,6 +545,13 @@ export default function ReviewsPage() {
                 </Link>
                 <button onClick={() => {
                   const restoName = restaurant?.name || "Notre Restaurant";
+                  const hasOffer = voucherActive && voucherTitle;
+                  const offerHtml = hasOffer ? `
+  <div class="offer-badge">
+    <div class="offer-icon">🎁</div>
+    <div class="offer-title">${voucherTitle || "Une recompense vous attend !"}</div>
+    <div class="offer-desc">${voucherDesc || "Laissez un avis et recevez votre cadeau."}</div>
+  </div>` : "";
                   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -397,10 +567,14 @@ export default function ReviewsPage() {
   .logo-text { font-size: 18px; font-weight: 600; color: #f97316; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px; }
   .resto-name { font-size: 42px; font-weight: 900; color: #1a1a1a; margin-bottom: 12px; line-height: 1.1; }
   .divider { width: 80px; height: 4px; background: #f97316; border-radius: 4px; margin: 20px auto 36px; }
-  .qr-wrapper { background: #fff; border: 3px solid #f0f0f0; border-radius: 24px; padding: 24px; margin-bottom: 40px; }
+  .qr-wrapper { background: #fff; border: 3px solid #f0f0f0; border-radius: 24px; padding: 24px; margin-bottom: 24px; }
   .qr-wrapper img { width: 220px; height: 220px; display: block; }
   .message { font-size: 28px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px; line-height: 1.3; }
   .sub-message { font-size: 16px; color: #888; font-weight: 400; margin-top: 8px; }
+  .offer-badge { margin-top: 28px; background: linear-gradient(135deg, #fff7ed, #fef3c7); border: 2px solid #f97316; border-radius: 16px; padding: 20px 32px; max-width: 400px; }
+  .offer-icon { font-size: 32px; margin-bottom: 8px; }
+  .offer-title { font-size: 20px; font-weight: 800; color: #c2410c; margin-bottom: 4px; }
+  .offer-desc { font-size: 14px; color: #92400e; }
   .footer-print { position: fixed; bottom: 30px; left: 0; right: 0; text-align: center; font-size: 12px; color: #bbb; letter-spacing: 1px; }
 </style>
 </head>
@@ -410,8 +584,9 @@ export default function ReviewsPage() {
   <div class="resto-name">${restoName}</div>
   <div class="divider"></div>
   <div class="qr-wrapper"><img src="${qrUrl}" alt="QR Code" /></div>
-  <div class="message">Laissez-nous un avis en 2 minutes ! 😊</div>
-  <div class="sub-message">Scannez le QR code avec votre téléphone</div>
+  <div class="message">Laissez-nous un avis en 2 minutes !</div>
+  <div class="sub-message">Scannez le QR code avec votre telephone</div>
+  ${offerHtml}
 </div>
 <div class="footer-print">matable.pro</div>
 </body>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { API_URL } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,6 +14,66 @@ type Config = {
 };
 
 type Drafts = { version1: string; version2: string };
+
+// ── Step definitions for progress bar ────────────────────────────────────────
+const STEPS = ["server", "rating", "chat", "drafts", "tip", "claim", "voucher"] as const;
+type Step = typeof STEPS[number];
+const STEP_LABELS: Record<Step, string> = {
+  server: "Serveur",
+  rating: "Notes",
+  chat: "Avis IA",
+  drafts: "Relecture",
+  tip: "Pourboire",
+  claim: "Cadeau",
+  voucher: "Merci",
+};
+
+// ── Progress bar component ───────────────────────────────────────────────────
+function ProgressBar({ current, onBack }: { current: Step; onBack: (() => void) | null }) {
+  const idx = STEPS.indexOf(current);
+  const pct = Math.round(((idx + 1) / STEPS.length) * 100);
+
+  return (
+    <div className="mb-8">
+      {/* Back + progress text */}
+      <div className="flex items-center justify-between mb-2">
+        {onBack ? (
+          <button onClick={onBack} className="flex items-center gap-1 text-white/40 hover:text-white text-sm transition-colors">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+            Retour
+          </button>
+        ) : <div />}
+        <span className="text-[11px] text-white/30 font-semibold uppercase tracking-wider">{STEP_LABELS[current]} &middot; {idx + 1}/{STEPS.length}</span>
+      </div>
+      {/* Bar */}
+      <div className="h-1 bg-white/[0.06] rounded-full overflow-hidden">
+        <div
+          className="h-full bg-gradient-to-r from-orange-500 to-orange-400 rounded-full transition-all duration-500 ease-out"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Star row — extracted as a top-level component for performance ─────────────
+function StarRow({ label, icon, value, onChange }: { label: string; icon: React.ReactNode; value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="text-white/40 text-xl w-6 flex justify-center">{icon}</div>
+        <span className="text-sm font-semibold text-white/80">{label}</span>
+      </div>
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map(r => (
+          <button key={r} onClick={() => onChange(r)} className={`text-2xl transition-transform hover:scale-110 ${r <= value ? "text-yellow-400" : "text-white/10"}`}>
+            ★
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function normalizeVoucher(config: Config | null) {
   const voucher = config?.reviewVoucherConfig;
@@ -62,9 +122,25 @@ export default function PublicReviewPage() {
 
   // Flow State — if returning from Stripe tip success, start on a loading hold until config arrives
   const tipParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tip") : null;
-  const [step, setStep] = useState<"server" | "rating" | "chat" | "drafts" | "tip" | "claim" | "voucher">(tipParam === "success" ? "claim" : "server");
+  const [step, setStep] = useState<Step>(tipParam === "success" ? "claim" : "server");
   const [selectedServer, setSelectedServer] = useState<Server | null>(null);
   const [ratings, setRatings] = useState({ food: 0, service: 0, atmosphere: 0, value: 0 });
+
+  // Back navigation — compute where "back" should go based on current step
+  const getBackTarget = useCallback((): Step | null => {
+    switch (step) {
+      case "rating": return "server";
+      case "chat": return "rating";
+      case "drafts": return "chat";
+      case "tip": return "drafts";
+      default: return null; // no back for server, claim, voucher
+    }
+  }, [step]);
+
+  const handleBack = useCallback(() => {
+    const target = getBackTarget();
+    if (target) setStep(target);
+  }, [getBackTarget]);
 
   // Tip State
   const searchParams = useSearchParams();
@@ -241,43 +317,69 @@ export default function PublicReviewPage() {
     startAiChat(newHistory);
   };
 
-  const copyAndGoToGoogle = (text: string) => {
+
+  // Editable drafts state
+  const [editingDraft, setEditingDraft] = useState<1 | 2 | null>(null);
+  const [editText, setEditText] = useState("");
+  const [copiedDraft, setCopiedDraft] = useState<1 | 2 | null>(null);
+
+  const startEditDraft = (version: 1 | 2) => {
+    if (!drafts) return;
+    setEditText(version === 1 ? drafts.version1 : drafts.version2);
+    setEditingDraft(version);
+  };
+
+  const saveEditDraft = () => {
+    if (!drafts || !editingDraft) return;
+    const updated = { ...drafts };
+    if (editingDraft === 1) updated.version1 = editText;
+    else updated.version2 = editText;
+    setDrafts(updated);
+    setEditingDraft(null);
+    setEditText("");
+  };
+
+  const copyAndGoToGoogle = (text: string, version: 1 | 2) => {
     navigator.clipboard.writeText(text);
+    setCopiedDraft(version);
+    setTimeout(() => setCopiedDraft(null), 2000);
     if (config?.googleReviewLink) {
-      window.setTimeout(() => window.open(config.googleReviewLink!, "_blank"), 150);
+      window.setTimeout(() => window.open(config.googleReviewLink!, "_blank"), 300);
     }
-    setStep("tip");
+    // Don't auto-advance — let user click "Continuer" when ready
   };
 
-  const StarRow = ({ label, icon, value, onChange }: { label: string, icon: React.ReactNode, value: number, onChange: (v: number) => void }) => {
-    return (
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="text-white/40 text-xl w-6 flex justify-center">{icon}</div>
-          <span className="text-sm font-semibold text-white/80">{label}</span>
-        </div>
-        <div className="flex gap-1">
-          {[1, 2, 3, 4, 5].map(r => (
-             <button key={r} onClick={() => onChange(r)} className={`text-2xl transition-transform hover:scale-110 ${r <= value ? "text-yellow-400" : "text-white/10"}`}>
-               ★
-             </button>
-          ))}
-        </div>
+  if (loading) return (
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="text-center space-y-4">
+        <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-white/50 text-sm">Chargement...</p>
       </div>
-    );
-  };
-
-  if (loading) return <div className="p-8 text-center text-white/50">Chargement...</div>;
-  if (error) return <div className="p-8 text-center text-red-400">{error}</div>;
+    </div>
+  );
+  if (error) return (
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-6">
+      <div className="text-center space-y-4 max-w-xs">
+        <div className="text-4xl">:(</div>
+        <p className="text-red-400 font-semibold">{error}</p>
+        <button onClick={() => window.location.reload()} className="text-sm text-white/40 hover:text-white underline">Recharger la page</button>
+      </div>
+    </div>
+  );
   if (!config) return null;
   const voucher = normalizeVoucher(config);
+  const backTarget = getBackTarget();
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white p-6 max-w-md mx-auto flex flex-col pt-12">
-      <div className="text-center mb-10">
-        <h1 className="text-2xl font-black mb-2">{config.restaurant.name}</h1>
+    <div className="min-h-screen bg-[#0a0a0a] text-white p-6 max-w-md mx-auto flex flex-col pt-8">
+      {/* Restaurant header */}
+      <div className="text-center mb-4">
+        <h1 className="text-2xl font-black mb-1">{config.restaurant.name}</h1>
         <p className="text-white/50 text-sm">Merci pour votre visite !</p>
       </div>
+
+      {/* Progress bar + back button */}
+      <ProgressBar current={step} onBack={backTarget ? handleBack : null} />
 
       {step === "server" && (
         <div className="animate-fade-in space-y-6">
@@ -413,15 +515,15 @@ export default function PublicReviewPage() {
 
       {step === "drafts" && (
         <div className="animate-fade-in space-y-6">
-          <div className="text-center mb-8">
-            <h2 className="text-xl font-bold mb-2">Votre avis est prêt !</h2>
-            <p className="text-sm text-white/50">Choisissez la version que vous préférez. Elle sera copiée pour que vous puissiez la coller sur Google.</p>
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-bold mb-2">Votre avis est pret !</h2>
+            <p className="text-sm text-white/50">Modifiez si besoin, puis copiez la version que vous preferez.</p>
           </div>
 
           {generating ? (
             <div className="text-center p-8 space-y-4">
               <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-orange-400 font-medium">L'IA rédige votre avis...</p>
+              <p className="text-orange-400 font-medium">L'IA redige votre avis...</p>
               {liveText && (
                 <div className="mt-6 p-4 bg-white/5 rounded-xl text-left font-mono text-xs whitespace-pre-wrap text-white/70 overflow-hidden break-words border border-white/10">
                   {liveText}
@@ -430,20 +532,78 @@ export default function PublicReviewPage() {
             </div>
           ) : drafts ? (
             <div className="space-y-4">
-              <button 
-                onClick={() => copyAndGoToGoogle(drafts.version1)}
-                className="w-full text-left bg-white/5 hover:bg-white/10 border border-white/10 p-5 rounded-2xl transition-colors group"
+              {/* Draft version 1 */}
+              {editingDraft === 1 ? (
+                <div className="bg-white/5 border border-orange-500/40 p-4 rounded-2xl space-y-3">
+                  <textarea
+                    value={editText}
+                    onChange={e => setEditText(e.target.value)}
+                    rows={5}
+                    className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-orange-500/50 resize-none"
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={saveEditDraft} className="flex-1 py-2 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-xl text-sm transition-colors">Enregistrer</button>
+                    <button onClick={() => setEditingDraft(null)} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/60 rounded-xl text-sm transition-colors">Annuler</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white/5 hover:bg-white/[0.07] border border-white/10 p-5 rounded-2xl transition-colors group">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <span className="text-[10px] uppercase tracking-wider text-white/30 font-bold">Version 1</span>
+                    <button onClick={() => startEditDraft(1)} className="text-[10px] uppercase tracking-wider text-white/30 hover:text-orange-400 font-bold transition-colors flex items-center gap-1">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      Modifier
+                    </button>
+                  </div>
+                  <p className="text-sm leading-relaxed mb-4">{drafts.version1}</p>
+                  <button
+                    onClick={() => copyAndGoToGoogle(drafts.version1, 1)}
+                    className="w-full py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-500 text-white"
+                  >
+                    {copiedDraft === 1 ? "Copie !" : "Copier & Publier sur Google"} {copiedDraft !== 1 && <span className="text-xs">↗</span>}
+                  </button>
+                </div>
+              )}
+
+              {/* Draft version 2 */}
+              {editingDraft === 2 ? (
+                <div className="bg-white/5 border border-orange-500/40 p-4 rounded-2xl space-y-3">
+                  <textarea
+                    value={editText}
+                    onChange={e => setEditText(e.target.value)}
+                    rows={5}
+                    className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-orange-500/50 resize-none"
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={saveEditDraft} className="flex-1 py-2 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-xl text-sm transition-colors">Enregistrer</button>
+                    <button onClick={() => setEditingDraft(null)} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/60 rounded-xl text-sm transition-colors">Annuler</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white/5 hover:bg-white/[0.07] border border-white/10 p-5 rounded-2xl transition-colors group">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <span className="text-[10px] uppercase tracking-wider text-white/30 font-bold">Version 2</span>
+                    <button onClick={() => startEditDraft(2)} className="text-[10px] uppercase tracking-wider text-white/30 hover:text-orange-400 font-bold transition-colors flex items-center gap-1">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      Modifier
+                    </button>
+                  </div>
+                  <p className="text-sm leading-relaxed mb-4">{drafts.version2}</p>
+                  <button
+                    onClick={() => copyAndGoToGoogle(drafts.version2, 2)}
+                    className="w-full py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white"
+                  >
+                    {copiedDraft === 2 ? "Copie !" : "Copier & Publier sur Google"} {copiedDraft !== 2 && <span className="text-xs">↗</span>}
+                  </button>
+                </div>
+              )}
+
+              {/* Continue button */}
+              <button
+                onClick={() => setStep("tip")}
+                className="w-full py-4 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-2xl transition-all shadow-lg shadow-orange-500/20 mt-2"
               >
-                <p className="text-sm leading-relaxed mb-4">{drafts.version1}</p>
-                <div className="text-xs font-bold text-orange-500 group-hover:text-orange-400">Copier & Publier sur Google ↗</div>
-              </button>
-              
-              <button 
-                onClick={() => copyAndGoToGoogle(drafts.version2)}
-                className="w-full text-left bg-white/5 hover:bg-white/10 border border-white/10 p-5 rounded-2xl transition-colors group"
-              >
-                <p className="text-sm leading-relaxed mb-4">{drafts.version2}</p>
-                <div className="text-xs font-bold text-orange-500 group-hover:text-orange-400">Copier & Publier sur Google ↗</div>
+                Continuer
               </button>
             </div>
           ) : null}
