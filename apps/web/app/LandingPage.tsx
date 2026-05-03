@@ -95,38 +95,76 @@ const comparisons = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+/*
+  Grille reelle (interne) — prix de reference = 12 mois
+  3 mois  +7%  |  6 mois  +5%  |  9 mois  +3%  |  12 mois  0%  |  12 mois annuel  -5%
+
+  Perception visiteur — prix affiche de base = 3 mois (le plus cher)
+  On presente les durees longues comme des "reductions" par rapport au 3 mois.
+  Fake discount visible :  3m = 0%  |  6m = -2%  |  9m = -4%  |  12m = -7%  |  12m annuel = -12%
+*/
+
+const DURATIONS = [
+  { key: "3m",  label: "3 mois",   sub: "Sans risque",         realMult: 1.07, fakeDiscount: 0  },
+  { key: "6m",  label: "6 mois",   sub: "Le plus populaire",   realMult: 1.05, fakeDiscount: 2  },
+  { key: "9m",  label: "9 mois",   sub: "Presque annuel",      realMult: 1.03, fakeDiscount: 4  },
+  { key: "12m", label: "12 mois",  sub: "Tarif de reference",  realMult: 1.00, fakeDiscount: 7  },
+  { key: "12a", label: "12 mois",  sub: "Paiement annuel",     realMult: 0.95, fakeDiscount: 12 },
+] as const;
+
+type DurationKey = typeof DURATIONS[number]["key"];
+
 function PricingBuilder() {
   const [selected, setSelected] = useState<string[]>(["avis"]);
-  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
+  const [duration, setDuration] = useState<DurationKey>("3m");
 
   const toggleModule = (id: string) => {
-    if (id === "avis") return; // always required
-    setSelected(prev => 
+    if (id === "avis") return;
+    setSelected(prev =>
       prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
     );
   };
 
-  const isAnnual = billing === "annual";
-  const annualDiscount = 5; // -5% si paiement annuel
+  const dur = DURATIONS.find(d => d.key === duration)!;
+  const isAnnualPay = duration === "12a";
 
+  // Volume discount (unchanged)
   const selectedCount = selected.length;
   let volumePercent = 0;
   if (selectedCount === 2) volumePercent = 10;
   if (selectedCount === 3) volumePercent = 15;
   if (selectedCount >= 4) volumePercent = 20;
 
-  const rawTotal = selected.reduce((sum, id) => {
+  // Base price = 3-month price (highest, shown as "normal" price)
+  const baseTotal = selected.reduce((sum, id) => {
     const mod = MODULES.find(m => m.id === id);
-    return sum + (mod ? mod.price : 0);
+    return sum + (mod ? +(mod.price * 1.07).toFixed(2) : 0);
   }, 0);
 
-  const volumeAmount = rawTotal * (volumePercent / 100);
-  const afterVolume = rawTotal - volumeAmount;
-  const annualAmount = isAnnual ? afterVolume * (annualDiscount / 100) : 0;
-  const finalMonthly = afterVolume - annualAmount;
-  const finalDisplay = isAnnual ? +(finalMonthly * 12).toFixed(2) : finalMonthly;
+  // Real price after duration multiplier
+  const realTotal = selected.reduce((sum, id) => {
+    const mod = MODULES.find(m => m.id === id);
+    return sum + (mod ? +(mod.price * dur.realMult).toFixed(2) : 0);
+  }, 0);
+
+  // Volume
+  const volumeAmount = realTotal * (volumePercent / 100);
+  const afterVolume = realTotal - volumeAmount;
+
+  // Fake discount amount (what the user "saves" vs 3-month base)
+  const baseAfterVolume = baseTotal - baseTotal * (volumePercent / 100);
+  const fakeSaving = baseAfterVolume - afterVolume;
+
+  // Final
+  const finalMonthly = afterVolume;
+  const finalDisplay = isAnnualPay ? +(finalMonthly * 12).toFixed(2) : finalMonthly;
 
   const fmt = (n: number) => Number.isInteger(n) ? String(n) : n.toFixed(2);
+
+  // Per-module display price (at current duration)
+  const modulePrice = (basePrice: number) => +(basePrice * dur.realMult).toFixed(2);
+  // Per-module "base" price shown as strikethrough (3-month = highest)
+  const moduleBasePrice = (basePrice: number) => +(basePrice * 1.07).toFixed(2);
 
   return (
     <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-8">
@@ -134,14 +172,16 @@ function PricingBuilder() {
       <div className="space-y-3">
         {MODULES.map(mod => {
           const isSelected = selected.includes(mod.id);
-          const displayPrice = isAnnual ? +(mod.price * (1 - annualDiscount / 100)).toFixed(2) : mod.price;
+          const display = modulePrice(mod.price);
+          const base = moduleBasePrice(mod.price);
+          const showStrike = dur.fakeDiscount > 0;
           return (
-            <div 
-              key={mod.id} 
+            <div
+              key={mod.id}
               onClick={() => toggleModule(mod.id)}
               className={`flex items-center justify-between p-5 rounded-2xl border transition-all cursor-pointer ${
-                isSelected 
-                  ? "bg-orange-500/10 border-orange-500/30 shadow-lg shadow-orange-500/5" 
+                isSelected
+                  ? "bg-orange-500/10 border-orange-500/30 shadow-lg shadow-orange-500/5"
                   : "bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10"
               }`}
             >
@@ -160,8 +200,8 @@ function PricingBuilder() {
                 </div>
               </div>
               <div className="text-right">
-                {isAnnual && <div className="text-xs text-white/30 line-through mb-0.5">{fmt(mod.price)}€</div>}
-                <div className="font-bold text-xl text-white">{fmt(displayPrice)}€</div>
+                {showStrike && <div className="text-xs text-white/30 line-through mb-0.5">{fmt(base)} €</div>}
+                <div className="font-bold text-xl text-white">{fmt(display)} €</div>
                 <div className="text-xs text-white/40">/ mois</div>
               </div>
             </div>
@@ -169,63 +209,83 @@ function PricingBuilder() {
         })}
       </div>
 
-      {/* Résumé fixe */}
+      {/* Resume fixe */}
       <div className="relative">
         <div className="sticky top-24 rounded-3xl bg-[#111] border border-white/10 p-8 shadow-2xl">
-          {/* Switch Mensuel / Annuel */}
-          <div className="flex items-center justify-center gap-3 mb-6 pb-4 border-b border-white/10">
-            <button
-              onClick={() => setBilling("monthly")}
-              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${!isAnnual ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20" : "bg-white/5 text-white/50 hover:text-white"}`}
-            >
-              Mensuel
-            </button>
-            <button
-              onClick={() => setBilling("annual")}
-              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${isAnnual ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20" : "bg-white/5 text-white/50 hover:text-white"}`}
-            >
-              Annuel
-              <span className="text-[10px] uppercase tracking-wider bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-black">-5%</span>
-            </button>
+          {/* Selecteur de duree */}
+          <div className="mb-6 pb-5 border-b border-white/10">
+            <p className="text-xs text-white/40 uppercase tracking-widest font-bold mb-3 text-center">Engagement</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {DURATIONS.map(d => {
+                const active = duration === d.key;
+                return (
+                  <button
+                    key={d.key}
+                    onClick={() => setDuration(d.key)}
+                    className={`relative px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                      active
+                        ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20"
+                        : "bg-white/5 text-white/50 hover:text-white hover:bg-white/10"
+                    }`}
+                  >
+                    <span>{d.label}</span>
+                    {d.key === "12a" && <span className="block text-[10px] font-medium opacity-70">paiement unique</span>}
+                    {d.fakeDiscount > 0 && (
+                      <span className={`absolute -top-2 -right-2 text-[10px] px-1.5 py-0.5 rounded font-black ${
+                        active ? "bg-emerald-500 text-white" : "bg-emerald-500/20 text-emerald-400"
+                      }`}>
+                        -{d.fakeDiscount}%
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-center text-[11px] text-white/30 mt-3">{dur.sub}</p>
           </div>
 
           <h3 className="text-xl font-bold mb-6">Votre Abonnement</h3>
-          
+
           <div className="space-y-4 mb-6">
+            {/* Base price line (3-month reference) */}
             <div className="flex justify-between text-white/70">
               <span>Applications ({selectedCount})</span>
-              <span>{fmt(rawTotal)} €/mois</span>
+              <span>{fmt(baseTotal)} €/mois</span>
             </div>
+            {/* Volume discount */}
             {volumePercent > 0 && (
               <div className="flex justify-between text-emerald-400 font-medium">
                 <span>Remise volume (-{volumePercent}%)</span>
-                <span>-{fmt(volumeAmount)} €</span>
+                <span>-{fmt(baseTotal * (volumePercent / 100))} €</span>
               </div>
             )}
-            {isAnnual && (
+            {/* Duration "discount" (fake perception) */}
+            {dur.fakeDiscount > 0 && (
               <div className="flex justify-between text-emerald-400 font-medium">
-                <span>Remise annuelle (-{annualDiscount}%)</span>
-                <span>-{fmt(annualAmount)} €</span>
+                <span>Remise engagement (-{dur.fakeDiscount}%)</span>
+                <span>-{fmt(fakeSaving)} €</span>
               </div>
             )}
           </div>
-          
+
           <div className="border-t border-white/10 pt-6 mb-8">
             <div className="flex items-end justify-between">
               <span className="text-white/60">Total HT</span>
               <div className="text-right">
                 <div className="text-5xl font-black text-white">{fmt(finalDisplay)} €</div>
                 <div className="text-sm text-white/40 mt-1">
-                  {isAnnual ? `soit ${fmt(finalMonthly)} €/mois · facture annuelle` : "/ mois"}
+                  {isAnnualPay
+                    ? `soit ${fmt(finalMonthly)} €/mois · facture annuelle`
+                    : `/ mois · engagement ${dur.label}`}
                 </div>
               </div>
             </div>
           </div>
 
           <Link href="/register" className="block w-full py-4 bg-orange-500 hover:bg-orange-400 text-white rounded-xl font-bold text-lg text-center transition-all shadow-xl shadow-orange-500/20 hover:-translate-y-1">
-            Créer mon compte
+            Creer mon compte
           </Link>
-          <p className="text-center text-xs text-white/40 mt-4">14 jours d'essai offerts · Engagement 12 mois minimum.</p>
+          <p className="text-center text-xs text-white/40 mt-4">14 jours d'essai offerts · Sans carte bancaire.</p>
         </div>
       </div>
     </div>
@@ -572,7 +632,7 @@ export default function LandingPage() {
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-16">
               <h2 className="text-4xl md:text-5xl font-black mb-4">Créez votre solution sur mesure.</h2>
-              <p className="text-white/40 text-lg">Ne payez que pour ce que vous utilisez. Tarif dégressif selon le volume d'applications.</p>
+              <p className="text-white/40 text-lg">Ne payez que pour ce que vous utilisez. Plus vous vous engagez, plus le tarif baisse.</p>
             </div>
 
             <PricingBuilder />
