@@ -103,15 +103,24 @@ export default async function RestaurantPublicPage({ params }: { params: Promise
   const coverUrl = abs(restaurant.coverImageUrl);
   const logoUrl = abs(restaurant.logoUrl);
 
-  // Galerie : uniquement photos de plats du menu
-  // restaurant.photos[] peut contenir des portraits uploadés par erreur → jamais affiché ici
-  const galleryPhotos = menu.flatMap((item) => {
+  // Galerie publique :
+  // - Photos de config resto (salle, ambiance…) depuis restaurant.photos[]
+  // - Photos de plats depuis menuItem.imageUrl / menuItem.photos[]
+  // Les photos serveurs (server.photoUrl) sont un champ séparé jamais inclus ici
+  const restaurantConfigPhotos = (restaurant.photos ?? []).map((p) => ({ id: p.id, url: abs(p.url)!, alt: restaurant.name }));
+  const dishGalleryPhotos = menu.flatMap((item) => {
     const itemPhotos = (item.photos ?? []).map((p) => ({ id: p.id, url: abs(p.url)!, alt: item.name }));
     if (itemPhotos.length > 0) return itemPhotos;
     if (item.imageUrl) return [{ id: item.id, url: abs(item.imageUrl)!, alt: item.name }];
     return [];
   });
-  const dishGalleryPhotos = galleryPhotos; // alias pour le titre conditionnel
+  // Config photos first, then dish photos (deduped by id)
+  const seen = new Set<string>();
+  const galleryPhotos = [...restaurantConfigPhotos, ...dishGalleryPhotos].filter((p) => {
+    if (seen.has(p.id)) return false;
+    seen.add(p.id);
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white">
