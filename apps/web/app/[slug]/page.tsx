@@ -103,23 +103,14 @@ export default async function RestaurantPublicPage({ params }: { params: Promise
   const coverUrl = abs(restaurant.coverImageUrl);
   const logoUrl = abs(restaurant.logoUrl);
 
-  // Galerie publique :
-  // - Photos de config resto (salle, ambiance…) depuis restaurant.photos[]
-  // - Photos de plats depuis menuItem.imageUrl / menuItem.photos[]
-  // Les photos serveurs (server.photoUrl) sont un champ séparé jamais inclus ici
-  const restaurantConfigPhotos = (restaurant.photos ?? []).map((p) => ({ id: p.id, url: abs(p.url)!, alt: restaurant.name }));
-  const dishGalleryPhotos = menu.flatMap((item) => {
+  // Galerie publique : uniquement les photos de plats (menuItem.photos[] + menuItem.imageUrl)
+  // restaurant.photos[] n'est PAS inclus ici car il peut contenir des portraits de serveurs
+  // qui ne doivent apparaître que sur le flow review ("Qui s'est occupé de vous ?")
+  const galleryPhotos = menu.flatMap((item) => {
     const itemPhotos = (item.photos ?? []).map((p) => ({ id: p.id, url: abs(p.url)!, alt: item.name }));
     if (itemPhotos.length > 0) return itemPhotos;
     if (item.imageUrl) return [{ id: item.id, url: abs(item.imageUrl)!, alt: item.name }];
     return [];
-  });
-  // Config photos first, then dish photos (deduped by id)
-  const seen = new Set<string>();
-  const galleryPhotos = [...restaurantConfigPhotos, ...dishGalleryPhotos].filter((p) => {
-    if (seen.has(p.id)) return false;
-    seen.add(p.id);
-    return true;
   });
 
   return (
@@ -203,11 +194,11 @@ export default async function RestaurantPublicPage({ params }: { params: Promise
             </div>
           )}
 
-          {/* Galerie : photos de plats si menu présent, sinon photos de config du resto */}
+          {/* Galerie : photos de plats uniquement */}
           {galleryPhotos.length > 0 && (
             <section>
               <h2 className="text-lg font-black mb-4 text-white/80">
-                📸 {dishGalleryPhotos.length > 0 ? "Nos plats" : "Galerie"}
+                📸 Nos plats
               </h2>
               <div className="grid grid-cols-3 gap-2">
                 {galleryPhotos.slice(0, 7).map((p, i) => (
