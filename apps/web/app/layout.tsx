@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Footer } from "@/components/layout/Footer";
+import { FloatingCTAWrapper } from "@/components/landing/FloatingCTA";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://matable.pro"),
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="flex flex-col min-h-screen">
         <div className="flex-1">{children}</div>
+        <FloatingCTAWrapper />
         <Footer />
       </body>
     </html>
