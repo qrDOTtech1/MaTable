@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import LandingProductCarousel from "./LandingProductCarousel";
 import LandingTestimonials from "./LandingTestimonials";
+import LandingContactForm from "./LandingContactForm";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -645,6 +646,9 @@ export default function LandingPage() {
         </section>
 
         <LandingTestimonials />
+
+        {/* ── Contact Form ────────────────────────────────────────────────────── */}
+        <LandingContactForm />
 
         {/* ── Defi / Prouvez-nous qu'on a tort ────────────────────────────────── */}
         <section className="border-b border-white/5 bg-black px-6 py-32 relative overflow-hidden">
