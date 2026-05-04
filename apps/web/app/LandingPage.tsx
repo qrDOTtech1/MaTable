@@ -344,10 +344,15 @@ export default function LandingPage() {
           <div className="max-w-5xl mx-auto text-center">
             <motion.div 
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.8 }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-400 text-sm mb-8"
+              className="inline-flex items-center gap-4 px-5 py-2 rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-400 text-sm font-bold mb-8"
             >
               <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
-              MaTable Pro — matable — matablepro. Site officiel : matable.pro
+              Plus d'infos ? Contactez-nous : 
+              <div className="flex items-center gap-3 font-mono">
+                <a href="tel:+33757835777" className="hover:text-orange-300 transition-colors">+33 7 57 83 57 77</a>
+                <span className="text-orange-500/50">•</span>
+                <a href="mailto:contact@matable.pro" className="hover:text-orange-300 transition-colors">contact@matable.pro</a>
+              </div>
             </motion.div>
 
             <motion.h1 
