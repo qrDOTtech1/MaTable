@@ -416,7 +416,9 @@ export default function OrderPage() {
       {info.server && (
         <div className="flex items-center gap-3 bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3 mb-5">
           <div className="w-11 h-11 rounded-full bg-orange-500/20 border border-orange-500/30 text-orange-400 flex items-center justify-center font-bold text-base overflow-hidden shrink-0">
-            {info.server.name[0]?.toUpperCase()}
+            {info.server.photoUrl
+              ? <img src={info.server.photoUrl} alt="server" className="w-full h-full object-cover" />
+              : info.server.name[0]?.toUpperCase()}
           </div>
           <div className="flex-1">
             <p className="text-sm font-bold text-white">
