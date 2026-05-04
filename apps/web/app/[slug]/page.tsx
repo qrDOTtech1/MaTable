@@ -102,7 +102,17 @@ export default async function RestaurantPublicPage({ params }: { params: Promise
   const stars = (n: number) => "★".repeat(Math.round(n)) + "☆".repeat(5 - Math.round(n));
   const coverUrl = abs(restaurant.coverImageUrl);
   const logoUrl = abs(restaurant.logoUrl);
-  const restaurantPhotos = (restaurant.photos ?? []).map((p) => ({ ...p, url: abs(p.url)! }));
+
+  // Galerie : priorité aux photos de plats, fallback sur photos de config resto
+  // Les photos de serveurs (server.photoUrl) ne sont jamais incluses ici
+  const dishGalleryPhotos = menu.flatMap((item) => {
+    const itemPhotos = (item.photos ?? []).map((p) => ({ id: p.id, url: abs(p.url)!, alt: item.name }));
+    if (itemPhotos.length > 0) return itemPhotos;
+    if (item.imageUrl) return [{ id: item.id, url: abs(item.imageUrl)!, alt: item.name }];
+    return [];
+  });
+  const restaurantConfigPhotos = (restaurant.photos ?? []).map((p) => ({ ...p, url: abs(p.url)!, alt: "Photo" }));
+  const galleryPhotos = dishGalleryPhotos.length > 0 ? dishGalleryPhotos : restaurantConfigPhotos;
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white">
@@ -185,18 +195,18 @@ export default async function RestaurantPublicPage({ params }: { params: Promise
             </div>
           )}
 
-          {/* Photos galerie restaurant */}
-          {restaurantPhotos.length > 0 && (
+          {/* Galerie : photos de plats si menu présent, sinon photos de config du resto */}
+          {galleryPhotos.length > 0 && (
             <section>
               <h2 className="text-lg font-black mb-4 text-white/80">
-                📸 Galerie
+                📸 {dishGalleryPhotos.length > 0 ? "Nos plats" : "Galerie"}
               </h2>
               <div className="grid grid-cols-3 gap-2">
-                {restaurantPhotos.map((p, i) => (
+                {galleryPhotos.slice(0, 7).map((p, i) => (
                   <ImageLightbox
                     key={p.id}
                     src={p.url}
-                    alt={`Photo ${i + 1}`}
+                    alt={p.alt}
                     className={`w-full rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity ${i === 0 ? "col-span-3 h-52" : "h-28"}`}
                   />
                 ))}
