@@ -125,3 +125,146 @@ export const teaserCards = [
     color: "green",
   },
 ];
+
+export const faqCategories = [
+  {
+    id: "general",
+    label: "Questions generales",
+    title: "Ce que les restaurateurs demandent avant de se lancer",
+    intro: "Les questions les plus frequentes avant une demo, un essai gratuit ou un changement de solution.",
+    items: [
+      {
+        question: "MaTable Pro, c'est quoi exactement ?",
+        answer:
+          "MaTable Pro est un logiciel restaurant tout-en-un. Vous centralisez la commande QR code, le paiement, le portail serveur en temps reel, la caisse, les reservations, les avis Google, le stock et les analyses dans une seule interface coherente.",
+      },
+      {
+        question: "Pour quel type d'etablissement est-ce fait ?",
+        answer:
+          "La solution est pensee pour les restaurants, bistrots, brasseries, snacks, bars a tapas, etablissements saisonniers et concepts hybrides qui veulent gagner du temps en salle, fluidifier la prise de commande et mieux piloter leur activite.",
+      },
+      {
+        question: "Faut-il installer une application pour les clients ?",
+        answer:
+          "Non. Le client scanne un QR code et commande directement depuis son telephone. Pas d'application a telecharger, pas de compte obligatoire, donc beaucoup moins de friction a table.",
+      },
+      {
+        question: "Combien de temps faut-il pour etre operationnel ?",
+        answer:
+          "Dans la plupart des cas, une premiere mise en place peut etre preparee tres vite. Nous configurons votre compte, vos modules, votre menu et vos regles de service pour que vous puissiez tester sans bloquer votre exploitation.",
+      },
+    ],
+  },
+  {
+    id: "transition",
+    label: "Transition concurrents",
+    title: "Vous etes deja engages ailleurs ?",
+    intro: "Beaucoup de restaurateurs viennent a nous alors qu'ils utilisent deja une autre solution ou qu'ils ont encore un contrat en cours.",
+    items: [
+      {
+        question: "On a deja un engagement chez un concurrent. Est-ce que ca vaut quand meme le coup d'en parler ?",
+        answer:
+          "Oui. Un contrat en cours n'empeche pas de preparer la suite. Nous pouvons cadrer un plan de transition, vous montrer ce qui sera gagne en exploitation, et programmer le basculement au bon moment pour eviter de perdre du temps le jour ou vous changez.",
+      },
+      {
+        question: "Peut-on tester MaTable Pro avant la fin de notre contrat actuel ?",
+        answer:
+          "Oui. L'essai gratuit permet de valider l'ergonomie, les modules et le potentiel sur votre fonctionnement sans forcement couper votre solution actuelle. C'est utile pour comparer sereinement avant une decision.",
+      },
+      {
+        question: "Est-ce que vous accompagnez une migration depuis une autre solution ?",
+        answer:
+          "Oui. Nous accompagnons la reprise du menu, la structuration de la carte, le parametrage des modules et l'organisation du demarrage. L'objectif est de limiter les manipulations cote restaurant et d'eviter une transition brutale pour l'equipe.",
+      },
+      {
+        question: "Faut-il tout changer d'un coup ?",
+        answer:
+          "Pas forcement. Selon votre situation, vous pouvez demarrer par un besoin prioritaire, par exemple les avis, les reservations ou la commande QR, puis etendre ensuite. Cela permet une adoption plus simple et un risque operationnel plus faible.",
+      },
+    ],
+  },
+  {
+    id: "pricing",
+    label: "Tarifs et engagement",
+    title: "Ce que vous payez, et pourquoi",
+    intro: "Le modele est lisible : vous activez les modules dont vous avez besoin et la duree d'engagement fait evoluer le tarif.",
+    items: [
+      {
+        question: "Comment sont calcules les tarifs ?",
+        answer:
+          "Vous choisissez vos modules, puis votre duree d'engagement. Plus l'engagement est long, plus le prix mensuel baisse. Des remises volume s'appliquent aussi lorsque vous activez plusieurs modules.",
+      },
+      {
+        question: "Y a-t-il un essai gratuit ?",
+        answer:
+          "Oui. Vous pouvez tester MaTable Pro pendant 14 jours sans carte bancaire. L'objectif est que vous voyiez rapidement si la solution vous fait gagner du temps, du chiffre ou de la serenite au quotidien.",
+      },
+      {
+        question: "Peut-on commencer petit puis ajouter des modules plus tard ?",
+        answer:
+          "Oui. Vous pouvez demarrer avec un besoin precis puis enrichir la solution au fil de votre croissance. L'interet de MaTable Pro est justement de faire cohabiter plusieurs briques dans un seul environnement plutot que d'empiler des outils disperses.",
+      },
+      {
+        question: "Y a-t-il des frais caches ou du materiel impose ?",
+        answer:
+          "Non, l'approche est transparente. Certains usages peuvent fonctionner avec votre materiel existant, et si vous avez besoin d'equipements specifiques nous vous guidons avec une proposition claire plutot qu'une surprise en fin de parcours.",
+      },
+    ],
+  },
+  {
+    id: "operations",
+    label: "Utilisation au quotidien",
+    title: "Ce que l'equipe gagne vraiment en service",
+    intro: "Les objections reviennent souvent sur le terrain : adoption par l'equipe, reactions des clients, impact sur le service.",
+    items: [
+      {
+        question: "Est-ce que les clients utilisent vraiment le QR code ?",
+        answer:
+          "Oui, surtout quand l'experience est simple. Chez MaTable Pro, le client scanne et agit tout de suite. Pas d'application, pas de tunnel inutile. Cela augmente fortement l'adoption et desengorge la salle sur les moments de rush.",
+      },
+      {
+        question: "Est-ce que ca remplace les serveurs ?",
+        answer:
+          "Non. La solution aide les serveurs a mieux servir. Elle retire les aller-retours repetitifs, fluidifie les commandes et clarifie les priorites. L'equipe garde la relation humaine et gagne du temps la ou elle a le plus de valeur.",
+      },
+      {
+        question: "Que se passe-t-il si on veut garder une prise de commande classique ?",
+        answer:
+          "C'est possible. MaTable Pro n'impose pas un mode unique. Vous pouvez conserver une organisation hybride selon vos services, vos equipes, votre clientele et votre rythme en salle.",
+      },
+      {
+        question: "Les avis Google sont-ils vraiment utiles dans votre systeme ?",
+        answer:
+          "Oui, parce qu'ils sont mieux orchestrés. La plateforme aide a solliciter les bons moments, encadre la redaction avec l'IA et limite la fraude en s'appuyant sur de vrais clients. Vous transformez plus facilement une bonne experience en visibilite locale.",
+      },
+    ],
+  },
+  {
+    id: "support",
+    label: "Technique et accompagnement",
+    title: "Ce qui se passe apres le oui",
+    intro: "Une bonne demo ne suffit pas : les restaurateurs veulent savoir qui repond, quand, et comment le projet avance.",
+    items: [
+      {
+        question: "Est-ce que vous nous accompagnez au demarrage ?",
+        answer:
+          "Oui. Vous n'etes pas laches seuls avec un outil. Nous vous aidons a parametrer la solution, a structurer les modules utiles et a organiser une mise en route adaptee a votre realite terrain.",
+      },
+      {
+        question: "Peut-on vous joindre rapidement en cas de question ?",
+        answer:
+          "Oui. Vous pouvez nous contacter directement par telephone au +33 7 57 83 57 77 ou par email a contact@matable.pro pour une demo, une question commerciale ou un point sur votre configuration.",
+      },
+      {
+        question: "Est-ce que la solution evolue avec nos besoins ?",
+        answer:
+          "Oui. MaTable Pro est concu comme une base evolutive. Vous pouvez commencer avec un perimetre simple puis ajouter des briques comme les reservations, le stock, la finance ou les avis sans repartir de zero.",
+      },
+      {
+        question: "Si j'ai un doute, quelle est la meilleure prochaine etape ?",
+        answer:
+          "Le plus simple est de demander une demo ou d'echanger avec nous sur votre situation actuelle, surtout si vous etes deja equipes ailleurs. Nous vous dirons franchement s'il vaut mieux tester tout de suite, preparer une transition ou attendre une date plus strategique.",
+      },
+    ],
+  },
+];

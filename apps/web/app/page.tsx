@@ -198,10 +198,58 @@ export default function HomePage() {
           },
           {
             "@type": "Question",
+            name: "MaTable Pro c'est quoi exactement ?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "MaTable Pro est un logiciel SaaS français pour les restaurateurs. Il intègre : commande QR code sans application, portail serveur en temps réel, caisse connectée, génération automatique d'avis Google par IA, gestion de stock IA, réservations avec arrhes Stripe, paiement à table, pourboires digitaux, allergènes EU et analytics complets.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Pour quel type d'établissement MaTable Pro est-il conçu ?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "MaTable Pro convient aux restaurants, brasseries, bistrots, snacks, bars à tapas, établissements saisonniers et concepts hybrides qui veulent centraliser leurs opérations dans un seul logiciel restaurant moderne.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Faut-il installer une application pour les clients ?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Non. Les clients scannent un QR code et accèdent directement au menu et aux parcours de commande depuis leur téléphone. Il n'y a pas d'application à télécharger ni de compte à créer pour commander.",
+            },
+          },
+          {
+            "@type": "Question",
             name: "Combien coûte MaTable Pro ?",
             acceptedAnswer: {
               "@type": "Answer",
-              text: "MaTable Pro démarre à 79€ HT/mois pour le module Avis Google & Réputation avec un engagement de 12 mois. Les prix varient selon la durée d'engagement (3, 6, 9 ou 12 mois) et les modules choisis. Remise volume jusqu'à -20% pour 4+ modules. Essai gratuit de 14 jours sans carte bancaire.",
+              text: "MaTable Pro démarre à 79€ HT/mois pour le module Avis Google & Réputation avec un engagement de 12 mois. Les prix varient selon la durée d'engagement (3, 6, 9 ou 12 mois) et les modules choisis. Des remises volume vont jusqu'à -20% pour 4 modules ou plus. Essai gratuit de 14 jours sans carte bancaire.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Peut-on commencer avec un seul module puis évoluer ?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Oui. Vous pouvez démarrer avec un besoin précis comme les avis Google, la commande QR ou les réservations, puis ajouter d'autres modules ensuite. L'intérêt de MaTable Pro est de réunir ces briques dans un seul environnement au lieu de multiplier les outils séparés.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Nous avons déjà un engagement chez un concurrent : peut-on quand même préparer la transition ?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Oui. Beaucoup de restaurateurs contactent MaTable Pro alors qu'ils sont encore engagés ailleurs. Il est possible d'organiser une démonstration, de comparer les gains attendus et de préparer un plan de bascule au bon moment, sans couper brutalement l'existant.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Peut-on tester MaTable Pro avant la fin d'un contrat concurrent ?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Oui. L'essai gratuit permet de valider l'ergonomie, les modules et l'intérêt opérationnel de MaTable Pro avant la fin d'un engagement concurrent. C'est utile pour comparer sereinement avant de décider.",
             },
           },
           {
@@ -210,14 +258,6 @@ export default function HomePage() {
             acceptedAnswer: {
               "@type": "Answer",
               text: "Vous pouvez contacter l'équipe MaTable Pro par téléphone au +33 7 57 83 57 77 ou par email à contact@matable.pro. Le site officiel est matable.pro.",
-            },
-          },
-          {
-            "@type": "Question",
-            name: "MaTable Pro c'est quoi exactement ?",
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: "MaTable Pro est un logiciel SaaS français pour les restaurateurs. Il intègre : commande QR code sans application, portail serveur en temps réel, caisse connectée, génération automatique d'avis Google par IA, gestion de stock IA, sommelier IA, comptabilité IA, réservations avec arrhes Stripe, paiement fractionné, pourboires digitaux, allergènes EU, et analytics complets.",
             },
           },
           {

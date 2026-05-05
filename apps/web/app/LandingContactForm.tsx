@@ -59,7 +59,7 @@ export default function LandingContactForm() {
                 ✓
               </div>
               <h3 className="text-3xl font-black text-white mb-2">Message envoyé !</h3>
-              <p className="text-white/60">L'équipe Ma Table vous recontacte très rapidement.</p>
+              <p className="text-white/60">L'equipe MaTable Pro vous recontacte tres rapidement.</p>
               <button 
                 onClick={() => setStatus("idle")}
                 className="mt-8 px-6 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-bold transition-colors"

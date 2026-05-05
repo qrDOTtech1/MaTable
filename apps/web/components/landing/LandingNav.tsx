@@ -10,6 +10,7 @@ const navLinks = [
   { href: "/nova-ia", label: "Nova IA" },
   { href: "/materiel", label: "Materiel" },
   { href: "/tarifs", label: "Tarifs" },
+  { href: "/#faq", label: "FAQ" },
 ];
 
 export default function LandingNav() {

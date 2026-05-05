@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion, useScroll, useTransform } from "framer-motion";
 import LandingProductCarousel from "./LandingProductCarousel";
+import LandingFAQ from "@/components/landing/LandingFAQ";
 import LandingNav from "@/components/landing/LandingNav";
 import { stats, languageLines, teaserCards } from "@/components/landing/landingData";
 
@@ -202,6 +203,8 @@ export default function LandingPage() {
             </p>
           </motion.div>
         </section>
+
+        <LandingFAQ />
 
         {/* ── Final CTA ───────────────────────────────────────────────────────── */}
         <section className="py-32 px-6 relative overflow-hidden text-center">

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import LandingNav from "@/components/landing/LandingNav";
+import LandingFAQ from "@/components/landing/LandingFAQ";
 import PageTransition from "@/components/landing/PageTransition";
 import PricingBuilder from "@/components/landing/PricingBuilder";
 import LandingTestimonials from "../LandingTestimonials";
@@ -111,6 +112,8 @@ export default function TarifsPage() {
 
           {/* ── Contact Form ──────────────────────────────────────────────── */}
           <LandingContactForm />
+
+          <LandingFAQ />
 
           {/* ── Final CTA ─────────────────────────────────────────────────── */}
           <section className="py-32 px-6 relative overflow-hidden text-center">
