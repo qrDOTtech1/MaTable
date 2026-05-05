@@ -177,6 +177,7 @@ export default function PublicReviewPage() {
   const [currentAiText, setCurrentAiText] = useState("");
   const [currentChoices, setCurrentChoices] = useState<string[]>([]);
   const [freeText, setFreeText] = useState("");
+  const chatMessagesRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   
   // AI Drafts State
@@ -252,8 +253,11 @@ export default function PublicReviewPage() {
   };
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatHistory, currentAiText]);
+    if (step !== "chat") return;
+    const chatMessages = chatMessagesRef.current;
+    if (!chatMessages) return;
+    chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: "smooth" });
+  }, [step, chatHistory, currentAiText]);
 
   const startAiChat = (history: {role: "ai"|"user", content: string}[]) => {
     setChatLoading(true);
@@ -468,7 +472,7 @@ export default function PublicReviewPage() {
             <p className="text-sm text-white/50">L'IA rédige votre avis à partir de vos réponses.</p>
           </div>
           
-          <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2 scrollbar-none">
+          <div ref={chatMessagesRef} className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2 scrollbar-none overscroll-contain">
             {chatHistory.map((msg, i) => (
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}

@@ -27,6 +27,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ### Corrigé
 - **Campagne avis IA** : la page `/r/[slug]/review` normalise la récompense configurée, affiche le code promo après copie de l'avis et récupère les 2 propositions même si le flux IA renvoie un format partiel.
+- **Conversation avis IA** : le scroll automatique reste limité à la zone de chat pour éviter que la page descende pendant les réponses client.
 
 ## [1.1.0] — 2026-04-20
 - **Design Tokens** : Centralized design system (`/lib/design-system.ts`) with:
