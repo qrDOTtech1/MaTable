@@ -44,14 +44,28 @@ export default function LandingPage() {
           <div className="max-w-5xl mx-auto text-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.8 }}
-              className="inline-flex items-center gap-4 px-5 py-2 rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-400 text-sm font-bold mb-8"
+              className="inline-flex flex-col items-center gap-2 px-5 py-3 rounded-3xl border border-orange-500/30 bg-orange-500/10 text-orange-400 text-sm font-bold mb-8 sm:flex-row sm:gap-4 sm:rounded-full sm:py-2"
             >
-              <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
-              Plus d'infos ? Contactez-nous :
-              <div className="flex items-center gap-3 font-mono">
-                <a href="tel:+33757835777" className="hover:text-orange-300 transition-colors">+33 7 57 83 57 77</a>
-                <span className="text-orange-500/50">•</span>
-                <a href="mailto:contact@matable.pro" className="hover:text-orange-300 transition-colors">contact@matable.pro</a>
+              <span className="inline-flex items-center gap-2 whitespace-nowrap">
+                <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" aria-hidden />
+                Plus d'infos ? Contactez-nous
+              </span>
+              <div className="flex flex-col items-center gap-1.5 sm:flex-row sm:gap-3">
+                <a
+                  href="tel:+33757835777"
+                  aria-label="Appeler le +33 7 57 83 57 77"
+                  className="hover:text-orange-300 transition-colors whitespace-nowrap tabular-nums tracking-tight"
+                >
+                  +33 7 57 83 57 77
+                </a>
+                <span className="hidden sm:inline text-orange-500/50" aria-hidden>•</span>
+                <a
+                  href="mailto:contact@matable.pro"
+                  aria-label="Envoyer un email à contact@matable.pro"
+                  className="hover:text-orange-300 transition-colors whitespace-nowrap"
+                >
+                  contact@matable.pro
+                </a>
               </div>
             </motion.div>
 
