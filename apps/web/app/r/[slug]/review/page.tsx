@@ -6,11 +6,20 @@ import { API_URL } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Server = { id: string; name: string; photoUrl: string | null };
+type RestaurantPhoto = { id: string; url: string };
 type Config = {
-  restaurant: { id: string; name: string };
+  restaurant: { id: string; name: string; photos?: RestaurantPhoto[] };
   googleReviewLink: string | null;
   reviewVoucherConfig: { active?: boolean | string; title?: string; description?: string; code?: string } | null;
   servers: Server[];
+};
+
+type MenuLite = {
+  id: string;
+  name: string;
+  category: string | null;
+  priceCents: number;
+  imageUrl: string | null;
 };
 
 function resolveAssetUrl(url: string | null | undefined) {
@@ -40,11 +49,12 @@ function AvatarImage({ src, alt, fallback }: { src: string | null; alt: string; 
 type Drafts = { version1: string; version2: string };
 
 // ── Step definitions for progress bar ────────────────────────────────────────
-const STEPS = ["server", "rating", "chat", "drafts", "tip", "claim", "voucher"] as const;
+const STEPS = ["server", "rating", "dishes", "chat", "drafts", "tip", "claim", "voucher"] as const;
 type Step = typeof STEPS[number];
 const STEP_LABELS: Record<Step, string> = {
   server: "Serveur",
   rating: "Notes",
+  dishes: "Plats",
   chat: "Avis IA",
   drafts: "Relecture",
   tip: "Pourboire",
@@ -154,7 +164,8 @@ export default function PublicReviewPage() {
   const getBackTarget = useCallback((): Step | null => {
     switch (step) {
       case "rating": return "server";
-      case "chat": return "rating";
+      case "dishes": return "rating";
+      case "chat": return "dishes";
       case "drafts": return "chat";
       case "tip": return "drafts";
       default: return null; // no back for server, claim, voucher
@@ -193,6 +204,14 @@ export default function PublicReviewPage() {
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimedVoucher, setClaimedVoucher] = useState<{active?: boolean|string; title?: string; description?: string; code?: string} | null>(null);
 
+  // Dishes step state
+  const [menu, setMenu] = useState<MenuLite[]>([]);
+  const [menuSearch, setMenuSearch] = useState("");
+  const [dishRatings, setDishRatings] = useState<Record<string, number>>({});
+
+  // Hero slideshow state
+  const [slideIndex, setSlideIndex] = useState(0);
+
   useEffect(() => {
     fetch(`${API_URL}/api/r/${params.slug}/review-campaign`)
       .then(res => {
@@ -203,6 +222,12 @@ export default function PublicReviewPage() {
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
 
+    // Load menu (light) for the dishes step — non-blocking
+    fetch(`${API_URL}/api/r/${params.slug}/review-menu`)
+      .then(res => res.ok ? res.json() : { items: [] })
+      .then(data => setMenu(data.items ?? []))
+      .catch(() => setMenu([]));
+
     // Handle return from Stripe — wait for config to load before setting step
     const tipStatus = searchParams.get("tip");
     if (tipStatus === "cancel") {
@@ -210,6 +235,16 @@ export default function PublicReviewPage() {
     }
     // "success" is handled below once config is loaded
   }, [params.slug, searchParams]);
+
+  // Slideshow auto-rotate
+  useEffect(() => {
+    const photos = config?.restaurant.photos ?? [];
+    if (photos.length <= 1) return;
+    const id = setInterval(() => {
+      setSlideIndex(i => (i + 1) % photos.length);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [config?.restaurant.photos]);
 
   // When returning from Stripe tip success, go to claim step (needs config loaded)
   useEffect(() => {
@@ -248,6 +283,50 @@ export default function PublicReviewPage() {
   };
 
   const handleRatingsSubmit = () => {
+    // Si le menu est dispo, on passe par l'étape "Plats" (notation par plat)
+    // Sinon on enchaîne directement sur le chat IA
+    if (menu.length > 0) {
+      setStep("dishes");
+    } else {
+      setStep("chat");
+      startAiChat([]);
+    }
+  };
+
+  // Submit dish + server ratings to backend → visible dans le dashboard
+  const submitDishesAndServer = useCallback(async () => {
+    const dishReviews = Object.entries(dishRatings)
+      .filter(([, rating]) => rating > 0)
+      .map(([menuItemId, rating]) => ({ menuItemId, rating }));
+
+    const hasServerRating = ratings.service > 0 && selectedServer && selectedServer.id !== "team";
+
+    if (dishReviews.length === 0 && !hasServerRating) return;
+
+    try {
+      await fetch(`${API_URL}/api/r/${params.slug}/review-feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serverId: hasServerRating ? selectedServer!.id : undefined,
+          serverRating: hasServerRating ? ratings.service : undefined,
+          dishReviews: dishReviews.length > 0 ? dishReviews : undefined,
+        }),
+      });
+    } catch {
+      // silencieux — le client reste dans le flow review même si l'enregistrement échoue
+    }
+  }, [dishRatings, ratings.service, selectedServer, params.slug]);
+
+  const handleDishesContinue = () => {
+    void submitDishesAndServer();
+    setStep("chat");
+    startAiChat([]);
+  };
+
+  const handleDishesSkip = () => {
+    // skip = on ne note aucun plat mais on enregistre quand même la note serveur si applicable
+    void submitDishesAndServer();
     setStep("chat");
     startAiChat([]);
   };
@@ -398,8 +477,48 @@ export default function PublicReviewPage() {
   const voucher = normalizeVoucher(config);
   const backTarget = getBackTarget();
 
+  const restaurantPhotos = (config.restaurant.photos ?? []).map(p => ({
+    id: p.id,
+    url: resolveAssetUrl(p.url) ?? p.url,
+  }));
+
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white p-6 max-w-md mx-auto flex flex-col pt-8">
+    <div className="min-h-screen bg-[#0a0a0a] text-white max-w-md mx-auto flex flex-col">
+      {/* Hero slideshow — photos de l'établissement */}
+      {restaurantPhotos.length > 0 && (
+        <div className="relative w-full h-40 overflow-hidden bg-black">
+          {restaurantPhotos.map((p, i) => (
+            <img
+              key={p.id}
+              src={p.url}
+              alt={config.restaurant.name}
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+                i === slideIndex ? "opacity-100" : "opacity-0"
+              }`}
+              decoding="async"
+              loading={i === 0 ? "eager" : "lazy"}
+              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+            />
+          ))}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent" />
+          {restaurantPhotos.length > 1 && (
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex gap-1.5">
+              {restaurantPhotos.map((p, i) => (
+                <span
+                  key={p.id}
+                  className={`h-1 rounded-full transition-all ${
+                    i === slideIndex ? "w-5 bg-orange-500" : "w-1 bg-white/40"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="p-6 pt-8 flex-1 flex flex-col">
       {/* Restaurant header */}
       <div className="text-center mb-4">
         <h1 className="text-2xl font-black mb-1">{config.restaurant.name}</h1>
@@ -464,6 +583,115 @@ export default function PublicReviewPage() {
           </div>
         </div>
       )}
+
+      {step === "dishes" && (() => {
+        const search = menuSearch.trim().toLowerCase();
+        const filtered = search
+          ? menu.filter(m =>
+              m.name.toLowerCase().includes(search) ||
+              (m.category ?? "").toLowerCase().includes(search)
+            )
+          : menu;
+
+        // Always show items the user already rated, even if not matching search
+        const ratedIds = new Set(Object.keys(dishRatings).filter(id => dishRatings[id] > 0));
+        const display = [
+          ...menu.filter(m => ratedIds.has(m.id) && !filtered.includes(m)),
+          ...filtered,
+        ];
+
+        const ratedCount = Object.values(dishRatings).filter(v => v > 0).length;
+
+        return (
+          <div className="animate-fade-in space-y-5">
+            <div className="text-center">
+              <h2 className="text-xl font-bold">Qu'avez-vous goûté ?</h2>
+              <p className="text-sm text-white/50 mt-1">
+                Notez les plats que vous avez consommés. Vous pouvez aussi passer cette étape.
+              </p>
+            </div>
+
+            <input
+              type="search"
+              value={menuSearch}
+              onChange={e => setMenuSearch(e.target.value)}
+              placeholder="Rechercher un plat..."
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-orange-500/50"
+            />
+
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+              {display.length === 0 ? (
+                <div className="text-center py-8 text-white/40 text-sm">Aucun plat trouvé.</div>
+              ) : (
+                display.map(item => {
+                  const rating = dishRatings[item.id] ?? 0;
+                  return (
+                    <div
+                      key={item.id}
+                      className={`bg-white/5 border rounded-xl px-4 py-3 transition-colors ${
+                        rating > 0 ? "border-orange-500/40" : "border-white/10"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-semibold truncate">{item.name}</div>
+                          {item.category && (
+                            <div className="text-[11px] text-white/40 uppercase tracking-wider">{item.category}</div>
+                          )}
+                        </div>
+                        <div className="text-xs text-orange-400 font-bold whitespace-nowrap">
+                          {(item.priceCents / 100).toFixed(2)} €
+                        </div>
+                      </div>
+                      <div className="flex gap-1 mt-2">
+                        {[1, 2, 3, 4, 5].map(r => (
+                          <button
+                            key={r}
+                            onClick={() =>
+                              setDishRatings(prev => ({
+                                ...prev,
+                                [item.id]: prev[item.id] === r ? 0 : r,
+                              }))
+                            }
+                            className={`text-xl transition-transform hover:scale-110 ${
+                              r <= rating ? "text-yellow-400" : "text-white/15"
+                            }`}
+                          >
+                            ★
+                          </button>
+                        ))}
+                        {rating > 0 && (
+                          <button
+                            onClick={() => setDishRatings(prev => ({ ...prev, [item.id]: 0 }))}
+                            className="ml-2 text-[11px] text-white/30 hover:text-white/60 underline self-center"
+                          >
+                            effacer
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={handleDishesContinue}
+                className="w-full py-4 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-2xl transition-all shadow-lg shadow-orange-500/20"
+              >
+                {ratedCount > 0 ? `Continuer (${ratedCount} plat${ratedCount > 1 ? "s" : ""} noté${ratedCount > 1 ? "s" : ""})` : "Continuer"}
+              </button>
+              <button
+                onClick={handleDishesSkip}
+                className="w-full mt-3 text-sm text-white/40 hover:text-white transition-colors underline underline-offset-4"
+              >
+                Passer cette étape
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {step === "chat" && (
         <div className="animate-fade-in flex flex-col h-[70vh]">
@@ -878,6 +1106,7 @@ export default function PublicReviewPage() {
         );
       })()}
 
+      </div>
     </div>
   );
 }
