@@ -13,6 +13,26 @@ type Config = {
   servers: Server[];
 };
 
+function resolveAssetUrl(url: string | null | undefined) {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${API_URL}${url.startsWith("/") ? url : `/${url}`}`;
+}
+
+function AvatarImage({ src, alt, fallback }: { src: string | null; alt: string; fallback: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <>{fallback}</>;
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="w-full h-full object-cover"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 type Drafts = { version1: string; version2: string };
 
 // ── Step definitions for progress bar ────────────────────────────────────────
@@ -392,9 +412,11 @@ export default function PublicReviewPage() {
                 className="bg-white/5 border border-white/10 hover:border-orange-500 rounded-2xl p-4 flex flex-col items-center gap-3 transition-colors"
               >
                  <div className="w-16 h-16 rounded-full bg-white/10 overflow-hidden flex items-center justify-center text-xl font-bold text-white/40">
-                  {s.photoUrl
-                    ? <img src={s.photoUrl.startsWith("http") ? s.photoUrl : `${API_URL}${s.photoUrl}`} alt={s.name} className="w-full h-full object-cover" />
-                    : s.name.charAt(0)}
+                  <AvatarImage
+                    src={resolveAssetUrl(s.photoUrl)}
+                    alt={s.name}
+                    fallback={s.name.charAt(0)}
+                  />
                 </div>
                 <span className="font-semibold">{s.name}</span>
               </button>
