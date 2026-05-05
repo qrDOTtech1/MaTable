@@ -103,15 +103,29 @@ export default async function RestaurantPublicPage({ params }: { params: Promise
   const coverUrl = abs(restaurant.coverImageUrl);
   const logoUrl = abs(restaurant.logoUrl);
 
-  // Galerie publique : uniquement les photos de plats (menuItem.photos[] + menuItem.imageUrl)
-  // restaurant.photos[] n'est PAS inclus ici car il peut contenir des portraits de serveurs
-  // qui ne doivent apparaître que sur le flow review ("Qui s'est occupé de vous ?")
-  const galleryPhotos = menu.flatMap((item) => {
-    const itemPhotos = (item.photos ?? []).map((p) => ({ id: p.id, url: abs(p.url)!, alt: item.name }));
+  // Galerie publique : photos d'établissement (uploadées dans la config) + photos de plats
+  // L'API filtre déjà les portraits de serveurs (kind=STAFF) donc restaurant.photos[]
+  // ne contient ici que des photos de l'établissement (salle, devanture, ambiance, etc.)
+  const restaurantPhotos = (restaurant.photos ?? []).map((p) => ({
+    id: p.id,
+    url: abs(p.url)!,
+    alt: restaurant.name,
+    kind: "restaurant" as const,
+  }));
+
+  const dishPhotos = menu.flatMap((item) => {
+    const itemPhotos = (item.photos ?? []).map((p) => ({
+      id: p.id,
+      url: abs(p.url)!,
+      alt: item.name,
+      kind: "dish" as const,
+    }));
     if (itemPhotos.length > 0) return itemPhotos;
-    if (item.imageUrl) return [{ id: item.id, url: abs(item.imageUrl)!, alt: item.name }];
+    if (item.imageUrl) return [{ id: item.id, url: abs(item.imageUrl)!, alt: item.name, kind: "dish" as const }];
     return [];
   });
+
+  const galleryPhotos = [...restaurantPhotos, ...dishPhotos];
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white">
@@ -135,7 +149,15 @@ export default async function RestaurantPublicPage({ params }: { params: Promise
       {/* ── Hero Cover ── */}
       <div className="relative w-full h-64 md:h-96 overflow-hidden">
         {coverUrl ? (
-          <img src={coverUrl} alt={restaurant.name} className="w-full h-full object-cover" />
+          <img
+            src={coverUrl}
+            alt={restaurant.name}
+            className="w-full h-full object-cover"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            crossOrigin="anonymous"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-orange-900/30 via-slate-900 to-black" />
         )}
@@ -146,7 +168,15 @@ export default async function RestaurantPublicPage({ params }: { params: Promise
           <div className="flex items-end gap-4">
             {logoUrl && (
               <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl border-2 border-white/10 overflow-hidden bg-slate-800 shrink-0 shadow-2xl">
-                <img src={logoUrl} alt="" className="w-full h-full object-cover" />
+                <img
+                  src={logoUrl}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  decoding="async"
+                  referrerPolicy="no-referrer"
+                  crossOrigin="anonymous"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                />
               </div>
             )}
             <div className="pb-1">
@@ -194,14 +224,33 @@ export default async function RestaurantPublicPage({ params }: { params: Promise
             </div>
           )}
 
-          {/* Galerie : photos de plats uniquement */}
-          {galleryPhotos.length > 0 && (
+          {/* Galerie établissement (salle, ambiance, devanture) — uploadée dans la config du resto */}
+          {restaurantPhotos.length > 0 && (
             <section>
               <h2 className="text-lg font-black mb-4 text-white/80">
-                📸 Nos plats
+                📸 L'établissement
               </h2>
               <div className="grid grid-cols-3 gap-2">
-                {galleryPhotos.slice(0, 7).map((p, i) => (
+                {restaurantPhotos.slice(0, 7).map((p, i) => (
+                  <ImageLightbox
+                    key={p.id}
+                    src={p.url}
+                    alt={p.alt}
+                    className={`w-full rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity ${i === 0 ? "col-span-3 h-52" : "h-28"}`}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Galerie plats — photos rattachées aux items du menu */}
+          {dishPhotos.length > 0 && (
+            <section>
+              <h2 className="text-lg font-black mb-4 text-white/80">
+                🍽️ Nos plats
+              </h2>
+              <div className="grid grid-cols-3 gap-2">
+                {dishPhotos.slice(0, 7).map((p, i) => (
                   <ImageLightbox
                     key={p.id}
                     src={p.url}

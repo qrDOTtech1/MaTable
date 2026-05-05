@@ -30,7 +30,16 @@ export function ImageLightbox({
         onClick={() => setOpen(true)}
         aria-label="Agrandir l'image"
       >
-        <img src={src} alt={alt} className={className} />
+        <img
+          src={src}
+          alt={alt}
+          className={className}
+          decoding="async"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          crossOrigin="anonymous"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+        />
       </button>
 
       {open && (
@@ -57,6 +66,9 @@ export function ImageLightbox({
               src={src}
               alt={alt}
               className="w-full max-h-[85vh] object-contain rounded-2xl bg-white"
+              decoding="async"
+              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
             />
           </div>
         </div>
