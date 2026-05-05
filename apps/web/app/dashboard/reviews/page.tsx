@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useMemo } from "react";
-import { api } from "@/lib/api";
+import { api, API_URL } from "@/lib/api";
 import Link from "next/link";
 import QRCode from "qrcode";
 
@@ -429,7 +429,16 @@ export default function ReviewsPage() {
                           </div>
                           <div className="w-10 h-10 rounded-full bg-white/10 overflow-hidden flex items-center justify-center text-sm font-bold text-white/40 shrink-0">
                             {s.photoUrl
-                              ? <img src={s.photoUrl} alt={s.name} className="w-full h-full object-cover" />
+                              ? <img
+                                  src={s.photoUrl.startsWith("http") ? s.photoUrl : `${API_URL}${s.photoUrl.startsWith("/") ? s.photoUrl : `/${s.photoUrl}`}`}
+                                  alt={s.name}
+                                  className="w-full h-full object-cover"
+                                  decoding="async"
+                                  loading="lazy"
+                                  referrerPolicy="no-referrer"
+                                  crossOrigin="anonymous"
+                                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                                />
                               : s.name.charAt(0)
                             }
                           </div>

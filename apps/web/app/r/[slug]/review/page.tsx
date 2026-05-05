@@ -28,6 +28,10 @@ function AvatarImage({ src, alt, fallback }: { src: string | null; alt: string; 
       src={src}
       alt={alt}
       className="w-full h-full object-cover"
+      decoding="async"
+      loading="eager"
+      referrerPolicy="no-referrer"
+      crossOrigin="anonymous"
       onError={() => setFailed(true)}
     />
   );

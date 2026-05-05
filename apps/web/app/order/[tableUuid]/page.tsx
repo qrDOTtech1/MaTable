@@ -417,7 +417,16 @@ export default function OrderPage() {
         <div className="flex items-center gap-3 bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3 mb-5">
           <div className="w-11 h-11 rounded-full bg-orange-500/20 border border-orange-500/30 text-orange-400 flex items-center justify-center font-bold text-base overflow-hidden shrink-0">
             {info.server.photoUrl
-              ? <img src={info.server.photoUrl} alt="server" className="w-full h-full object-cover" />
+              ? <img
+                  src={info.server.photoUrl.startsWith("http") ? info.server.photoUrl : `${API_URL}${info.server.photoUrl.startsWith("/") ? info.server.photoUrl : `/${info.server.photoUrl}`}`}
+                  alt="server"
+                  className="w-full h-full object-cover"
+                  decoding="async"
+                  loading="eager"
+                  referrerPolicy="no-referrer"
+                  crossOrigin="anonymous"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                />
               : info.server.name[0]?.toUpperCase()}
           </div>
           <div className="flex-1">
