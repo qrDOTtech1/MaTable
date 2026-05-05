@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ImageLightbox } from "./ImageLightbox";
+import { HeroSlideshow } from "./HeroSlideshow";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Photo = { id: string; url: string };
@@ -103,29 +104,14 @@ export default async function RestaurantPublicPage({ params }: { params: Promise
   const coverUrl = abs(restaurant.coverImageUrl);
   const logoUrl = abs(restaurant.logoUrl);
 
-  // Galerie publique : photos d'établissement (uploadées dans la config) + photos de plats
-  // L'API filtre déjà les portraits de serveurs (kind=STAFF) donc restaurant.photos[]
-  // ne contient ici que des photos de l'établissement (salle, devanture, ambiance, etc.)
+  // Photos de l'établissement (salle, devanture, ambiance) → slideshow du hero uniquement
+  // L'API filtre déjà les portraits de serveurs (kind=STAFF), donc restaurant.photos[]
+  // ne contient ici que les photos uploadées par le gérant dans la config de son resto.
   const restaurantPhotos = (restaurant.photos ?? []).map((p) => ({
     id: p.id,
     url: abs(p.url)!,
     alt: restaurant.name,
-    kind: "restaurant" as const,
   }));
-
-  const dishPhotos = menu.flatMap((item) => {
-    const itemPhotos = (item.photos ?? []).map((p) => ({
-      id: p.id,
-      url: abs(p.url)!,
-      alt: item.name,
-      kind: "dish" as const,
-    }));
-    if (itemPhotos.length > 0) return itemPhotos;
-    if (item.imageUrl) return [{ id: item.id, url: abs(item.imageUrl)!, alt: item.name, kind: "dish" as const }];
-    return [];
-  });
-
-  const galleryPhotos = [...restaurantPhotos, ...dishPhotos];
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white">
@@ -146,25 +132,19 @@ export default async function RestaurantPublicPage({ params }: { params: Promise
         </div>
       </nav>
 
-      {/* ── Hero Cover ── */}
-      <div className="relative w-full h-64 md:h-96 overflow-hidden">
-        {coverUrl ? (
-          <img
-            src={coverUrl}
-            alt={restaurant.name}
-            className="w-full h-full object-cover"
-            decoding="async"
-            referrerPolicy="no-referrer"
-            crossOrigin="anonymous"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-orange-900/30 via-slate-900 to-black" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0b] via-[#0a0a0b]/30 to-transparent" />
+      {/* ── Hero Slideshow ── */}
+      {/* Diaporama des photos de l'établissement uploadées dans la config (5s par slide) */}
+      {/* Fallback : coverImageUrl si aucune photo établissement n'est disponible */}
+      <div className="relative w-full h-64 md:h-96 overflow-hidden bg-black">
+        <HeroSlideshow
+          photos={restaurantPhotos}
+          fallbackUrl={coverUrl}
+          alt={restaurant.name}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0b] via-[#0a0a0b]/30 to-transparent z-10" />
 
         {/* Info overlay */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-6 max-w-5xl mx-auto">
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-6 max-w-5xl mx-auto z-10">
           <div className="flex items-end gap-4">
             {logoUrl && (
               <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl border-2 border-white/10 overflow-hidden bg-slate-800 shrink-0 shadow-2xl">
@@ -224,45 +204,9 @@ export default async function RestaurantPublicPage({ params }: { params: Promise
             </div>
           )}
 
-          {/* Galerie établissement (salle, ambiance, devanture) — uploadée dans la config du resto */}
-          {restaurantPhotos.length > 0 && (
-            <section>
-              <h2 className="text-lg font-black mb-4 text-white/80">
-                📸 L'établissement
-              </h2>
-              <div className="grid grid-cols-3 gap-2">
-                {restaurantPhotos.slice(0, 7).map((p, i) => (
-                  <ImageLightbox
-                    key={p.id}
-                    src={p.url}
-                    alt={p.alt}
-                    className={`w-full rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity ${i === 0 ? "col-span-3 h-52" : "h-28"}`}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Galerie plats — photos rattachées aux items du menu */}
-          {dishPhotos.length > 0 && (
-            <section>
-              <h2 className="text-lg font-black mb-4 text-white/80">
-                🍽️ Nos plats
-              </h2>
-              <div className="grid grid-cols-3 gap-2">
-                {dishPhotos.slice(0, 7).map((p, i) => (
-                  <ImageLightbox
-                    key={p.id}
-                    src={p.url}
-                    alt={p.alt}
-                    className={`w-full rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity ${i === 0 ? "col-span-3 h-52" : "h-28"}`}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
           {/* Menu */}
+          {/* Les photos de plats sont affichées dans la card de chaque plat (pas en galerie séparée) */}
+          {/* Les photos d'établissement passent dans le slideshow du hero ci-dessus */}
           {Object.entries(byCat).map(([cat, items]) => (
             <section key={cat}>
               <h2 className="text-base font-black uppercase tracking-widest text-orange-400 mb-4 flex items-center gap-2">
