@@ -976,6 +976,12 @@ export default function PublicReviewPage() {
                   placeholder="votre@email.com"
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-center placeholder-white/30 focus:outline-none focus:border-orange-500/50 transition-colors"
                 />
+                <div className="flex items-start gap-2 px-3 py-2.5 bg-white/[0.03] border border-white/10 rounded-xl text-[11px] text-white/50 leading-snug">
+                  <span className="text-emerald-400 mt-0.5" aria-hidden>🔒</span>
+                  <p>
+                    Votre email ne sera utilisé <strong className="text-white/70">que pour la vérification</strong>. Aucune utilisation marketing, aucun partage avec des tiers.
+                  </p>
+                </div>
                 <button
                   disabled={claimLoading || !claimEmail.includes("@")}
                   onClick={async () => {
@@ -1094,7 +1100,12 @@ export default function PublicReviewPage() {
               <div className="bg-black/40 rounded-xl py-3 px-6 inline-block">
                 <span className="font-mono text-2xl font-black tracking-widest text-white">{v.code}</span>
               </div>
-              <p className="text-[10px] text-white/30 mt-6 uppercase tracking-wider">Sur présentation de cet écran</p>
+              <div className="mt-6 px-4 py-3 bg-white/[0.04] border border-white/10 rounded-xl">
+                <p className="text-sm text-white/80 leading-relaxed">
+                  Présentez ce code <span className="text-orange-300 font-semibold">ainsi que votre avis</span> à notre personnel <span aria-hidden>:)</span>
+                </p>
+              </div>
+              <p className="text-[10px] text-white/30 mt-4 uppercase tracking-wider">Sur présentation de cet écran</p>
             </div>
           </div>
         ) : (
