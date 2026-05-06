@@ -5,8 +5,28 @@ import Link from "next/link";
 import QRCode from "qrcode";
 import { io, Socket } from "socket.io-client";
 
-type DishReview = { id: string; rating: number; comment?: string; menuItem: { name: string }; createdAt: string };
-type ServerReview = { id: string; rating: number; comment?: string; server: { name: string }; createdAt: string };
+type DishReview = { id: string; rating: number; comment?: string; photoIds?: string[]; flagged?: boolean; flagReasons?: string[]; flagResolved?: boolean; menuItem: { name: string }; createdAt: string };
+type ServerReview = { id: string; rating: number; comment?: string; flagged?: boolean; flagReasons?: string[]; flagResolved?: boolean; server: { name: string }; createdAt: string };
+
+type ReviewInsights = {
+  counts: { reason: string; count: number }[];
+  dishFlags: { id: string; rating: number; comment: string | null; reasons: string[]; resolved: boolean; createdAt: string; menuItemName: string | null }[];
+  serverFlags: { id: string; rating: number; comment: string | null; reasons: string[]; resolved: boolean; createdAt: string; serverName: string | null }[];
+  customerFlags: { id: string; reasons: string[]; reviewText: string; createdAt: string }[];
+  dishComments: { id: string; rating: number; comment: string | null; flagged: boolean; reasons: string[]; menuItemName: string | null; createdAt: string }[];
+};
+
+const FLAG_LABELS: Record<string, { label: string; color: string }> = {
+  hygiene: { label: "Hygiène", color: "bg-red-500/15 text-red-300 border-red-500/30" },
+  temperature: { label: "Température", color: "bg-blue-500/15 text-blue-300 border-blue-500/30" },
+  service_lent: { label: "Lenteur du service", color: "bg-amber-500/15 text-amber-300 border-amber-500/30" },
+  service_accueil: { label: "Accueil", color: "bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30" },
+  qualite_plat: { label: "Qualité du plat", color: "bg-orange-500/15 text-orange-300 border-orange-500/30" },
+  rapport_qualite: { label: "Rapport qualité/prix", color: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30" },
+  ambiance: { label: "Ambiance", color: "bg-purple-500/15 text-purple-300 border-purple-500/30" },
+  note_basse: { label: "Note basse", color: "bg-rose-500/15 text-rose-300 border-rose-500/30" },
+  autre: { label: "Autre", color: "bg-slate-500/15 text-slate-300 border-slate-500/30" },
+};
 type ChatMessage = { role: "ai" | "user"; content: string };
 type CustomerReview = { id: string; serverName: string; ratings: any; reviewText: string; chatHistory?: ChatMessage[] | null; createdAt: string };
 type ServerTip = { id: string; serverName: string; amountCents: number; createdAt: string };
@@ -264,7 +284,8 @@ export default function ReviewsPage() {
   const [serverReviews, setServerReviews] = useState<ServerReview[]>([]);
   const [customerReviews, setCustomerReviews] = useState<CustomerReview[]>([]);
   const [serverTips, setServerTips] = useState<ServerTip[]>([]);
-  const [tab, setTab] = useState<"synthesis" | "dishes" | "servers" | "customers" | "campaign">("synthesis");
+  const [tab, setTab] = useState<"synthesis" | "alerts" | "dishes" | "servers" | "customers" | "campaign">("synthesis");
+  const [insights, setInsights] = useState<ReviewInsights | null>(null);
   const [stats, setStats] = useState<ReviewStats | null>(null);
   const [selectedDay, setSelectedDay] = useState<DayStats | null>(null);
   const [restaurant, setRestaurant] = useState<RestaurantConfig | null>(null);
@@ -308,6 +329,9 @@ export default function ReviewsPage() {
     api<{ servers: ServerData[] }>("/api/pro/servers")
       .then((r) => setServersList(r.servers))
       .catch(() => {});
+    api<ReviewInsights>("/api/pro/reviews/insights")
+      .then((r) => setInsights(r))
+      .catch(() => {});
     api<{ restaurant: RestaurantConfig }>("/api/pro/me")
       .then((r) => {
         setRestaurant(r.restaurant);
@@ -334,11 +358,17 @@ export default function ReviewsPage() {
 
     const socket: Socket = io(API_URL, { auth: { restaurantId: restaurant.id } });
 
+    socket.on("review:flagged", () => {
+      // Pull the latest insights when a new flag is raised
+      api<ReviewInsights>("/api/pro/reviews/insights").then(setInsights).catch(() => {});
+    });
+
     socket.on("review:new", (payload: { kind: "server" | "dish" | "customer"; review: any }) => {
       if (!payload?.review) return;
 
       // Refresh aggregate stats so synthesis tab updates count + averages
       api<ReviewStats>("/api/pro/reviews/stats").then(setStats).catch(() => {});
+      api<ReviewInsights>("/api/pro/reviews/insights").then(setInsights).catch(() => {});
 
       if (payload.kind === "server") {
         const r = payload.review;
@@ -507,6 +537,13 @@ export default function ReviewsPage() {
 
       <div className="flex gap-2 mb-6 border-b border-white/10 pb-2 overflow-x-auto scrollbar-none">
         <button className={`shrink-0 pb-2 px-2 text-sm font-bold ${tab === "synthesis" ? "border-b-2 border-orange-500 text-orange-500" : "text-white/50"}`} onClick={() => setTab("synthesis")}>Synthese</button>
+        <button className={`shrink-0 pb-2 px-2 text-sm font-bold flex items-center gap-1.5 ${tab === "alerts" ? "border-b-2 border-red-500 text-red-400" : "text-white/50"}`} onClick={() => setTab("alerts")}>
+          🚨 Alertes
+          {(() => {
+            const open = (insights?.dishFlags.filter(f => !f.resolved).length ?? 0) + (insights?.serverFlags.filter(f => !f.resolved).length ?? 0);
+            return open > 0 ? <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-red-500/20 text-red-300 border border-red-500/40">{open}</span> : null;
+          })()}
+        </button>
         <button className={`shrink-0 pb-2 px-2 text-sm font-bold ${tab === "customers" ? "border-b-2 border-orange-500 text-orange-500" : "text-white/50"}`} onClick={() => setTab("customers")}>Avis des clients ({customerReviews.length})</button>
         <button className={`shrink-0 pb-2 px-2 text-sm font-bold ${tab === "dishes" ? "border-b-2 border-orange-500 text-orange-500" : "text-white/50"}`} onClick={() => setTab("dishes")}>Plats ({dishReviews.length})</button>
         <button className={`shrink-0 pb-2 px-2 text-sm font-bold ${tab === "servers" ? "border-b-2 border-orange-500 text-orange-500" : "text-white/50"}`} onClick={() => setTab("servers")}>Serveurs ({serverReviews.length})</button>
@@ -1018,17 +1055,150 @@ export default function ReviewsPage() {
         </div>
       )}
 
+      {tab === "alerts" && (
+        <div className="space-y-6">
+          <p className="text-sm text-white/50">
+            Les avis sont automatiquement scannés. Note ≤ 2 ou mots-clés négatifs (sale, froid, lent, mauvais accueil…) déclenchent une alerte.
+          </p>
+
+          {!insights ? (
+            <p className="text-sm text-white/50 text-center py-8">Chargement...</p>
+          ) : (
+            <>
+              {/* Top reasons */}
+              {insights.counts.length > 0 && (
+                <div className="card p-5">
+                  <h3 className="font-bold text-white mb-3 flex items-center gap-2">📊 Plaintes récurrentes</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {insights.counts.map((c) => {
+                      const meta = FLAG_LABELS[c.reason] ?? FLAG_LABELS.autre;
+                      return (
+                        <span key={c.reason} className={`px-3 py-1.5 rounded-full text-xs font-bold border ${meta.color}`}>
+                          {meta.label} · {c.count}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Active dish flags */}
+              {insights.dishFlags.filter(f => !f.resolved).length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="font-bold text-white flex items-center gap-2">🍽️ Alertes plats</h3>
+                  {insights.dishFlags.filter(f => !f.resolved).map((f) => (
+                    <FlagCard
+                      key={f.id}
+                      label={f.menuItemName ?? "Plat"}
+                      rating={f.rating}
+                      comment={f.comment}
+                      reasons={f.reasons}
+                      createdAt={f.createdAt}
+                      onResolve={async () => {
+                        try {
+                          await api(`/api/pro/reviews/dish/${f.id}/resolve`, { method: "PATCH", body: JSON.stringify({ resolved: true }) });
+                          const next = await api<ReviewInsights>("/api/pro/reviews/insights");
+                          setInsights(next);
+                        } catch {}
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Active server flags */}
+              {insights.serverFlags.filter(f => !f.resolved).length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="font-bold text-white flex items-center gap-2">👤 Alertes serveurs</h3>
+                  {insights.serverFlags.filter(f => !f.resolved).map((f) => (
+                    <FlagCard
+                      key={f.id}
+                      label={f.serverName ?? "Serveur"}
+                      rating={f.rating}
+                      comment={f.comment}
+                      reasons={f.reasons}
+                      createdAt={f.createdAt}
+                      onResolve={async () => {
+                        try {
+                          await api(`/api/pro/reviews/server/${f.id}/resolve`, { method: "PATCH", body: JSON.stringify({ resolved: true }) });
+                          const next = await api<ReviewInsights>("/api/pro/reviews/insights");
+                          setInsights(next);
+                        } catch {}
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Customer review flags (no resolve button — those are AI-generated drafts) */}
+              {insights.customerFlags.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="font-bold text-white flex items-center gap-2">💬 Avis IA flaggés</h3>
+                  {insights.customerFlags.slice(0, 10).map((f) => (
+                    <FlagCard
+                      key={f.id}
+                      label="Avis client"
+                      comment={f.reviewText}
+                      reasons={f.reasons}
+                      createdAt={f.createdAt}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {insights.dishFlags.filter(f => !f.resolved).length === 0
+                && insights.serverFlags.filter(f => !f.resolved).length === 0
+                && insights.customerFlags.length === 0 && (
+                <div className="text-center py-12 space-y-3">
+                  <div className="text-5xl">✅</div>
+                  <p className="text-white/60">Aucune alerte active. Tout va bien.</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {tab === "dishes" && (
         <div className="space-y-2">
           {dishReviews.map((r) => (
-            <div key={r.id} className="card">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="font-medium">{r.menuItem.name}</div>
-                  <div className="text-sm">{"⭐".repeat(r.rating)} ({r.rating}/5)</div>
-                  {r.comment && <p className="text-sm text-slate-600 mt-1">{r.comment}</p>}
+            <div key={r.id} className={`card ${r.flagged && !r.flagResolved ? "border-red-500/30 bg-red-500/[0.04]" : ""}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="font-medium">{r.menuItem.name}</div>
+                    {r.flagged && !r.flagResolved && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-300 border border-red-500/40">⚠ ALERTE</span>
+                    )}
+                  </div>
+                  <div className="text-sm text-yellow-400 mt-0.5">{"★".repeat(r.rating)}<span className="text-white/20">{"★".repeat(5 - r.rating)}</span> <span className="text-white/40 text-xs">({r.rating}/5)</span></div>
+                  {r.comment && <p className="text-sm text-white/60 mt-2 italic">"{r.comment}"</p>}
+                  {r.flagReasons && r.flagReasons.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {r.flagReasons.map((reason) => {
+                        const meta = FLAG_LABELS[reason] ?? FLAG_LABELS.autre;
+                        return <span key={reason} className={`px-2 py-0.5 text-[10px] rounded-full border font-bold ${meta.color}`}>{meta.label}</span>;
+                      })}
+                    </div>
+                  )}
+                  {r.photoIds && r.photoIds.length > 0 && (
+                    <div className="flex gap-1.5 mt-2">
+                      {r.photoIds.map((pid) => (
+                        <img
+                          key={pid}
+                          src={`${API_URL}/api/public/photo/${pid}`}
+                          alt=""
+                          className="w-14 h-14 rounded-lg object-cover border border-white/10"
+                          decoding="async"
+                          referrerPolicy="no-referrer"
+                          crossOrigin="anonymous"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="text-xs text-slate-400">
+                <div className="text-xs text-slate-400 shrink-0">
                   {new Date(r.createdAt).toLocaleDateString()}
                 </div>
               </div>
@@ -1040,20 +1210,79 @@ export default function ReviewsPage() {
       {tab === "servers" && (
         <div className="space-y-2">
           {serverReviews.map((r) => (
-            <div key={r.id} className="card">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="font-medium">{r.server.name}</div>
-                  <div className="text-sm">{"⭐".repeat(r.rating)} ({r.rating}/5)</div>
-                  {r.comment && <p className="text-sm text-slate-600 mt-1">{r.comment}</p>}
+            <div key={r.id} className={`card ${r.flagged && !r.flagResolved ? "border-red-500/30 bg-red-500/[0.04]" : ""}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="font-medium">{r.server.name}</div>
+                    {r.flagged && !r.flagResolved && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-300 border border-red-500/40">⚠ ALERTE</span>
+                    )}
+                  </div>
+                  <div className="text-sm text-yellow-400 mt-0.5">{"★".repeat(r.rating)}<span className="text-white/20">{"★".repeat(5 - r.rating)}</span> <span className="text-white/40 text-xs">({r.rating}/5)</span></div>
+                  {r.comment && <p className="text-sm text-white/60 mt-2 italic">"{r.comment}"</p>}
+                  {r.flagReasons && r.flagReasons.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {r.flagReasons.map((reason) => {
+                        const meta = FLAG_LABELS[reason] ?? FLAG_LABELS.autre;
+                        return <span key={reason} className={`px-2 py-0.5 text-[10px] rounded-full border font-bold ${meta.color}`}>{meta.label}</span>;
+                      })}
+                    </div>
+                  )}
                 </div>
-                <div className="text-xs text-slate-400">
+                <div className="text-xs text-slate-400 shrink-0">
                   {new Date(r.createdAt).toLocaleDateString()}
                 </div>
               </div>
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── FlagCard helper for alerts tab ───────────────────────────────────────────
+function FlagCard({
+  label,
+  rating,
+  comment,
+  reasons,
+  createdAt,
+  onResolve,
+}: {
+  label: string;
+  rating?: number;
+  comment?: string | null;
+  reasons: string[];
+  createdAt: string;
+  onResolve?: () => void;
+}) {
+  return (
+    <div className="card border-red-500/20 bg-red-500/[0.03] flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="font-bold text-white">{label}</div>
+          {typeof rating === "number" && (
+            <span className="text-yellow-400 text-sm">{"★".repeat(rating)}<span className="text-white/20">{"★".repeat(5 - rating)}</span></span>
+          )}
+        </div>
+        {comment && <p className="text-sm text-white/70 mt-2 italic break-words">"{comment.slice(0, 240)}{comment.length > 240 ? "…" : ""}"</p>}
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {reasons.map((reason) => {
+            const meta = FLAG_LABELS[reason] ?? FLAG_LABELS.autre;
+            return <span key={reason} className={`px-2 py-0.5 text-[10px] rounded-full border font-bold ${meta.color}`}>{meta.label}</span>;
+          })}
+        </div>
+        <p className="text-[11px] text-white/30 mt-2">{new Date(createdAt).toLocaleString("fr-FR")}</p>
+      </div>
+      {onResolve && (
+        <button
+          onClick={onResolve}
+          className="self-start shrink-0 px-3 py-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 text-xs font-bold transition-colors"
+        >
+          Marquer comme traité
+        </button>
       )}
     </div>
   );

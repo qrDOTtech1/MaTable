@@ -208,6 +208,10 @@ export default function PublicReviewPage() {
   const [menu, setMenu] = useState<MenuLite[]>([]);
   const [menuSearch, setMenuSearch] = useState("");
   const [dishRatings, setDishRatings] = useState<Record<string, number>>({});
+  const [dishComments, setDishComments] = useState<Record<string, string>>({});
+  const [dishPhotos, setDishPhotos] = useState<Record<string, { id: string; localUrl: string }[]>>({});
+  const [uploadingDishId, setUploadingDishId] = useState<string | null>(null);
+  const [serverComment, setServerComment] = useState("");
 
   // Hero slideshow state
   const [slideIndex, setSlideIndex] = useState(0);
@@ -297,7 +301,12 @@ export default function PublicReviewPage() {
   const submitDishesAndServer = useCallback(async () => {
     const dishReviews = Object.entries(dishRatings)
       .filter(([, rating]) => rating > 0)
-      .map(([menuItemId, rating]) => ({ menuItemId, rating }));
+      .map(([menuItemId, rating]) => ({
+        menuItemId,
+        rating,
+        comment: dishComments[menuItemId]?.trim() || undefined,
+        photoIds: (dishPhotos[menuItemId] ?? []).map(p => p.id),
+      }));
 
     const hasServerRating = ratings.service > 0 && selectedServer && selectedServer.id !== "team";
 
@@ -310,13 +319,50 @@ export default function PublicReviewPage() {
         body: JSON.stringify({
           serverId: hasServerRating ? selectedServer!.id : undefined,
           serverRating: hasServerRating ? ratings.service : undefined,
+          serverComment: hasServerRating && serverComment.trim() ? serverComment.trim() : undefined,
           dishReviews: dishReviews.length > 0 ? dishReviews : undefined,
         }),
       });
     } catch {
       // silencieux — le client reste dans le flow review même si l'enregistrement échoue
     }
-  }, [dishRatings, ratings.service, selectedServer, params.slug]);
+  }, [dishRatings, dishComments, dishPhotos, ratings.service, selectedServer, params.slug, serverComment]);
+
+  // Upload d'une photo de plat par le client (5 MB max, accepté côté API)
+  const uploadDishPhoto = useCallback(async (menuItemId: string, file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image trop volumineuse (5 Mo max).");
+      return;
+    }
+    setUploadingDishId(menuItemId);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`${API_URL}/api/r/${params.slug}/review-photo`, {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) throw new Error("upload_failed");
+      const data = await res.json();
+      const localUrl = URL.createObjectURL(file);
+      setDishPhotos(prev => ({
+        ...prev,
+        [menuItemId]: [...(prev[menuItemId] ?? []), { id: data.id, localUrl }].slice(0, 5),
+      }));
+    } catch {
+      alert("Impossible d'envoyer la photo. Réessayez.");
+    } finally {
+      setUploadingDishId(null);
+    }
+  }, [params.slug]);
+
+  const removeDishPhoto = (menuItemId: string, photoId: string) => {
+    setDishPhotos(prev => ({
+      ...prev,
+      [menuItemId]: (prev[menuItemId] ?? []).filter(p => p.id !== photoId),
+    }));
+  };
 
   const handleDishesContinue = () => {
     void submitDishesAndServer();
@@ -566,6 +612,22 @@ export default function PublicReviewPage() {
             <StarRow label="Qualité/Prix" icon="💰" value={ratings.value} onChange={v => setRatings(r => ({ ...r, value: v }))} />
           </div>
 
+          {/* Commentaire libre sur le serveur — apparait si la note Service est <= 3 */}
+          {ratings.service > 0 && ratings.service <= 3 && selectedServer && selectedServer.id !== "team" && (
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 space-y-2">
+              <label className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+                {selectedServer.name} — qu'est-ce qui n'a pas marché ?
+              </label>
+              <textarea
+                value={serverComment}
+                onChange={e => setServerComment(e.target.value.slice(0, 800))}
+                placeholder="Optionnel — votre retour direct au manager"
+                rows={2}
+                className="w-full bg-black/30 border border-amber-500/30 focus:border-amber-500/60 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none"
+              />
+            </div>
+          )}
+
           <div className="pt-4">
             <button
               disabled={!ratings.food || !ratings.service || !ratings.atmosphere || !ratings.value}
@@ -662,13 +724,73 @@ export default function PublicReviewPage() {
                         ))}
                         {rating > 0 && (
                           <button
-                            onClick={() => setDishRatings(prev => ({ ...prev, [item.id]: 0 }))}
+                            onClick={() => {
+                              setDishRatings(prev => ({ ...prev, [item.id]: 0 }));
+                              setDishComments(prev => { const cp = { ...prev }; delete cp[item.id]; return cp; });
+                              setDishPhotos(prev => { const cp = { ...prev }; delete cp[item.id]; return cp; });
+                            }}
                             className="ml-2 text-[11px] text-white/30 hover:text-white/60 underline self-center"
                           >
                             effacer
                           </button>
                         )}
                       </div>
+
+                      {rating > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {/* Commentaire libre — affiché en avant si note basse */}
+                          <textarea
+                            value={dishComments[item.id] ?? ""}
+                            onChange={e => setDishComments(prev => ({ ...prev, [item.id]: e.target.value.slice(0, 800) }))}
+                            placeholder={
+                              rating <= 3
+                                ? "Qu'est-ce qui n'a pas marché ? (optionnel)"
+                                : "Un commentaire ? (optionnel)"
+                            }
+                            rows={2}
+                            className={`w-full bg-black/30 border rounded-lg px-3 py-2 text-xs text-white placeholder-white/30 focus:outline-none transition-colors ${
+                              rating <= 3 ? "border-amber-500/30 focus:border-amber-500/60" : "border-white/10 focus:border-orange-500/40"
+                            }`}
+                          />
+
+                          {/* Photo upload */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {(dishPhotos[item.id] ?? []).map(p => (
+                              <div key={p.id} className="relative w-14 h-14 rounded-lg overflow-hidden border border-white/10">
+                                <img src={p.localUrl} alt="" className="w-full h-full object-cover" />
+                                <button
+                                  type="button"
+                                  onClick={() => removeDishPhoto(item.id, p.id)}
+                                  className="absolute top-0 right-0 w-5 h-5 bg-black/70 text-white text-[10px] flex items-center justify-center"
+                                  aria-label="Retirer la photo"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                            {(dishPhotos[item.id]?.length ?? 0) < 3 && (
+                              <label className="w-14 h-14 rounded-lg border border-dashed border-white/20 flex items-center justify-center text-white/40 hover:text-orange-400 hover:border-orange-500/50 cursor-pointer transition-colors text-lg">
+                                {uploadingDishId === item.id ? (
+                                  <span className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  "📷"
+                                )}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  capture="environment"
+                                  className="hidden"
+                                  onChange={e => {
+                                    const f = e.target.files?.[0];
+                                    if (f) uploadDishPhoto(item.id, f);
+                                    e.target.value = "";
+                                  }}
+                                />
+                              </label>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })
