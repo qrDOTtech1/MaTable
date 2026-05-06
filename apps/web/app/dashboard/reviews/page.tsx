@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { api, API_URL } from "@/lib/api";
 import Link from "next/link";
 import QRCode from "qrcode";
+import { io, Socket } from "socket.io-client";
 
 type DishReview = { id: string; rating: number; comment?: string; menuItem: { name: string }; createdAt: string };
 type ServerReview = { id: string; rating: number; comment?: string; server: { name: string }; createdAt: string };
@@ -167,6 +168,16 @@ export default function ReviewsPage() {
   const [voucherCode, setVoucherCode] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Live updates — flash banner shown when a new review arrives via WebSocket
+  const [liveFlash, setLiveFlash] = useState<{ id: string; kind: string; label: string } | null>(null);
+  const liveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const triggerLiveFlash = (kind: string, label: string) => {
+    if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
+    setLiveFlash({ id: `${kind}-${Date.now()}`, kind, label });
+    liveTimeoutRef.current = setTimeout(() => setLiveFlash(null), 4500);
+  };
+
   useEffect(() => {
     api<ReviewStats>("/api/pro/reviews/stats")
       .then((r) => setStats(r))
@@ -203,6 +214,69 @@ export default function ReviewsPage() {
       })
       .catch(() => {});
   }, []);
+
+  // ── Live updates via WebSocket ─────────────────────────────────────────────
+  // Le serveur emit "review:new" sur la room `restaurant:<id>` à chaque nouvel avis.
+  // On met à jour la liste correspondante (server / dish / customer) sans recharger.
+  useEffect(() => {
+    if (!restaurant?.id) return;
+
+    const socket: Socket = io(API_URL, { auth: { restaurantId: restaurant.id } });
+
+    socket.on("review:new", (payload: { kind: "server" | "dish" | "customer"; review: any }) => {
+      if (!payload?.review) return;
+
+      // Refresh aggregate stats so synthesis tab updates count + averages
+      api<ReviewStats>("/api/pro/reviews/stats").then(setStats).catch(() => {});
+
+      if (payload.kind === "server") {
+        const r = payload.review;
+        const newRow: ServerReview = {
+          id: r.id,
+          rating: r.rating,
+          comment: r.comment ?? undefined,
+          createdAt: r.createdAt,
+          server: { name: r.server?.name ?? "—" },
+        };
+        setServerReviews(prev => prev.some(x => x.id === newRow.id) ? prev : [newRow, ...prev]);
+        triggerLiveFlash("server", `Nouvel avis serveur · ${newRow.server.name} · ${newRow.rating}★`);
+        api<{ servers: ServerData[] }>("/api/pro/servers").then(rs => setServersList(rs.servers)).catch(() => {});
+      } else if (payload.kind === "dish") {
+        const r = payload.review;
+        const newRow: DishReview = {
+          id: r.id,
+          rating: r.rating,
+          comment: r.comment ?? undefined,
+          createdAt: r.createdAt,
+          menuItem: { name: r.menuItem?.name ?? "—" },
+        };
+        setDishReviews(prev => prev.some(x => x.id === newRow.id) ? prev : [newRow, ...prev]);
+        triggerLiveFlash("dish", `Nouvel avis plat · ${newRow.menuItem.name} · ${newRow.rating}★`);
+      } else if (payload.kind === "customer") {
+        const r = payload.review;
+        const newRow: CustomerReview = {
+          id: r.id,
+          serverName: r.serverName,
+          ratings: r.ratings,
+          reviewText: r.reviewText,
+          chatHistory: r.chatHistory ?? null,
+          createdAt: r.createdAt,
+        };
+        setCustomerReviews(prev => prev.some(x => x.id === newRow.id) ? prev : [newRow, ...prev]);
+        triggerLiveFlash("customer", `Nouvel avis IA · ${newRow.serverName}`);
+      }
+
+      // Audio cue (best-effort, silent fail if blocked by autoplay policy)
+      try {
+        new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3").play();
+      } catch {}
+    });
+
+    return () => {
+      socket.disconnect();
+      if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
+    };
+  }, [restaurant?.id]);
 
   // ── Compute trend data from stats history ──────────────────────────────────
   const trendData = useMemo(() => {
@@ -264,7 +338,36 @@ export default function ReviewsPage() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="text-2xl font-bold mb-6">Avis & Réputation</h1>
+      <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
+        <h1 className="text-2xl font-bold">Avis & Réputation</h1>
+        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-bold">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+          </span>
+          LIVE
+        </span>
+      </div>
+
+      {liveFlash && (
+        <div
+          key={liveFlash.id}
+          className="mb-4 px-4 py-3 rounded-2xl bg-orange-500/10 border border-orange-500/30 text-orange-300 text-sm font-semibold flex items-center gap-3 animate-fade-in"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="text-lg" aria-hidden>🔔</span>
+          <span className="flex-1 truncate">{liveFlash.label}</span>
+          <button
+            onClick={() => setLiveFlash(null)}
+            className="text-orange-300/60 hover:text-orange-300 text-lg leading-none"
+            aria-label="Fermer"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <div className="flex gap-2 mb-6 border-b border-white/10 pb-2 overflow-x-auto scrollbar-none">
         <button className={`shrink-0 pb-2 px-2 text-sm font-bold ${tab === "synthesis" ? "border-b-2 border-orange-500 text-orange-500" : "text-white/50"}`} onClick={() => setTab("synthesis")}>Synthese</button>
         <button className={`shrink-0 pb-2 px-2 text-sm font-bold ${tab === "customers" ? "border-b-2 border-orange-500 text-orange-500" : "text-white/50"}`} onClick={() => setTab("customers")}>Avis des clients ({customerReviews.length})</button>
