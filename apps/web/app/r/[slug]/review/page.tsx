@@ -695,6 +695,30 @@ export default function PublicReviewPage() {
                       }`}
                     >
                       <div className="flex items-center justify-between gap-3">
+                        {/* Vignette photo du plat (depuis le menu config) — mobile-safe */}
+                        <div className={`w-14 h-14 shrink-0 rounded-xl overflow-hidden flex items-center justify-center text-2xl ${
+                          rating > 0 ? "bg-orange-500/10 border border-orange-500/30" : "bg-white/5 border border-white/10"
+                        }`}>
+                          {item.imageUrl ? (
+                            <img
+                              src={resolveAssetUrl(item.imageUrl) ?? item.imageUrl}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                              decoding="async"
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                              crossOrigin="anonymous"
+                              onError={(e) => {
+                                const el = e.currentTarget as HTMLImageElement;
+                                el.style.display = "none";
+                                const parent = el.parentElement;
+                                if (parent) parent.textContent = "🍽️";
+                              }}
+                            />
+                          ) : (
+                            <span aria-hidden>🍽️</span>
+                          )}
+                        </div>
                         <div className="min-w-0 flex-1">
                           <div className="text-sm font-semibold truncate">{item.name}</div>
                           {item.category && (

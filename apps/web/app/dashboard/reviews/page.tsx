@@ -1160,84 +1160,231 @@ export default function ReviewsPage() {
       )}
 
       {tab === "dishes" && (
-        <div className="space-y-2">
-          {dishReviews.map((r) => (
-            <div key={r.id} className={`card ${r.flagged && !r.flagResolved ? "border-red-500/30 bg-red-500/[0.04]" : ""}`}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="font-medium">{r.menuItem.name}</div>
-                    {r.flagged && !r.flagResolved && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-300 border border-red-500/40">⚠ ALERTE</span>
-                    )}
-                  </div>
-                  <div className="text-sm text-yellow-400 mt-0.5">{"★".repeat(r.rating)}<span className="text-white/20">{"★".repeat(5 - r.rating)}</span> <span className="text-white/40 text-xs">({r.rating}/5)</span></div>
-                  {r.comment && <p className="text-sm text-white/60 mt-2 italic">"{r.comment}"</p>}
-                  {r.flagReasons && r.flagReasons.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {r.flagReasons.map((reason) => {
-                        const meta = FLAG_LABELS[reason] ?? FLAG_LABELS.autre;
-                        return <span key={reason} className={`px-2 py-0.5 text-[10px] rounded-full border font-bold ${meta.color}`}>{meta.label}</span>;
-                      })}
-                    </div>
-                  )}
-                  {r.photoIds && r.photoIds.length > 0 && (
-                    <div className="flex gap-1.5 mt-2">
-                      {r.photoIds.map((pid) => (
-                        <img
-                          key={pid}
-                          src={`${API_URL}/api/public/photo/${pid}`}
-                          alt=""
-                          className="w-14 h-14 rounded-lg object-cover border border-white/10"
-                          decoding="async"
-                          referrerPolicy="no-referrer"
-                          crossOrigin="anonymous"
-                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="text-xs text-slate-400 shrink-0">
-                  {new Date(r.createdAt).toLocaleDateString()}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <DishesAggregatedTab reviews={dishReviews} />
       )}
-      
+
       {tab === "servers" && (
-        <div className="space-y-2">
-          {serverReviews.map((r) => (
-            <div key={r.id} className={`card ${r.flagged && !r.flagResolved ? "border-red-500/30 bg-red-500/[0.04]" : ""}`}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="font-medium">{r.server.name}</div>
-                    {r.flagged && !r.flagResolved && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-300 border border-red-500/40">⚠ ALERTE</span>
-                    )}
-                  </div>
-                  <div className="text-sm text-yellow-400 mt-0.5">{"★".repeat(r.rating)}<span className="text-white/20">{"★".repeat(5 - r.rating)}</span> <span className="text-white/40 text-xs">({r.rating}/5)</span></div>
-                  {r.comment && <p className="text-sm text-white/60 mt-2 italic">"{r.comment}"</p>}
-                  {r.flagReasons && r.flagReasons.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {r.flagReasons.map((reason) => {
-                        const meta = FLAG_LABELS[reason] ?? FLAG_LABELS.autre;
-                        return <span key={reason} className={`px-2 py-0.5 text-[10px] rounded-full border font-bold ${meta.color}`}>{meta.label}</span>;
-                      })}
-                    </div>
+        <ServersAggregatedTab reviews={serverReviews} />
+      )}
+    </div>
+  );
+}
+
+// ── Aggregated Dishes tab ────────────────────────────────────────────────────
+function DishesAggregatedTab({ reviews }: { reviews: DishReview[] }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const groups = useMemo(() => {
+    const byKey = new Map<string, { key: string; name: string; reviews: DishReview[] }>();
+    for (const r of reviews) {
+      const key = r.menuItem?.name ?? "—";
+      const cur = byKey.get(key) ?? { key, name: key, reviews: [] };
+      cur.reviews.push(r);
+      byKey.set(key, cur);
+    }
+    return Array.from(byKey.values()).map(g => {
+      const sorted = [...g.reviews].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+      const total = g.reviews.reduce((s, r) => s + r.rating, 0);
+      const count = g.reviews.length;
+      const avg = count > 0 ? total / count : 0;
+      const openAlerts = g.reviews.filter(r => r.flagged && !r.flagResolved).length;
+      return { ...g, sorted, count, avg, openAlerts, lastDate: sorted[0]?.createdAt };
+    }).sort((a, b) => (b.avg - a.avg) || (b.count - a.count));
+  }, [reviews]);
+
+  if (groups.length === 0) {
+    return <div className="text-center py-12 text-white/40 text-sm">Aucun avis sur les plats pour le moment.</div>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {groups.map((g) => {
+        const isOpen = openId === g.key;
+        const flagged = g.openAlerts > 0;
+        return (
+          <div
+            key={g.key}
+            className={`card transition-all ${flagged ? "border-red-500/30 bg-red-500/[0.04]" : ""}`}
+          >
+            <button
+              type="button"
+              onClick={() => setOpenId(isOpen ? null : g.key)}
+              className="w-full flex items-start justify-between gap-3 text-left"
+              aria-expanded={isOpen}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="font-bold text-white">{g.name}</div>
+                  {flagged && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-300 border border-red-500/40">⚠ {g.openAlerts} alerte{g.openAlerts > 1 ? "s" : ""}</span>
                   )}
                 </div>
-                <div className="text-xs text-slate-400 shrink-0">
-                  {new Date(r.createdAt).toLocaleDateString()}
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <span className="text-yellow-400 text-sm">
+                    {"★".repeat(Math.round(g.avg))}<span className="text-white/20">{"★".repeat(5 - Math.round(g.avg))}</span>
+                  </span>
+                  <span className="text-sm text-orange-300 font-bold">{g.avg.toFixed(1)}/5</span>
+                  <span className="text-xs text-white/40">· {g.count} avis</span>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                {g.lastDate && (
+                  <div className="text-[11px] text-white/40">{new Date(g.lastDate).toLocaleDateString("fr-FR")}</div>
+                )}
+                <span className={`text-white/40 text-sm transition-transform ${isOpen ? "rotate-180" : ""}`} aria-hidden>▼</span>
+              </div>
+            </button>
+
+            {isOpen && (
+              <div className="mt-4 pt-4 border-t border-white/5 space-y-3">
+                {g.sorted.map((r) => (
+                  <div key={r.id} className={`p-3 rounded-xl bg-black/20 border ${r.flagged && !r.flagResolved ? "border-red-500/30" : "border-white/5"}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="text-yellow-400 text-sm">
+                        {"★".repeat(r.rating)}<span className="text-white/20">{"★".repeat(5 - r.rating)}</span>
+                        <span className="text-white/40 text-xs ml-1">({r.rating}/5)</span>
+                        {r.flagged && !r.flagResolved && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-300 border border-red-500/40">⚠</span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-white/40 shrink-0">
+                        {new Date(r.createdAt).toLocaleDateString("fr-FR")}
+                      </div>
+                    </div>
+                    {r.comment && <p className="text-sm text-white/65 mt-2 italic break-words">"{r.comment}"</p>}
+                    {r.flagReasons && r.flagReasons.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {r.flagReasons.map((reason) => {
+                          const meta = FLAG_LABELS[reason] ?? FLAG_LABELS.autre;
+                          return <span key={reason} className={`px-2 py-0.5 text-[10px] rounded-full border font-bold ${meta.color}`}>{meta.label}</span>;
+                        })}
+                      </div>
+                    )}
+                    {r.photoIds && r.photoIds.length > 0 && (
+                      <div className="flex gap-1.5 mt-2 flex-wrap">
+                        {r.photoIds.map((pid) => (
+                          <img
+                            key={pid}
+                            src={`${API_URL}/api/public/photo/${pid}`}
+                            alt=""
+                            className="w-14 h-14 rounded-lg object-cover border border-white/10"
+                            decoding="async"
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            crossOrigin="anonymous"
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Aggregated Servers tab ───────────────────────────────────────────────────
+function ServersAggregatedTab({ reviews }: { reviews: ServerReview[] }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const groups = useMemo(() => {
+    const byKey = new Map<string, { key: string; name: string; reviews: ServerReview[] }>();
+    for (const r of reviews) {
+      const key = r.server?.name ?? "—";
+      const cur = byKey.get(key) ?? { key, name: key, reviews: [] };
+      cur.reviews.push(r);
+      byKey.set(key, cur);
+    }
+    return Array.from(byKey.values()).map(g => {
+      const sorted = [...g.reviews].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+      const total = g.reviews.reduce((s, r) => s + r.rating, 0);
+      const count = g.reviews.length;
+      const avg = count > 0 ? total / count : 0;
+      const openAlerts = g.reviews.filter(r => r.flagged && !r.flagResolved).length;
+      return { ...g, sorted, count, avg, openAlerts, lastDate: sorted[0]?.createdAt };
+    }).sort((a, b) => (b.avg - a.avg) || (b.count - a.count));
+  }, [reviews]);
+
+  if (groups.length === 0) {
+    return <div className="text-center py-12 text-white/40 text-sm">Aucun avis sur les serveurs pour le moment.</div>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {groups.map((g) => {
+        const isOpen = openId === g.key;
+        const flagged = g.openAlerts > 0;
+        return (
+          <div
+            key={g.key}
+            className={`card transition-all ${flagged ? "border-red-500/30 bg-red-500/[0.04]" : ""}`}
+          >
+            <button
+              type="button"
+              onClick={() => setOpenId(isOpen ? null : g.key)}
+              className="w-full flex items-start justify-between gap-3 text-left"
+              aria-expanded={isOpen}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="font-bold text-white">{g.name}</div>
+                  {flagged && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-300 border border-red-500/40">⚠ {g.openAlerts} alerte{g.openAlerts > 1 ? "s" : ""}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <span className="text-yellow-400 text-sm">
+                    {"★".repeat(Math.round(g.avg))}<span className="text-white/20">{"★".repeat(5 - Math.round(g.avg))}</span>
+                  </span>
+                  <span className="text-sm text-orange-300 font-bold">{g.avg.toFixed(1)}/5</span>
+                  <span className="text-xs text-white/40">· {g.count} avis</span>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                {g.lastDate && (
+                  <div className="text-[11px] text-white/40">{new Date(g.lastDate).toLocaleDateString("fr-FR")}</div>
+                )}
+                <span className={`text-white/40 text-sm transition-transform ${isOpen ? "rotate-180" : ""}`} aria-hidden>▼</span>
+              </div>
+            </button>
+
+            {isOpen && (
+              <div className="mt-4 pt-4 border-t border-white/5 space-y-3">
+                {g.sorted.map((r) => (
+                  <div key={r.id} className={`p-3 rounded-xl bg-black/20 border ${r.flagged && !r.flagResolved ? "border-red-500/30" : "border-white/5"}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="text-yellow-400 text-sm">
+                        {"★".repeat(r.rating)}<span className="text-white/20">{"★".repeat(5 - r.rating)}</span>
+                        <span className="text-white/40 text-xs ml-1">({r.rating}/5)</span>
+                        {r.flagged && !r.flagResolved && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-300 border border-red-500/40">⚠</span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-white/40 shrink-0">
+                        {new Date(r.createdAt).toLocaleDateString("fr-FR")}
+                      </div>
+                    </div>
+                    {r.comment && <p className="text-sm text-white/65 mt-2 italic break-words">"{r.comment}"</p>}
+                    {r.flagReasons && r.flagReasons.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {r.flagReasons.map((reason) => {
+                          const meta = FLAG_LABELS[reason] ?? FLAG_LABELS.autre;
+                          return <span key={reason} className={`px-2 py-0.5 text-[10px] rounded-full border font-bold ${meta.color}`}>{meta.label}</span>;
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
