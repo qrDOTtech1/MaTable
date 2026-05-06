@@ -118,6 +118,117 @@ function RadarOctagon({ avg }: { avg: { food: number; service: number; atmospher
   );
 }
 
+// ── Generic Octagon (radar) for any list of (label, value) pairs ─────────────
+function GenericOctagon({
+  items,
+  color = "#f97316",
+  size = 280,
+  emptyMessage,
+}: {
+  items: { label: string; value: number; count?: number }[];
+  color?: string;
+  size?: number;
+  emptyMessage?: string;
+}) {
+  const [animated, setAnimated] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setAnimated(true), 120); return () => clearTimeout(t); }, [items]);
+  useEffect(() => { setAnimated(false); }, [items]);
+
+  if (!items || items.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64 text-sm text-white/40 text-center px-4">
+        {emptyMessage ?? "Aucune donnée."}
+      </div>
+    );
+  }
+
+  const cx = size / 2, cy = size / 2, maxR = size * 0.36;
+  const n = items.length;
+  // Distribute points evenly around the circle, starting at top
+  const angleFor = (i: number) => -90 + (360 / n) * i;
+
+  const toXY = (angle: number, r: number) => {
+    const rad = (angle * Math.PI) / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  };
+
+  const rings = [1, 2, 3, 4, 5];
+
+  const points = items.map((it, i) => {
+    const val = animated ? Math.max(0, Math.min(5, it.value || 0)) : 0;
+    const r = (val / 5) * maxR;
+    return toXY(angleFor(i), r);
+  });
+  const polyStr = points.map((p) => `${p.x},${p.y}`).join(" ");
+
+  // Lighter version of color for fill
+  const fill = color.startsWith("#") ? `${color}26` : color;
+
+  return (
+    <div className="flex justify-center">
+      <svg viewBox={`0 0 ${size} ${size}`} className="w-full max-w-[320px] h-auto">
+        {/* Grid rings */}
+        {rings.map((r) => {
+          const radius = (r / 5) * maxR;
+          const ringPts = items.map((_, i) => toXY(angleFor(i), radius));
+          return (
+            <polygon
+              key={r}
+              points={ringPts.map((p) => `${p.x},${p.y}`).join(" ")}
+              fill="none"
+              stroke="rgba(255,255,255,0.06)"
+              strokeWidth="1"
+            />
+          );
+        })}
+        {/* Axes */}
+        {items.map((_, i) => {
+          const end = toXY(angleFor(i), maxR);
+          return <line key={i} x1={cx} y1={cy} x2={end.x} y2={end.y} stroke="rgba(255,255,255,0.08)" strokeWidth="1" />;
+        })}
+        {/* Data polygon */}
+        <polygon
+          points={polyStr}
+          fill={fill}
+          stroke={color}
+          strokeWidth="2.5"
+          strokeLinejoin="round"
+          style={{ transition: "all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)" }}
+        />
+        {/* Data dots */}
+        {points.map((p, i) => (
+          <circle
+            key={i}
+            cx={p.x}
+            cy={p.y}
+            r="4"
+            fill={color}
+            stroke="#0a0a0a"
+            strokeWidth="2"
+            style={{ transition: "all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)" }}
+          />
+        ))}
+        {/* Labels */}
+        {items.map((it, i) => {
+          const labelDist = maxR + 28;
+          const pos = toXY(angleFor(i), labelDist);
+          const val = it.value || 0;
+          // Truncate long labels for display
+          const display = it.label.length > 14 ? it.label.slice(0, 13) + "…" : it.label;
+          return (
+            <g key={i}>
+              <text x={pos.x} y={pos.y - 6} textAnchor="middle" className="text-[11px] font-bold fill-white/70">{display}</text>
+              <text x={pos.x} y={pos.y + 8} textAnchor="middle" className="text-[10px] fill-orange-400/80 font-mono">
+                {val.toFixed(1)}{it.count != null ? ` · ${it.count}` : ""}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
 // ── Mini Sparkline Component ──────────────────────────────────────────────────
 function Sparkline({ data, color = "#f97316", height = 40 }: { data: number[]; color?: string; height?: number }) {
   if (data.length < 2) return null;
@@ -266,10 +377,6 @@ export default function ReviewsPage() {
         triggerLiveFlash("customer", `Nouvel avis IA · ${newRow.serverName}`);
       }
 
-      // Audio cue (best-effort, silent fail if blocked by autoplay policy)
-      try {
-        new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3").play();
-      } catch {}
     });
 
     return () => {
@@ -317,6 +424,36 @@ export default function ReviewsPage() {
 
     return board;
   }, [serversList, serverTips]);
+
+  // ── Aggregate dish reviews → moyenne + total par plat ─────────────────────
+  const dishAggregates = useMemo(() => {
+    const byName = new Map<string, { name: string; total: number; count: number }>();
+    for (const r of dishReviews) {
+      const name = r.menuItem?.name ?? "—";
+      const cur = byName.get(name) ?? { name, total: 0, count: 0 };
+      cur.total += r.rating;
+      cur.count += 1;
+      byName.set(name, cur);
+    }
+    return Array.from(byName.values())
+      .map(d => ({ ...d, avg: d.count > 0 ? d.total / d.count : 0 }))
+      .sort((a, b) => (b.avg - a.avg) || (b.count - a.count));
+  }, [dishReviews]);
+
+  // ── Aggregate server reviews → moyenne + total par serveur ────────────────
+  const serverAggregates = useMemo(() => {
+    const byName = new Map<string, { name: string; total: number; count: number }>();
+    for (const r of serverReviews) {
+      const name = r.server?.name ?? "—";
+      const cur = byName.get(name) ?? { name, total: 0, count: 0 };
+      cur.total += r.rating;
+      cur.count += 1;
+      byName.set(name, cur);
+    }
+    return Array.from(byName.values())
+      .map(d => ({ ...d, avg: d.count > 0 ? d.total / d.count : 0 }))
+      .sort((a, b) => (b.avg - a.avg) || (b.count - a.count));
+  }, [serverReviews]);
 
   async function saveCampaign() {
     setSaving(true);
@@ -466,6 +603,67 @@ export default function ReviewsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* ── Octogones Plats & Serveurs ─────────────────────────────── */}
+              {(dishAggregates.length > 0 || serverAggregates.length > 0) && (
+                <div className="grid md:grid-cols-2 gap-6">
+                  {dishAggregates.length > 0 && (
+                    <div className="card p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-white flex items-center gap-2">🍽️ Plats notés</h3>
+                        <span className="text-xs text-white/40">
+                          {dishAggregates.reduce((s, d) => s + d.count, 0)} avis · {dishAggregates.length} plat{dishAggregates.length > 1 ? "s" : ""}
+                        </span>
+                      </div>
+                      <GenericOctagon
+                        items={dishAggregates.slice(0, 8).map(d => ({ label: d.name, value: d.avg, count: d.count }))}
+                        color="#f59e0b"
+                        emptyMessage="Aucun avis sur les plats."
+                      />
+                      {dishAggregates.length > 0 && (
+                        <div className="mt-4 space-y-1.5 max-h-48 overflow-y-auto">
+                          {dishAggregates.slice(0, 8).map(d => (
+                            <div key={d.name} className="flex items-center justify-between text-xs px-3 py-2 rounded-lg bg-white/5">
+                              <span className="text-white/70 truncate">{d.name}</span>
+                              <span className="font-mono text-amber-400 shrink-0 ml-2">
+                                {d.avg.toFixed(1)}/5 <span className="text-white/30">({d.count})</span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {serverAggregates.length > 0 && (
+                    <div className="card p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-white flex items-center gap-2">👤 Serveurs notés</h3>
+                        <span className="text-xs text-white/40">
+                          {serverAggregates.reduce((s, d) => s + d.count, 0)} avis · {serverAggregates.length} serveur{serverAggregates.length > 1 ? "s" : ""}
+                        </span>
+                      </div>
+                      <GenericOctagon
+                        items={serverAggregates.slice(0, 8).map(d => ({ label: d.name, value: d.avg, count: d.count }))}
+                        color="#3b82f6"
+                        emptyMessage="Aucun avis sur les serveurs."
+                      />
+                      {serverAggregates.length > 0 && (
+                        <div className="mt-4 space-y-1.5 max-h-48 overflow-y-auto">
+                          {serverAggregates.slice(0, 8).map(d => (
+                            <div key={d.name} className="flex items-center justify-between text-xs px-3 py-2 rounded-lg bg-white/5">
+                              <span className="text-white/70 truncate">{d.name}</span>
+                              <span className="font-mono text-blue-400 shrink-0 ml-2">
+                                {d.avg.toFixed(1)}/5 <span className="text-white/30">({d.count})</span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* ── Trend Analysis ──────────────────────────────────────────── */}
               {trendData && (
