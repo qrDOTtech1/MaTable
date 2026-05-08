@@ -12,6 +12,8 @@ type Config = {
   googleReviewLink: string | null;
   reviewVoucherConfig: { active?: boolean | string; title?: string; description?: string; code?: string } | null;
   servers: Server[];
+  businessType?: string;
+  reviewCustomQuestions?: string | null;
 };
 
 type MenuLite = {
@@ -158,19 +160,21 @@ export default function PublicReviewPage() {
   const tipParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tip") : null;
   const [step, setStep] = useState<Step>(tipParam === "success" ? "claim" : "server");
   const [selectedServer, setSelectedServer] = useState<Server | null>(null);
+  const [nfcServerBanner, setNfcServerBanner] = useState(false);
   const [ratings, setRatings] = useState({ food: 0, service: 0, atmosphere: 0, value: 0 });
 
   // Back navigation — compute where "back" should go based on current step
+  const isBoutique = config?.businessType === "BOUTIQUE";
   const getBackTarget = useCallback((): Step | null => {
     switch (step) {
       case "rating": return "server";
       case "dishes": return "rating";
-      case "chat": return "dishes";
+      case "chat": return isBoutique ? "rating" : "dishes";
       case "drafts": return "chat";
       case "tip": return "drafts";
       default: return null; // no back for server, claim, voucher
     }
-  }, [step]);
+  }, [step, isBoutique]);
 
   const handleBack = useCallback(() => {
     const target = getBackTarget();
@@ -257,6 +261,24 @@ export default function PublicReviewPage() {
     }
   }, [config, searchParams]);
 
+  // NFC: auto-select server from ?server= URL param (physical NFC cards)
+  useEffect(() => {
+    if (!config) return;
+    const serverParam = searchParams.get("server");
+    if (serverParam) {
+      const found = config.servers.find((s) => s.id === serverParam);
+      if (found) {
+        setSelectedServer(found);
+        setStep("rating");
+        setNfcServerBanner(true);
+      }
+    } else if (config.businessType === "BOUTIQUE" && config.servers.length === 0) {
+      // Boutique with no named staff: skip server selection
+      setSelectedServer({ id: "team", name: "l'équipe", photoUrl: null });
+      setStep("rating");
+    }
+  }, [config, searchParams]);
+
   const handleServerSelect = (s: Server) => {
     setSelectedServer(s);
     setStep("rating");
@@ -287,9 +309,9 @@ export default function PublicReviewPage() {
   };
 
   const handleRatingsSubmit = () => {
-    // Si le menu est dispo, on passe par l'étape "Plats" (notation par plat)
-    // Sinon on enchaîne directement sur le chat IA
-    if (menu.length > 0) {
+    // En mode boutique : pas d'étape plats (pas de menu food)
+    // Sinon, si le menu est dispo, on passe par "Plats"
+    if (!isBoutique && menu.length > 0) {
       setStep("dishes");
     } else {
       setStep("chat");
@@ -397,7 +419,9 @@ export default function PublicReviewPage() {
         restaurantId: config?.restaurant.id,
         serverName: selectedServer?.name || "l'équipe",
         ratings,
-        history
+        history,
+        businessType: config?.businessType ?? "RESTAURANT",
+        customQuestions: config?.reviewCustomQuestions ?? undefined,
       })
     })
     .then(async (res) => {
@@ -576,7 +600,9 @@ export default function PublicReviewPage() {
 
       {step === "server" && (
         <div className="animate-fade-in space-y-6">
-          <h2 className="text-xl font-bold text-center">Qui s'est occupé de vous ?</h2>
+          <h2 className="text-xl font-bold text-center">
+            {isBoutique ? "Qui vous a accueilli ?" : "Qui s'est occupé de vous ?"}
+          </h2>
           <div className="grid grid-cols-2 gap-4">
             {(config.servers.length ? config.servers : [{ id: "team", name: "L'équipe", photoUrl: null }]).map(s => (
               <button 
@@ -600,16 +626,27 @@ export default function PublicReviewPage() {
 
       {step === "rating" && (
         <div className="animate-fade-in space-y-6">
+          {/* NFC banner — shown when server was pre-selected via NFC card */}
+          {nfcServerBanner && selectedServer && (
+            <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl px-4 py-2.5 text-center -mt-2">
+              <p className="text-sm text-orange-300 font-medium">
+                Vous évaluez <strong>{selectedServer.name}</strong>
+              </p>
+            </div>
+          )}
+
           <div className="text-center mb-8">
             <h2 className="text-xl font-bold">Votre expérience ?</h2>
-            <p className="text-sm text-white/50 mt-1">Notez les différents aspects de votre repas.</p>
+            <p className="text-sm text-white/50 mt-1">
+              {isBoutique ? "Notez les différents aspects de votre visite." : "Notez les différents aspects de votre repas."}
+            </p>
           </div>
-          
+
           <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] p-6 rounded-3xl space-y-6 shadow-2xl">
-            <StarRow label="Cuisine" icon="🍽️" value={ratings.food} onChange={v => setRatings(r => ({ ...r, food: v }))} />
-            <StarRow label="Service" icon="😊" value={ratings.service} onChange={v => setRatings(r => ({ ...r, service: v }))} />
+            <StarRow label={isBoutique ? "Produits / Services" : "Cuisine"} icon={isBoutique ? "🛍️" : "🍽️"} value={ratings.food} onChange={v => setRatings(r => ({ ...r, food: v }))} />
+            <StarRow label={isBoutique ? "Accueil" : "Service"} icon="😊" value={ratings.service} onChange={v => setRatings(r => ({ ...r, service: v }))} />
             <StarRow label="Ambiance" icon="🏠" value={ratings.atmosphere} onChange={v => setRatings(r => ({ ...r, atmosphere: v }))} />
-            <StarRow label="Qualité/Prix" icon="💰" value={ratings.value} onChange={v => setRatings(r => ({ ...r, value: v }))} />
+            <StarRow label="Rapport Q/P" icon="💰" value={ratings.value} onChange={v => setRatings(r => ({ ...r, value: v }))} />
           </div>
 
           {/* Commentaire libre sur le serveur — apparait si la note Service est <= 3 */}
@@ -636,12 +673,14 @@ export default function PublicReviewPage() {
             >
               Continuer
             </button>
-            <button
-              onClick={() => setStep("tip")}
-              className="w-full mt-4 text-sm text-white/40 hover:text-white transition-colors underline underline-offset-4"
-            >
-              Passer l'avis et laisser juste un pourboire
-            </button>
+            {!isBoutique && (
+              <button
+                onClick={() => setStep("tip")}
+                className="w-full mt-4 text-sm text-white/40 hover:text-white transition-colors underline underline-offset-4"
+              >
+                Passer l'avis et laisser juste un pourboire
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, apiUpload, API_URL, redirectOn401 } from "@/lib/api";
+import QRCode from "qrcode";
 
 type Server = {
   id: string;
@@ -39,6 +40,7 @@ export default function ServersPage() {
   const [editingPin, setEditingPin] = useState<string>("");
   const [pinSaving, setPinSaving] = useState(false);
   const [slug, setSlug] = useState<string | null>(null);
+  const [nfcQrCodes, setNfcQrCodes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     api<{ restaurant: { slug?: string | null } }>("/api/pro/me")
@@ -50,6 +52,22 @@ export default function ServersPage() {
     const r = await api<{ servers: Server[] }>("/api/pro/servers");
     setServers(r.servers);
   };
+
+  // Generate NFC QR codes for all servers once slug + servers are available
+  useEffect(() => {
+    if (!slug || servers.length === 0) return;
+    servers.forEach(async (s) => {
+      if (nfcQrCodes[s.id]) return; // already generated
+      const url = `https://matable.pro/r/${slug}/review?server=${s.id}`;
+      const dataUrl = await QRCode.toDataURL(url, {
+        width: 300,
+        margin: 1,
+        color: { dark: "#ffffff", light: "#0a0a0a" },
+      });
+      setNfcQrCodes((prev) => ({ ...prev, [s.id]: dataUrl }));
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [servers, slug]);
 
   useEffect(() => {
     reload().catch(redirectOn401);
@@ -305,6 +323,61 @@ export default function ServersPage() {
                   </button>
                 </div>
               </div>
+
+              {/* NFC Card section */}
+              {slug && (
+                <div className="pt-4 border-t border-white/10 space-y-3">
+                  <div>
+                    <p className="text-sm font-bold text-white">🪪 Carte NFC & QR Code</p>
+                    <p className="text-xs text-white/40 leading-relaxed mt-0.5">
+                      Encodez cette URL sur une carte NFC ou imprimez le QR code. Quand un client scanne, il est directement redirigé vers l'avis pour ce serveur.
+                    </p>
+                  </div>
+
+                  {/* URL row */}
+                  <div className="flex items-center gap-2 bg-black/30 border border-white/10 rounded-lg px-3 py-2">
+                    <span className="font-mono text-[11px] text-white/60 flex-1 truncate">
+                      matable.pro/r/{slug}/review?server={editingId}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://matable.pro/r/${slug}/review?server=${editingId}`);
+                      }}
+                      className="text-xs text-orange-400 hover:text-orange-300 transition-colors shrink-0 font-semibold"
+                    >
+                      📋 Copier
+                    </button>
+                  </div>
+
+                  {/* QR Code preview */}
+                  {editingId && nfcQrCodes[editingId] ? (
+                    <div className="flex items-center gap-4 p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
+                      <div className="w-20 h-20 rounded-lg overflow-hidden border border-white/10 shrink-0">
+                        <img src={nfcQrCodes[editingId]} alt="QR NFC" className="w-full h-full" />
+                      </div>
+                      <div className="space-y-2 min-w-0">
+                        <p className="text-xs text-white/50 leading-relaxed">
+                          À imprimer sur la carte NFC ou à afficher en caisse. Le client scanne → l'avis est attribué à{" "}
+                          <strong className="text-white/70">{servers.find((s) => s.id === editingId)?.name}</strong>.
+                        </p>
+                        <a
+                          href={nfcQrCodes[editingId]}
+                          download={`nfc-${servers.find((s) => s.id === editingId)?.name ?? "serveur"}.png`}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
+                        >
+                          ⬇ Télécharger PNG
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-xs text-white/30">
+                      <span className="w-4 h-4 border-2 border-white/20 border-t-transparent rounded-full animate-spin" />
+                      Génération du QR…
+                    </div>
+                  )}
+                </div>
+              )}
               </div>
             </div>
           ) : (

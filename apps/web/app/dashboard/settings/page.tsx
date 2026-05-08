@@ -15,6 +15,8 @@ type Restaurant = {
   tipsEnabled: boolean; serviceCallEnabled: boolean; reviewsEnabled: boolean;
   isPartner: boolean;
   openingHours?: OpeningHour[];
+  businessType?: string;
+  reviewCustomQuestions?: string | null;
 };
 type ServicePins = { caissePin: string | null; cuisinePin: string | null };
 
@@ -103,6 +105,8 @@ export default function SettingsPage() {
           reviewsEnabled: form.reviewsEnabled ?? true,
           isPartner: form.isPartner ?? false,
           openingHours: form.openingHours ?? [],
+          businessType: form.businessType ?? "RESTAURANT",
+          reviewCustomQuestions: form.reviewCustomQuestions?.trim() || null,
         }),
       });
       setSaved(true);
@@ -161,7 +165,9 @@ export default function SettingsPage() {
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-bold mb-6 text-white">Paramètres du restaurant</h1>
+      <h1 className="text-2xl font-bold mb-6 text-white">
+        Paramètres {(form.businessType ?? "RESTAURANT") === "BOUTIQUE" ? "de l'établissement" : "du restaurant"}
+      </h1>
 
       {error && (
         <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded text-sm text-red-400 flex items-start gap-2">
@@ -314,6 +320,47 @@ export default function SettingsPage() {
                 <textarea className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30" rows={2} value={form.reservationPolicy ?? ""} onChange={f("reservationPolicy")} />
               </div>
             </>
+          )}
+        </div>
+
+        {/* Type d'établissement */}
+        <div className="card space-y-4">
+          <h2 className="font-semibold text-white">Type d'établissement</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {([
+              { value: "RESTAURANT", label: "🍽️ Restaurant", desc: "Menu, commande, cuisine, avis" },
+              { value: "BOUTIQUE", label: "🏪 Boutique / Commerce", desc: "Avis clients & récompenses fidélité uniquement" },
+            ] as const).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setForm((p) => ({ ...p, businessType: opt.value }))}
+                className={`p-4 rounded-xl border text-left transition-all ${
+                  (form.businessType ?? "RESTAURANT") === opt.value
+                    ? "border-orange-500/50 bg-orange-500/10"
+                    : "border-white/10 bg-white/5 hover:border-white/20"
+                }`}
+              >
+                <p className="font-bold text-white text-sm">{opt.label}</p>
+                <p className="text-xs text-white/50 mt-1">{opt.desc}</p>
+              </button>
+            ))}
+          </div>
+
+          {(form.businessType ?? "RESTAURANT") === "BOUTIQUE" && (
+            <div className="mt-1 space-y-2 pt-3 border-t border-white/[0.06]">
+              <label className="label">Questions personnalisées pour l'IA ✨</label>
+              <p className="text-xs text-white/40 leading-relaxed">
+                Indiquez les aspects que l'IA devra explorer avec vos clients lors du chat d'avis. Ex : sélection de produits, accueil, conseil, ambiance de la boutique...
+              </p>
+              <textarea
+                className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30 focus:outline-none focus:border-orange-500/50"
+                rows={3}
+                placeholder="Ex: notre sélection de vins naturels, le conseil de nos sommeliers, l'ambiance de la cave..."
+                value={form.reviewCustomQuestions ?? ""}
+                onChange={(e) => setForm((p) => ({ ...p, reviewCustomQuestions: e.target.value }))}
+              />
+            </div>
           )}
         </div>
 
