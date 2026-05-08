@@ -32,6 +32,7 @@ export default function ChainDashboardPage() {
   const [restaurants, setRestaurants] = useState<ChainRestaurant[]>([]);
   const [stats,       setStats]       = useState<ChainStats | null>(null);
   const [loading,     setLoading]     = useState(true);
+  const [loadError,   setLoadError]   = useState<string | null>(null);
   const [placingId,   setPlacingId]   = useState<string | null>(null);
   const [saveStatus,  setSaveStatus]  = useState<"idle" | "saving" | "saved">("idle");
   const [accessLoading, setAccessLoading] = useState<string | null>(null);
@@ -55,13 +56,18 @@ export default function ChainDashboardPage() {
 
   // ── Load data ──────────────────────────────────────────────────────────────
   const load = useCallback(async () => {
+    setLoadError(null);
     try {
       const data = await chainApi<{ chain: ChainInfo; restaurants: ChainRestaurant[]; stats: ChainStats }>("/me");
       setChain(data.chain);
       setRestaurants(data.restaurants);
       setStats(data.stats);
-    } catch {
-      // unauthorized → redirect handled by chainApi
+    } catch (err: any) {
+      // 401 → chainApi redirects to /chain/login automatically
+      if (err.message !== "unauthorized") {
+        console.error("[chain/me] error:", err);
+        setLoadError(err.message ?? "Erreur serveur");
+      }
     } finally {
       setLoading(false);
     }
@@ -131,8 +137,9 @@ export default function ChainDashboardPage() {
       const msg: Record<string, string> = {
         restaurant_not_found: "Aucun établissement trouvé avec ce slug.",
         invalid_pro_token: "Token pro invalide ou ne correspond pas au slug.",
+        already_in_chain: "Cet établissement est déjà rattaché à cette chaîne.",
       };
-      setLinkError(msg[err.message] ?? "Erreur lors de l'ajout.");
+      setLinkError(msg[err.message] ?? `Erreur : ${err.message ?? "inconnue"}`);
     } finally {
       setLinkLoading(false);
     }
@@ -182,6 +189,35 @@ export default function ChainDashboardPage() {
       <div className="text-center space-y-4">
         <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-white/40 text-sm">Chargement de votre espace chaîne…</p>
+      </div>
+    </div>
+  );
+
+  if (loadError) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#080810] p-6">
+      <div className="w-full max-w-md text-center space-y-5">
+        <div className="text-5xl">⚠️</div>
+        <h2 className="text-xl font-black text-white">Erreur de chargement</h2>
+        <div className="px-5 py-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-sm text-red-400 font-mono break-all">
+          {loadError}
+        </div>
+        <p className="text-white/40 text-sm">
+          Si l'erreur mentionne <em>Chain</em> ou <em>chainId</em>, le serveur doit être redémarré pour appliquer les migrations de base de données.
+        </p>
+        <div className="flex gap-3 justify-center">
+          <button
+            onClick={load}
+            className="px-6 py-3 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-xl transition-colors text-sm"
+          >
+            🔄 Réessayer
+          </button>
+          <button
+            onClick={() => { clearChainToken(); window.location.href = "/chain/login"; }}
+            className="px-6 py-3 border border-white/10 hover:border-white/30 text-white/50 hover:text-white font-bold rounded-xl transition-colors text-sm"
+          >
+            Se déconnecter
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -307,9 +343,18 @@ export default function ChainDashboardPage() {
             )}
 
             {restaurants.length === 0 && (
-              <div className="p-6 text-center text-white/25 text-sm">
-                <p className="text-3xl mb-2">🏢</p>
-                Aucun établissement. Cliquez <strong className="text-white/40">Ajouter</strong> ou glissez le badge ci-dessous sur la carte.
+              <div className="p-4 space-y-3">
+                <div className="text-center py-4">
+                  <p className="text-4xl mb-2">🏢</p>
+                  <p className="text-sm font-bold text-white/50">Aucun établissement rattaché</p>
+                </div>
+                <div className="bg-orange-500/5 border border-orange-500/20 rounded-xl p-3 text-xs text-white/50 space-y-2 leading-relaxed">
+                  <p className="font-bold text-orange-400/80 text-[11px] uppercase tracking-wider">Comment ajouter ?</p>
+                  <p>① Connectez-vous au dashboard de l'établissement</p>
+                  <p>② Allez dans <strong className="text-white/70">Paramètres → Token API</strong></p>
+                  <p>③ Copiez le slug et le token pro</p>
+                  <p>④ Cliquez <strong className="text-white/70">➕ Ajouter</strong> ci-dessus</p>
+                </div>
               </div>
             )}
           </div>
