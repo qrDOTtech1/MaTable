@@ -10,7 +10,8 @@ type RestaurantPhoto = { id: string; url: string };
 type Config = {
   restaurant: { id: string; name: string; photos?: RestaurantPhoto[] };
   googleReviewLink: string | null;
-  reviewVoucherConfig: { active?: boolean | string; title?: string; description?: string; code?: string } | null;
+  tipsEnabled?: boolean;
+  reviewVoucherConfig: { active?: boolean | string; title?: string; description?: string; code?: string; tipAmountsCents?: number[] } | null;
   servers: Server[];
   businessType?: string;
   reviewCustomQuestions?: string | null;
@@ -124,6 +125,15 @@ function normalizeVoucher(config: Config | null) {
   };
 }
 
+function normalizeQuickTipAmounts(config: Config | null) {
+  const amounts = config?.reviewVoucherConfig?.tipAmountsCents;
+  if (!Array.isArray(amounts)) return [200, 300, 500, 1000];
+  const validAmounts = amounts
+    .filter((amount) => Number.isFinite(amount) && amount >= 100 && amount <= 50000)
+    .slice(0, 4);
+  return validAmounts.length > 0 ? validAmounts : [200, 300, 500, 1000];
+}
+
 function parseDraftsFromText(text: string): Drafts | null {
   const cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
   const jsonStart = cleaned.indexOf("{");
@@ -159,12 +169,16 @@ export default function PublicReviewPage() {
   // Flow State — if returning from Stripe tip success, start on a loading hold until config arrives
   const tipParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tip") : null;
   const [step, setStep] = useState<Step>(tipParam === "success" ? "claim" : "server");
-  const [selectedServer, setSelectedServer] = useState<Server | null>(null);
+  const [selectedServers, setSelectedServers] = useState<Server[]>([]);
   const [nfcServerBanner, setNfcServerBanner] = useState(false);
   const [ratings, setRatings] = useState({ food: 0, service: 0, atmosphere: 0, value: 0 });
 
   // Back navigation — compute where "back" should go based on current step
   const isBoutique = config?.businessType === "BOUTIQUE";
+  const selectedServer = selectedServers[0] ?? null;
+  const selectedServerLabel = selectedServers.length === 0
+    ? "l'équipe"
+    : selectedServers.map(s => s.name).join(", ");
   const getBackTarget = useCallback((): Step | null => {
     switch (step) {
       case "rating": return "server";
@@ -268,19 +282,33 @@ export default function PublicReviewPage() {
     if (serverParam) {
       const found = config.servers.find((s) => s.id === serverParam);
       if (found) {
-        setSelectedServer(found);
+        setSelectedServers([found]);
         setStep("rating");
         setNfcServerBanner(true);
       }
     } else if (config.businessType === "BOUTIQUE" && config.servers.length === 0) {
       // Boutique with no named staff: skip server selection
-      setSelectedServer({ id: "team", name: "l'équipe", photoUrl: null });
+      setSelectedServers([{ id: "team", name: "l'équipe", photoUrl: null }]);
       setStep("rating");
     }
   }, [config, searchParams]);
 
-  const handleServerSelect = (s: Server) => {
-    setSelectedServer(s);
+  useEffect(() => {
+    if (config?.tipsEnabled === false && step === "tip") {
+      setStep("claim");
+    }
+  }, [config?.tipsEnabled, step]);
+
+  const handleServerToggle = (s: Server) => {
+    setSelectedServers(prev => {
+      if (s.id === "team") return [s];
+      const exists = prev.some(server => server.id === s.id);
+      const next = exists ? prev.filter(server => server.id !== s.id) : [...prev.filter(server => server.id !== "team"), s];
+      return next;
+    });
+  };
+
+  const handleServerStepContinue = () => {
     setStep("rating");
   };
 
@@ -292,8 +320,8 @@ export default function PublicReviewPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amountCents,
-          serverName: selectedServer?.name || "L'équipe",
-          serverId: selectedServer?.id === "team" ? undefined : selectedServer?.id,
+          serverName: selectedServers.length > 0 ? selectedServerLabel : "L'équipe",
+          serverId: selectedServers.length === 1 && selectedServer?.id !== "team" ? selectedServer?.id : undefined,
         })
       });
       const data = await res.json();
@@ -330,7 +358,7 @@ export default function PublicReviewPage() {
         photoIds: (dishPhotos[menuItemId] ?? []).map(p => p.id),
       }));
 
-    const hasServerRating = ratings.service > 0 && selectedServer && selectedServer.id !== "team";
+    const hasServerRating = ratings.service > 0 && selectedServers.length === 1 && selectedServer && selectedServer.id !== "team";
 
     if (dishReviews.length === 0 && !hasServerRating) return;
 
@@ -348,7 +376,7 @@ export default function PublicReviewPage() {
     } catch {
       // silencieux — le client reste dans le flow review même si l'enregistrement échoue
     }
-  }, [dishRatings, dishComments, dishPhotos, ratings.service, selectedServer, params.slug, serverComment]);
+  }, [dishRatings, dishComments, dishPhotos, ratings.service, selectedServer, selectedServers.length, params.slug, serverComment]);
 
   // Upload d'une photo de plat par le client (5 MB max, accepté côté API)
   const uploadDishPhoto = useCallback(async (menuItemId: string, file: File) => {
@@ -417,7 +445,7 @@ export default function PublicReviewPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         restaurantId: config?.restaurant.id,
-        serverName: selectedServer?.name || "l'équipe",
+        serverName: selectedServerLabel,
         ratings,
         history,
         businessType: config?.businessType ?? "RESTAURANT",
@@ -545,6 +573,9 @@ export default function PublicReviewPage() {
   );
   if (!config) return null;
   const voucher = normalizeVoucher(config);
+  const tipsEnabled = config.tipsEnabled !== false;
+  const quickTipAmounts = normalizeQuickTipAmounts(config);
+  const goToPostReviewStep = () => setStep(tipsEnabled ? "tip" : "claim");
   const backTarget = getBackTarget();
 
   const restaurantPhotos = (config.restaurant.photos ?? []).map(p => ({
@@ -600,7 +631,7 @@ export default function PublicReviewPage() {
 
       {step === "server" && (
         <div className="animate-fade-in space-y-6">
-          {/* Google Review direct CTA — if configured */}
+          {/* Lien Google direct — si configuré dans les paramètres */}
           {config.googleReviewLink && (
             <a
               href={config.googleReviewLink}
@@ -609,13 +640,12 @@ export default function PublicReviewPage() {
               className="flex items-center justify-between w-full px-5 py-4 rounded-2xl bg-[#1a1a2e] border border-white/[0.08] hover:border-orange-500/40 hover:bg-orange-500/5 transition-all group"
             >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-lg shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
                   <svg viewBox="0 0 48 48" width="20" height="20">
                     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
                     <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
                     <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
                     <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                    <path fill="none" d="M0 0h48v48H0z"/>
                   </svg>
                 </div>
                 <div>
@@ -623,30 +653,62 @@ export default function PublicReviewPage() {
                   <div className="text-[11px] text-white/35 leading-tight">Rapide · Directement sur Google Maps</div>
                 </div>
               </div>
-              <svg className="w-4 h-4 text-white/30 group-hover:text-orange-400 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              <svg className="w-4 h-4 text-white/30 group-hover:text-orange-400 transition-colors shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             </a>
           )}
 
-          <h2 className="text-xl font-bold text-center">
-            {isBoutique ? "Qui vous a accueilli ?" : "Qui s'est occupé de vous ?"}
-          </h2>
+          <div className="text-center space-y-2">
+            <h2 className="text-xl font-bold">
+              {isBoutique ? "Qui vous a accueilli ?" : "Qui s'est occupé de vous ?"}
+            </h2>
+            <p className="text-sm text-white/50">Sélectionnez une ou plusieurs personnes, ou passez cette étape.</p>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             {(config.servers.length ? config.servers : [{ id: "team", name: "L'équipe", photoUrl: null }]).map(s => (
-              <button
-                key={s.id}
-                onClick={() => handleServerSelect(s)}
-                className="bg-white/5 border border-white/10 hover:border-orange-500 rounded-2xl p-4 flex flex-col items-center gap-3 transition-colors"
-              >
-                 <div className="w-16 h-16 rounded-full bg-white/10 overflow-hidden flex items-center justify-center text-xl font-bold text-white/40">
-                  <AvatarImage
-                    src={resolveAssetUrl(s.photoUrl)}
-                    alt={s.name}
-                    fallback={s.name.charAt(0)}
-                  />
-                </div>
-                <span className="font-semibold">{s.name}</span>
-              </button>
+              (() => {
+                const selected = selectedServers.some(server => server.id === s.id);
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => handleServerToggle(s)}
+                    className={`relative border rounded-2xl p-4 flex flex-col items-center gap-3 transition-colors ${selected ? "bg-orange-500/15 border-orange-500 text-white" : "bg-white/5 border-white/10 hover:border-orange-500"}`}
+                  >
+                    {selected && (
+                      <span className="absolute right-3 top-3 w-5 h-5 rounded-full bg-orange-500 text-white text-xs font-black flex items-center justify-center">✓</span>
+                    )}
+                    <div className="w-16 h-16 rounded-full bg-white/10 overflow-hidden flex items-center justify-center text-xl font-bold text-white/40">
+                      <AvatarImage
+                        src={resolveAssetUrl(s.photoUrl)}
+                        alt={s.name}
+                        fallback={s.name.charAt(0)}
+                      />
+                    </div>
+                    <span className="font-semibold text-center">{s.name}</span>
+                  </button>
+                );
+              })()
             ))}
+          </div>
+          {selectedServers.length > 0 && (
+            <div className="rounded-2xl border border-orange-500/20 bg-orange-500/10 px-4 py-3 text-sm text-orange-100">
+              Message groupé pour <strong>{selectedServerLabel}</strong>
+            </div>
+          )}
+          <div className="space-y-3 pt-2">
+            <button
+              disabled={selectedServers.length === 0}
+              onClick={handleServerStepContinue}
+              className="w-full py-4 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:hover:bg-orange-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-orange-500/20"
+            >
+              Continuer
+            </button>
+            <button
+              onClick={() => { setSelectedServers([]); setStep("rating"); }}
+              className="w-full text-sm text-white/40 hover:text-white transition-colors underline underline-offset-4"
+            >
+              Passer cette étape
+            </button>
           </div>
         </div>
       )}
@@ -657,7 +719,7 @@ export default function PublicReviewPage() {
           {nfcServerBanner && selectedServer && (
             <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl px-4 py-2.5 text-center -mt-2">
               <p className="text-sm text-orange-300 font-medium">
-                Vous évaluez <strong>{selectedServer.name}</strong>
+                Vous évaluez <strong>{selectedServerLabel}</strong>
               </p>
             </div>
           )}
@@ -677,7 +739,7 @@ export default function PublicReviewPage() {
           </div>
 
           {/* Commentaire libre sur le serveur — apparait si la note Service est <= 3 */}
-          {ratings.service > 0 && ratings.service <= 3 && selectedServer && selectedServer.id !== "team" && (
+          {ratings.service > 0 && ratings.service <= 3 && selectedServers.length === 1 && selectedServer && selectedServer.id !== "team" && (
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 space-y-2">
               <label className="text-xs font-bold text-amber-300 uppercase tracking-wider">
                 {selectedServer.name} — qu'est-ce qui n'a pas marché ?
@@ -702,10 +764,10 @@ export default function PublicReviewPage() {
             </button>
             {!isBoutique && (
               <button
-                onClick={() => setStep("tip")}
+                onClick={goToPostReviewStep}
                 className="w-full mt-4 text-sm text-white/40 hover:text-white transition-colors underline underline-offset-4"
               >
-                Passer l'avis et laisser juste un pourboire
+                {tipsEnabled ? "Passer l'avis et laisser juste un pourboire" : "Passer l'avis"}
               </button>
             )}
           </div>
@@ -1070,7 +1132,7 @@ export default function PublicReviewPage() {
 
               {/* Continue button */}
               <button
-                onClick={() => setStep("tip")}
+                onClick={goToPostReviewStep}
                 className="w-full py-4 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-2xl transition-all shadow-lg shadow-orange-500/20 mt-2"
               >
                 Continuer
@@ -1080,11 +1142,11 @@ export default function PublicReviewPage() {
         </div>
       )}
 
-      {step === "tip" && (
+      {step === "tip" && tipsEnabled && (
         <div className="animate-fade-in space-y-6">
           <div className="text-center mb-6">
             <h2 className="text-xl font-bold mb-2">Avant de partir...</h2>
-            <p className="text-white/50 text-sm">Le service de {selectedServer?.name || "l'équipe"} vous a plu ? Laissez un pourboire rapide et 100% sécurisé.</p>
+            <p className="text-white/50 text-sm">Le service de {selectedServerLabel} vous a plu ? Laissez un pourboire rapide et 100% sécurisé.</p>
           </div>
 
           <div className="bg-white/5 border border-white/10 rounded-2xl p-5 text-center">
@@ -1106,7 +1168,7 @@ export default function PublicReviewPage() {
              
              
              <div className="grid grid-cols-2 gap-3 mb-3">
-               {[200, 300, 500, 1000].map(cents => (
+                {quickTipAmounts.map(cents => (
                  <button
                    key={cents}
                    disabled={tipLoading}
