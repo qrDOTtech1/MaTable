@@ -41,6 +41,8 @@ export default function ServersPage() {
   const [pinSaving, setPinSaving] = useState(false);
   const [slug, setSlug] = useState<string | null>(null);
   const [nfcQrCodes, setNfcQrCodes] = useState<Record<string, string>>({});
+  const [nfcWriting, setNfcWriting] = useState<string | null>(null);
+  const [nfcWritten, setNfcWritten] = useState<string | null>(null);
 
   useEffect(() => {
     api<{ restaurant: { slug?: string | null } }>("/api/pro/me")
@@ -161,6 +163,26 @@ export default function ServersPage() {
 
   const removeScheduleRow = (idx: number) => {
     setEditingSchedules(p => p.filter((_, i) => i !== idx));
+  };
+
+  const writeNfc = async (serverId: string, serverName: string) => {
+    if (!slug) return;
+    if (!("NDEFReader" in window)) {
+      alert("L'écriture NFC n'est disponible que sur Chrome pour Android.");
+      return;
+    }
+    const url = `https://matable.pro/r/${slug}/review?server=${serverId}`;
+    try {
+      setNfcWriting(serverId);
+      const ndef = new (window as any).NDEFReader();
+      await ndef.write({ records: [{ recordType: "url", data: url }] });
+      setNfcWritten(serverId);
+      setTimeout(() => setNfcWritten(null), 3000);
+    } catch (err: any) {
+      alert(`Écriture NFC annulée : ${err.message ?? "Erreur inconnue"}`);
+    } finally {
+      setNfcWriting(null);
+    }
   };
 
   const del = async (id: string) => {
@@ -358,7 +380,7 @@ export default function ServersPage() {
                       </div>
                       <div className="space-y-2 min-w-0">
                         <p className="text-xs text-white/50 leading-relaxed">
-                          À imprimer sur la carte NFC ou à afficher en caisse. Le client scanne → l'avis est attribué à{" "}
+                          À imprimer ou encoder sur carte NFC. Le client scanne → avis attribué à{" "}
                           <strong className="text-white/70">{servers.find((s) => s.id === editingId)?.name}</strong>.
                         </p>
                         <a
@@ -376,6 +398,30 @@ export default function ServersPage() {
                       Génération du QR…
                     </div>
                   )}
+
+                  {/* Write NFC button */}
+                  <div className="space-y-1.5">
+                    <button
+                      type="button"
+                      onClick={() => writeNfc(editingId!, servers.find((s) => s.id === editingId)?.name ?? "")}
+                      disabled={nfcWriting === editingId}
+                      className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-2 bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 rounded-lg text-blue-300 transition-colors disabled:opacity-60"
+                    >
+                      {nfcWriting === editingId ? (
+                        <>
+                          <span className="w-3 h-3 border-2 border-blue-300 border-t-transparent rounded-full animate-spin shrink-0" />
+                          Approchez la carte NFC…
+                        </>
+                      ) : nfcWritten === editingId ? (
+                        "✅ Carte encodée !"
+                      ) : (
+                        "📱 Encoder la carte NFC"
+                      )}
+                    </button>
+                    <p className="text-[11px] text-white/25 leading-relaxed">
+                      ⚠ Réservé à <strong className="text-white/35">Chrome sur Android</strong> — sur iPhone, utilisez l'app <em>NFC Tools</em> et collez l'URL ci-dessus.
+                    </p>
+                  </div>
                 </div>
               )}
               </div>
