@@ -36,13 +36,20 @@ export default function ChainDashboardPage() {
   const [saveStatus,  setSaveStatus]  = useState<"idle" | "saving" | "saved">("idle");
   const [accessLoading, setAccessLoading] = useState<string | null>(null);
 
-  // Link-establishment modal
+  // Link-establishment modal (button)
   const [showLink, setShowLink]       = useState(false);
   const [linkSlug, setLinkSlug]       = useState("");
   const [linkToken, setLinkToken]     = useState("");
   const [linkLoading, setLinkLoading] = useState(false);
   const [linkError, setLinkError]     = useState<string | null>(null);
   const [linkSuccess, setLinkSuccess] = useState(false);
+
+  // Drag-and-drop link — captures drop position on map
+  const [linkDrop, setLinkDrop] = useState<{ lat: number; lng: number } | null>(null);
+  const [dropSlug, setDropSlug] = useState("");
+  const [dropToken, setDropToken] = useState("");
+  const [dropLoading, setDropLoading] = useState(false);
+  const [dropError, setDropError] = useState<string | null>(null);
 
   const saveDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -128,6 +135,42 @@ export default function ChainDashboardPage() {
       setLinkError(msg[err.message] ?? "Erreur lors de l'ajout.");
     } finally {
       setLinkLoading(false);
+    }
+  };
+
+  // ── Drop on map → link + place in one action ──────────────────────────────
+  const handleLinkDrop = useCallback((lat: number, lng: number) => {
+    setLinkDrop({ lat, lng });
+    setDropSlug("");
+    setDropToken("");
+    setDropError(null);
+  }, []);
+
+  const handleDropSave = async () => {
+    if (!linkDrop || !dropSlug.trim() || !dropToken.trim()) return;
+    setDropLoading(true);
+    setDropError(null);
+    try {
+      const { restaurant: linked } = await chainApi<{ ok: boolean; restaurant: { id: string; name: string } }>("/restaurants/link", {
+        method: "POST",
+        body: JSON.stringify({ slug: dropSlug.trim(), proToken: dropToken.trim() }),
+      });
+      // Immediately place the restaurant at the drop position
+      await chainApi(`/restaurants/${linked.id}/map-position`, {
+        method: "PATCH",
+        body: JSON.stringify({ lat: linkDrop.lat, lng: linkDrop.lng }),
+      });
+      setLinkDrop(null);
+      await load();
+    } catch (err: any) {
+      const msg: Record<string, string> = {
+        restaurant_not_found: "Aucun établissement trouvé avec ce slug.",
+        invalid_pro_token: "Token pro invalide.",
+        already_in_chain: "Déjà rattaché à cette chaîne.",
+      };
+      setDropError(msg[err.message] ?? "Erreur lors du rattachement.");
+    } finally {
+      setDropLoading(false);
     }
   };
 
@@ -266,9 +309,29 @@ export default function ChainDashboardPage() {
             {restaurants.length === 0 && (
               <div className="p-6 text-center text-white/25 text-sm">
                 <p className="text-3xl mb-2">🏢</p>
-                Aucun établissement. Cliquez <strong className="text-white/40">Ajouter</strong> pour rattacher votre premier établissement.
+                Aucun établissement. Cliquez <strong className="text-white/40">Ajouter</strong> ou glissez le badge ci-dessous sur la carte.
               </div>
             )}
+          </div>
+
+          {/* ── Drag-to-map widget ───────────────────────────────────────── */}
+          <div className="shrink-0 p-3 border-t border-white/[0.06]">
+            <p className="text-[10px] text-white/25 uppercase tracking-wider font-bold mb-2 text-center">Glisser-déposer sur la carte</p>
+            <div
+              draggable
+              onDragStart={e => {
+                e.dataTransfer.effectAllowed = "copy";
+                e.dataTransfer.setData("text/plain", "link-establishment");
+              }}
+              className="flex items-center justify-center gap-2.5 w-full py-3 rounded-xl border-2 border-dashed border-orange-500/30 hover:border-orange-500/60 bg-orange-500/5 hover:bg-orange-500/10 text-orange-400 cursor-grab active:cursor-grabbing transition-all select-none group"
+              title="Glissez ce badge sur la carte pour placer un nouvel établissement"
+            >
+              <span className="text-2xl group-active:scale-125 transition-transform">🏢</span>
+              <div className="text-left">
+                <div className="text-xs font-bold leading-tight">Nouvel établissement</div>
+                <div className="text-[10px] text-orange-400/50 leading-tight">Glisser sur la carte</div>
+              </div>
+            </div>
           </div>
         </aside>
 
@@ -306,7 +369,66 @@ export default function ChainDashboardPage() {
               onPlaced={handlePlaced}
               onDragEnd={handleDragEnd}
               onAccess={handleAccess}
+              onLinkDrop={handleLinkDrop}
             />
+
+            {/* Drop inline form — appears after drag-drop */}
+            {linkDrop && (
+              <div className="absolute inset-0 z-[1500] flex items-center justify-center p-6 pointer-events-none">
+                <div className="pointer-events-auto w-full max-w-sm bg-[#0e0e1a]/98 border border-orange-500/30 rounded-2xl p-5 shadow-2xl shadow-orange-500/10 backdrop-blur-xl">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center text-xl shrink-0">🏢</div>
+                    <div>
+                      <div className="font-black text-sm text-white">Rattacher et placer</div>
+                      <div className="text-[11px] text-white/40 mt-0.5">
+                        📍 {linkDrop.lat.toFixed(4)}, {linkDrop.lng.toFixed(4)}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setLinkDrop(null)}
+                      className="ml-auto text-white/30 hover:text-white text-lg leading-none"
+                    >✕</button>
+                  </div>
+
+                  <div className="space-y-2.5 mb-4">
+                    <input
+                      autoFocus
+                      value={dropSlug}
+                      onChange={e => setDropSlug(e.target.value)}
+                      placeholder="Slug de l'établissement"
+                      className="w-full bg-white/5 border border-white/10 focus:border-orange-500/60 rounded-xl px-3 py-2.5 text-sm text-white font-mono placeholder-white/20 outline-none"
+                    />
+                    <input
+                      value={dropToken}
+                      onChange={e => setDropToken(e.target.value)}
+                      placeholder="Token pro (depuis Paramètres → API)"
+                      className="w-full bg-white/5 border border-white/10 focus:border-orange-500/60 rounded-xl px-3 py-2.5 text-xs text-white font-mono placeholder-white/20 outline-none"
+                      onKeyDown={e => e.key === "Enter" && handleDropSave()}
+                    />
+                  </div>
+
+                  {dropError && (
+                    <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-400">{dropError}</div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setLinkDrop(null)}
+                      className="flex-1 py-2.5 text-sm text-white/40 hover:text-white border border-white/10 rounded-xl transition-colors"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={handleDropSave}
+                      disabled={dropLoading || !dropSlug.trim() || !dropToken.trim()}
+                      className="flex-1 py-2.5 text-sm font-bold bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white rounded-xl transition-colors"
+                    >
+                      {dropLoading ? "…" : "📌 Rattacher ici"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Bottom legend */}
@@ -317,7 +439,7 @@ export default function ChainDashboardPage() {
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full bg-purple-500 opacity-80" /> Boutique
             </span>
-            <span className="ml-auto">Glissez les marqueurs pour repositionner · Les positions sont sauvegardées automatiquement</span>
+            <span className="ml-auto">Glissez les marqueurs pour repositionner · Glissez 🏢 (barre latérale) sur la carte pour ajouter · Sauvegarde auto</span>
           </div>
         </main>
       </div>

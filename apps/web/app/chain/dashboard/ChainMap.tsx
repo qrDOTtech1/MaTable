@@ -12,6 +12,7 @@ type Props = {
   onPlaced: (id: string, lat: number, lng: number) => void;
   onDragEnd: (id: string, lat: number, lng: number) => void;
   onAccess: (id: string) => void;
+  onLinkDrop?: (lat: number, lng: number) => void;
 };
 
 function fmtEur(cents: number) {
@@ -20,11 +21,12 @@ function fmtEur(cents: number) {
   return `${(cents / 100).toFixed(2)} €`;
 }
 
-export default function ChainMap({ restaurants, placingId, onPlaced, onDragEnd, onAccess }: Props) {
+export default function ChainMap({ restaurants, placingId, onPlaced, onDragEnd, onAccess, onLinkDrop }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markersRef = useRef<Map<string, any>>(new Map());
   const [ready, setReady] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
 
   // Boot Leaflet
   useEffect(() => {
@@ -206,6 +208,26 @@ export default function ChainMap({ restaurants, placingId, onPlaced, onDragEnd, 
     return () => { delete (window as any).__chainAccess; };
   }, [onAccess]);
 
+  // ── Drag-and-drop from sidebar ──────────────────────────────────────────────
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!onLinkDrop) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    setDragOver(true);
+  };
+
+  const handleDragLeave = () => setDragOver(false);
+
+  const handleDrop = (e: React.DragEvent) => {
+    setDragOver(false);
+    if (!onLinkDrop || !mapRef.current || !L) return;
+    e.preventDefault();
+    const rect = containerRef.current!.getBoundingClientRect();
+    const point = L.point(e.clientX - rect.left, e.clientY - rect.top);
+    const latlng = mapRef.current.containerPointToLatLng(point);
+    onLinkDrop(latlng.lat, latlng.lng);
+  };
+
   return (
     <>
       <style>{`
@@ -226,15 +248,35 @@ export default function ChainMap({ restaurants, placingId, onPlaced, onDragEnd, 
         .leaflet-control-zoom a:hover { background: rgba(255,255,255,.1) !important; }
       `}</style>
       <div
-        ref={containerRef}
-        className="w-full h-full rounded-xl overflow-hidden"
-        style={{ minHeight: 400 }}
-      />
-      {!ready && (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a12]/80 rounded-xl">
-          <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
+        className="w-full h-full relative"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <div
+          ref={containerRef}
+          className="w-full h-full rounded-xl overflow-hidden"
+          style={{ minHeight: 400 }}
+        />
+
+        {/* Drag-over overlay */}
+        {dragOver && (
+          <div className="absolute inset-0 rounded-xl z-[900] pointer-events-none flex items-center justify-center"
+            style={{ background: "rgba(249,115,22,0.12)", border: "2px dashed rgba(249,115,22,0.7)" }}>
+            <div className="flex flex-col items-center gap-2 bg-[#0a0a12]/90 px-8 py-5 rounded-2xl border border-orange-500/40 shadow-2xl">
+              <span className="text-5xl animate-bounce">🏢</span>
+              <span className="text-orange-400 font-bold text-base">Déposez ici pour placer</span>
+              <span className="text-white/40 text-xs">Définit la position sur la carte</span>
+            </div>
+          </div>
+        )}
+
+        {!ready && (
+          <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a12]/80 rounded-xl">
+            <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+      </div>
     </>
   );
 }
