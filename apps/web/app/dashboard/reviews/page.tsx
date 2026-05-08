@@ -30,8 +30,22 @@ const FLAG_LABELS: Record<string, { label: string; color: string }> = {
 type ChatMessage = { role: "ai" | "user"; content: string };
 type CustomerReview = { id: string; serverName: string; ratings: any; reviewText: string; chatHistory?: ChatMessage[] | null; createdAt: string };
 type ServerTip = { id: string; serverName: string; amountCents: number; createdAt: string };
-type RestaurantConfig = { id: string; slug: string; name: string; tipsEnabled?: boolean; googleReviewLink?: string; reviewVoucherConfig?: { active: boolean; title: string; description: string; code: string } };
+type RestaurantConfig = { id: string; slug: string; name: string; tipsEnabled?: boolean; googleReviewLink?: string; reviewVoucherConfig?: { active: boolean; title: string; description: string; code: string; tipAmountsCents?: number[] } };
 type ServerData = { id: string; name: string; photoUrl: string | null; active: boolean; avgRating: number | null; reviewsCount: number };
+
+const DEFAULT_QUICK_TIP_AMOUNTS = ["2", "3", "5", "10"];
+
+function formatTipAmountInput(cents: number) {
+  const euros = cents / 100;
+  return Number.isInteger(euros) ? `${euros}` : euros.toFixed(2).replace(".", ",");
+}
+
+function sanitizeQuickTipAmounts(amounts: string[]) {
+  const cents = amounts
+    .map((amount) => Math.round(Number(amount.replace(",", ".")) * 100))
+    .filter((amount) => Number.isFinite(amount) && amount >= 100 && amount <= 50000);
+  return Array.from(new Set(cents)).slice(0, 4);
+}
 
 type DayStats = {
   date: string;
@@ -295,6 +309,7 @@ export default function ReviewsPage() {
   // Campaign Form State
   const [googleLink, setGoogleLink] = useState("");
   const [tipsEnabled, setTipsEnabled] = useState(true);
+  const [quickTipAmounts, setQuickTipAmounts] = useState(DEFAULT_QUICK_TIP_AMOUNTS);
   const [voucherActive, setVoucherActive] = useState(false);
   const [voucherTitle, setVoucherTitle] = useState("");
   const [voucherDesc, setVoucherDesc] = useState("");
@@ -343,6 +358,9 @@ export default function ReviewsPage() {
           setVoucherTitle(r.restaurant.reviewVoucherConfig.title || "");
           setVoucherDesc(r.restaurant.reviewVoucherConfig.description || "");
           setVoucherCode(r.restaurant.reviewVoucherConfig.code || "");
+          if (Array.isArray(r.restaurant.reviewVoucherConfig.tipAmountsCents) && r.restaurant.reviewVoucherConfig.tipAmountsCents.length > 0) {
+            setQuickTipAmounts(r.restaurant.reviewVoucherConfig.tipAmountsCents.slice(0, 4).map(formatTipAmountInput));
+          }
         }
         if (r.restaurant.slug) {
           QRCode.toDataURL(`https://matable.pro/r/${r.restaurant.slug}/review`, { width: 400, margin: 2 })
@@ -495,7 +513,13 @@ export default function ReviewsPage() {
         body: JSON.stringify({
           googleReviewLink: googleLink,
           tipsEnabled,
-          reviewVoucherConfig: { active: voucherActive, title: voucherTitle, description: voucherDesc, code: voucherCode }
+          reviewVoucherConfig: {
+            active: voucherActive,
+            title: voucherTitle,
+            description: voucherDesc,
+            code: voucherCode,
+            tipAmountsCents: sanitizeQuickTipAmounts(quickTipAmounts),
+          }
         })
       });
       alert("Campagne sauvegardée !");
@@ -889,7 +913,22 @@ export default function ReviewsPage() {
               <div className={`space-y-3 ${!tipsEnabled && "opacity-40"}`}>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                   <div className="text-sm font-semibold text-white/80">Montants rapides</div>
-                  <div className="text-xs text-white/40 mt-1">2 EUR, 3 EUR, 5 EUR et 10 EUR.</div>
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    {quickTipAmounts.map((amount, index) => (
+                      <div key={index} className="relative">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={amount}
+                          onChange={e => setQuickTipAmounts(prev => prev.map((v, i) => i === index ? e.target.value : v))}
+                          placeholder={`${DEFAULT_QUICK_TIP_AMOUNTS[index]} EUR`}
+                          className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 pr-9 text-sm text-white placeholder-white/25"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/35">EUR</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-xs text-white/40 mt-2">1 EUR minimum. Laissez un champ vide pour retirer un choix rapide.</div>
                 </div>
                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3">
                   <div className="text-sm font-semibold text-emerald-300">Champ libre conserve</div>

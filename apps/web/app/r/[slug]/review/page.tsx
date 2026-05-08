@@ -11,7 +11,7 @@ type Config = {
   restaurant: { id: string; name: string; photos?: RestaurantPhoto[] };
   googleReviewLink: string | null;
   tipsEnabled?: boolean;
-  reviewVoucherConfig: { active?: boolean | string; title?: string; description?: string; code?: string } | null;
+  reviewVoucherConfig: { active?: boolean | string; title?: string; description?: string; code?: string; tipAmountsCents?: number[] } | null;
   servers: Server[];
   businessType?: string;
   reviewCustomQuestions?: string | null;
@@ -123,6 +123,15 @@ function normalizeVoucher(config: Config | null) {
     title: `${voucher.title ?? "Merci pour votre avis !"}`.trim() || "Merci pour votre avis !",
     description: `${voucher.description ?? "Présentez ce code lors de votre prochain passage."}`.trim() || "Présentez ce code lors de votre prochain passage.",
   };
+}
+
+function normalizeQuickTipAmounts(config: Config | null) {
+  const amounts = config?.reviewVoucherConfig?.tipAmountsCents;
+  if (!Array.isArray(amounts)) return [200, 300, 500, 1000];
+  const validAmounts = amounts
+    .filter((amount) => Number.isFinite(amount) && amount >= 100 && amount <= 50000)
+    .slice(0, 4);
+  return validAmounts.length > 0 ? validAmounts : [200, 300, 500, 1000];
 }
 
 function parseDraftsFromText(text: string): Drafts | null {
@@ -553,6 +562,7 @@ export default function PublicReviewPage() {
   if (!config) return null;
   const voucher = normalizeVoucher(config);
   const tipsEnabled = config.tipsEnabled !== false;
+  const quickTipAmounts = normalizeQuickTipAmounts(config);
   const goToPostReviewStep = () => setStep(tipsEnabled ? "tip" : "claim");
   const backTarget = getBackTarget();
 
@@ -1088,7 +1098,7 @@ export default function PublicReviewPage() {
              
              
              <div className="grid grid-cols-2 gap-3 mb-3">
-               {[200, 300, 500, 1000].map(cents => (
+                {quickTipAmounts.map(cents => (
                  <button
                    key={cents}
                    disabled={tipLoading}
