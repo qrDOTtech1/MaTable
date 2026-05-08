@@ -34,6 +34,15 @@ export function Footer() {
           <Link href="/confidentialite" className="hover:text-white transition-colors">Confidentialite</Link>
           <Link href="/mentions-legales" className="hover:text-white transition-colors">Mentions legales</Link>
         </div>
+
+        {/* Espace chaîne */}
+        <Link
+          href="/chain/login"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/[0.07] hover:border-orange-500/30 bg-white/[0.02] hover:bg-orange-500/5 text-white/30 hover:text-orange-400 transition-all text-xs font-semibold tracking-wide group"
+        >
+          <span className="text-base group-hover:scale-110 transition-transform">🏢</span>
+          Espace chaîne d'établissements
+        </Link>
         
         <p className="text-xs text-white/30">
           © {new Date().getFullYear()} MaTable Pro — Tous droits reserves ·{" "}

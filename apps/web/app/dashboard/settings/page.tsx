@@ -534,6 +534,31 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      {/* Token API — pour rattachement à une chaîne */}
+      <section className="mt-8 max-w-2xl bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 space-y-3">
+        <div>
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">🔗 Token API <span className="text-xs font-normal text-white/30 bg-white/5 px-2 py-0.5 rounded-full">Chaîne d'établissements</span></h2>
+          <p className="text-xs text-white/40 mt-1 leading-relaxed">
+            Partagez ce token uniquement avec votre directeur de chaîne pour rattacher cet établissement à un espace groupe. Ce token prouve votre propriété de ce compte.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 bg-black/30 border border-white/[0.06] rounded-xl px-4 py-3">
+          <code className="font-mono text-[11px] text-white/50 flex-1 truncate" id="chain-token-display">
+            {typeof window !== "undefined" ? localStorage.getItem("atable_pro_token") ?? "—" : "—"}
+          </code>
+          <button
+            type="button"
+            onClick={() => {
+              const t = localStorage.getItem("atable_pro_token");
+              if (t) { navigator.clipboard.writeText(t); }
+            }}
+            className="text-xs font-semibold text-orange-400 hover:text-orange-300 transition-colors shrink-0"
+          >
+            📋 Copier
+          </button>
+        </div>
+      </section>
+
       {/* Galerie photos du restaurant */}
       <section className="mt-10 max-w-4xl bg-white/[0.03] border border-white/10 rounded-2xl p-6">
         <h2 className="text-lg font-bold text-white mb-1">Galerie du restaurant</h2>
