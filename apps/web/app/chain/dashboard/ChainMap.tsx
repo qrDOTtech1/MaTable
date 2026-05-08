@@ -156,7 +156,7 @@ export default function ChainMap({ restaurants, placingId, onPlaced, onDragEnd, 
               <div style="font-size:10px;color:rgba(255,255,255,.3);">CA cumulé</div>
             </div>
           </div>
-          ${r.avgRating > 0 ? `<div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:10px;">⭐ ${r.avgRating.toFixed(1)} / 5</div>` : ""}
+          ${r.avgRating > 0 ? `<div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:10px;">⭐ ${r.avgRating.toFixed(1)} / 5 <span style="color:rgba(255,255,255,.3);font-size:11px;">(${(r as any).reviewCount ?? 0} avis)</span></div>` : ""}
           <button
             onclick="window.__chainAccess && window.__chainAccess('${r.id}')"
             style="width:100%;padding:8px;background:#f97316;border:none;border-radius:8px;

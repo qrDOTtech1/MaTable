@@ -290,7 +290,10 @@ export default function ChainDashboardPage() {
                     {r.city && <p className="text-[11px] text-white/30 mt-0.5 ml-5">{r.city}</p>}
                   </div>
                   {r.avgRating > 0 && (
-                    <span className="text-[11px] text-yellow-400 font-semibold shrink-0">⭐ {r.avgRating.toFixed(1)}</span>
+                    <div className="flex flex-col items-end shrink-0">
+                      <span className="text-[11px] text-yellow-400 font-black leading-tight">⭐ {r.avgRating.toFixed(1)}</span>
+                      <span className="text-[10px] text-white/25 leading-tight">{r.reviewCount} avis</span>
+                    </div>
                   )}
                 </div>
 

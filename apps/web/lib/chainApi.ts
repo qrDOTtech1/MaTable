@@ -49,6 +49,7 @@ export type ChainRestaurant = {
   totalOrders: number;
   totalRevenueCents: number;
   avgRating: number;
+  reviewCount: number;
   ordersToday: number;
 };
 
