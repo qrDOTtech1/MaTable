@@ -637,6 +637,7 @@ export default function PublicReviewPage() {
               href={config.googleReviewLink}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => setTimeout(() => setStep("claim"), 300)}
               className="flex items-center justify-between w-full px-5 py-4 rounded-2xl bg-[#1a1a2e] border border-white/[0.08] hover:border-orange-500/40 hover:bg-orange-500/5 transition-all group"
             >
               <div className="flex items-center gap-3">
