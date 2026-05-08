@@ -10,6 +10,7 @@ type RestaurantPhoto = { id: string; url: string };
 type Config = {
   restaurant: { id: string; name: string; photos?: RestaurantPhoto[] };
   googleReviewLink: string | null;
+  tipsEnabled?: boolean;
   reviewVoucherConfig: { active?: boolean | string; title?: string; description?: string; code?: string } | null;
   servers: Server[];
   businessType?: string;
@@ -279,6 +280,12 @@ export default function PublicReviewPage() {
     }
   }, [config, searchParams]);
 
+  useEffect(() => {
+    if (config?.tipsEnabled === false && step === "tip") {
+      setStep("claim");
+    }
+  }, [config?.tipsEnabled, step]);
+
   const handleServerSelect = (s: Server) => {
     setSelectedServer(s);
     setStep("rating");
@@ -545,6 +552,8 @@ export default function PublicReviewPage() {
   );
   if (!config) return null;
   const voucher = normalizeVoucher(config);
+  const tipsEnabled = config.tipsEnabled !== false;
+  const goToPostReviewStep = () => setStep(tipsEnabled ? "tip" : "claim");
   const backTarget = getBackTarget();
 
   const restaurantPhotos = (config.restaurant.photos ?? []).map(p => ({
@@ -675,10 +684,10 @@ export default function PublicReviewPage() {
             </button>
             {!isBoutique && (
               <button
-                onClick={() => setStep("tip")}
+                onClick={goToPostReviewStep}
                 className="w-full mt-4 text-sm text-white/40 hover:text-white transition-colors underline underline-offset-4"
               >
-                Passer l'avis et laisser juste un pourboire
+                {tipsEnabled ? "Passer l'avis et laisser juste un pourboire" : "Passer l'avis"}
               </button>
             )}
           </div>
@@ -1043,7 +1052,7 @@ export default function PublicReviewPage() {
 
               {/* Continue button */}
               <button
-                onClick={() => setStep("tip")}
+                onClick={goToPostReviewStep}
                 className="w-full py-4 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-2xl transition-all shadow-lg shadow-orange-500/20 mt-2"
               >
                 Continuer
@@ -1053,7 +1062,7 @@ export default function PublicReviewPage() {
         </div>
       )}
 
-      {step === "tip" && (
+      {step === "tip" && tipsEnabled && (
         <div className="animate-fade-in space-y-6">
           <div className="text-center mb-6">
             <h2 className="text-xl font-bold mb-2">Avant de partir...</h2>

@@ -30,7 +30,7 @@ const FLAG_LABELS: Record<string, { label: string; color: string }> = {
 type ChatMessage = { role: "ai" | "user"; content: string };
 type CustomerReview = { id: string; serverName: string; ratings: any; reviewText: string; chatHistory?: ChatMessage[] | null; createdAt: string };
 type ServerTip = { id: string; serverName: string; amountCents: number; createdAt: string };
-type RestaurantConfig = { id: string; slug: string; name: string; googleReviewLink?: string; reviewVoucherConfig?: { active: boolean; title: string; description: string; code: string } };
+type RestaurantConfig = { id: string; slug: string; name: string; tipsEnabled?: boolean; googleReviewLink?: string; reviewVoucherConfig?: { active: boolean; title: string; description: string; code: string } };
 type ServerData = { id: string; name: string; photoUrl: string | null; active: boolean; avgRating: number | null; reviewsCount: number };
 
 type DayStats = {
@@ -294,6 +294,7 @@ export default function ReviewsPage() {
 
   // Campaign Form State
   const [googleLink, setGoogleLink] = useState("");
+  const [tipsEnabled, setTipsEnabled] = useState(true);
   const [voucherActive, setVoucherActive] = useState(false);
   const [voucherTitle, setVoucherTitle] = useState("");
   const [voucherDesc, setVoucherDesc] = useState("");
@@ -336,6 +337,7 @@ export default function ReviewsPage() {
       .then((r) => {
         setRestaurant(r.restaurant);
         setGoogleLink(r.restaurant.googleReviewLink || "");
+        setTipsEnabled(r.restaurant.tipsEnabled ?? true);
         if (r.restaurant.reviewVoucherConfig) {
           setVoucherActive(r.restaurant.reviewVoucherConfig.active || false);
           setVoucherTitle(r.restaurant.reviewVoucherConfig.title || "");
@@ -492,6 +494,7 @@ export default function ReviewsPage() {
         method: "PATCH",
         body: JSON.stringify({
           googleReviewLink: googleLink,
+          tipsEnabled,
           reviewVoucherConfig: { active: voucherActive, title: voucherTitle, description: voucherDesc, code: voucherCode }
         })
       });
@@ -833,8 +836,8 @@ export default function ReviewsPage() {
       )}
 
       {tab === "campaign" && (
-        <div className="grid md:grid-cols-2 gap-8">
-          <div className="space-y-6">
+        <div className="space-y-8">
+          <div className="grid lg:grid-cols-3 gap-6">
             <div className="card">
               <h3 className="font-bold mb-4 text-orange-400">1. Lien Google My Business</h3>
               <p className="text-sm text-white/50 mb-4">Lien exact vers la page de dépôt d'avis Google de votre établissement.</p>
@@ -873,7 +876,29 @@ export default function ReviewsPage() {
               </div>
             </div>
 
-            <button onClick={saveCampaign} disabled={saving} className="btn-primary w-full py-3">
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-sky-400">3. Pourboire</h3>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={tipsEnabled} onChange={e => setTipsEnabled(e.target.checked)} className="rounded border-white/20 bg-white/5 text-orange-500 focus:ring-orange-500/20" />
+                  <span className="text-sm text-white/70">Activer</span>
+                </label>
+              </div>
+              <p className="text-sm text-white/50 mb-4">Affiche une étape pourboire après l'avis IA, avec Apple Pay, Google Pay et carte.</p>
+
+              <div className={`space-y-3 ${!tipsEnabled && "opacity-40"}`}>
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <div className="text-sm font-semibold text-white/80">Montants rapides</div>
+                  <div className="text-xs text-white/40 mt-1">2 EUR, 3 EUR, 5 EUR et 10 EUR.</div>
+                </div>
+                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3">
+                  <div className="text-sm font-semibold text-emerald-300">Champ libre conserve</div>
+                  <div className="text-xs text-emerald-100/50 mt-1">Le client peut saisir son propre montant de pourboire.</div>
+                </div>
+              </div>
+            </div>
+
+            <button onClick={saveCampaign} disabled={saving} className="btn-primary w-full py-3 lg:col-span-3">
               {saving ? "Sauvegarde..." : "Enregistrer la campagne"}
             </button>
           </div>
