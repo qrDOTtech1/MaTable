@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { MODULES, DURATIONS, type DurationKey } from "./landingData";
+import PricingRequestModal from "./PricingRequestModal";
 
 /*
   Grille réelle (interne) — prix de référence = 12 mois
@@ -17,6 +18,7 @@ import { MODULES, DURATIONS, type DurationKey } from "./landingData";
 export default function PricingBuilder() {
   const [selected, setSelected] = useState<string[]>(["avis"]);
   const [duration, setDuration] = useState<DurationKey>("3m");
+  const [modalOpen, setModalOpen] = useState(false);
 
   const toggleModule = (id: string) => {
     if (id === "avis") return;
@@ -193,15 +195,37 @@ export default function PricingBuilder() {
             </div>
           </div>
 
-          <Link
-            href="/register"
-            className="block w-full py-4 bg-orange-500 hover:bg-orange-400 text-white rounded-xl font-bold text-lg text-center transition-all shadow-xl shadow-orange-500/20 hover:-translate-y-1"
-          >
-            Creer mon compte
-          </Link>
-          <p className="text-center text-xs text-white/40 mt-4">14 jours d'essai offerts · Sans carte bancaire.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="w-full py-4 bg-orange-500 hover:bg-orange-400 text-white rounded-xl font-bold text-base text-center transition-all shadow-xl shadow-orange-500/20 hover:-translate-y-1"
+            >
+              📩 Recevoir mon contrat
+            </button>
+            <Link
+              href="/register"
+              className="w-full py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-bold text-base text-center transition-all hover:-translate-y-1 flex items-center justify-center"
+            >
+              Essai gratuit 14 jours
+            </Link>
+          </div>
+          <p className="text-center text-xs text-white/40 mt-4">
+            <b className="text-white/60">Recevoir mon contrat</b> : Steven vous rappelle sous 24h ·
+            <b className="text-white/60 ml-2">Essai gratuit</b> : compte instantané sans carte bancaire.
+          </p>
         </div>
       </div>
+
+      <PricingRequestModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        selectedModules={selected}
+        engagement={duration}
+        monthlyHt={finalMonthly}
+        totalHt={isAnnualPay ? finalMonthly * 12 : finalMonthly * (duration === "3m" ? 3 : duration === "6m" ? 6 : duration === "9m" ? 9 : 12)}
+        volumePercent={volumePercent}
+      />
     </div>
   );
 }
