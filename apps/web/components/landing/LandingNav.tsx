@@ -27,7 +27,7 @@ export default function LandingNav() {
       >
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="text-2xl font-black text-white hover:opacity-80 transition-opacity">
-            MaTable <span className="text-orange-500">Pro</span>
+            MaTable<span className="text-orange-500">.Pro</span>
           </Link>
 
           {/* Desktop links */}

@@ -64,12 +64,12 @@ async function getPageData(slug: string): Promise<PageData | null> {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const data = await getPageData(slug);
-  if (!data?.restaurant) return { title: "Restaurant introuvable — Ma Table" };
+  if (!data?.restaurant) return { title: "Restaurant introuvable — MaTable.Pro" };
   const { restaurant, reviews } = data;
   const desc = restaurant.description
     ?? `Retrouvez le menu de ${restaurant.name}${restaurant.city ? ` à ${restaurant.city}` : ""}. Commandez en ligne via QR code.`;
   return {
-    title: `${restaurant.name} — Ma Table`,
+    title: `${restaurant.name} — MaTable.Pro`,
     description: desc,
     openGraph: {
       title: restaurant.name,
@@ -365,7 +365,7 @@ export default async function RestaurantPublicPage({ params }: { params: Promise
       <footer className="border-t border-white/5 mt-8 py-8 text-center">
         <p className="text-xs text-white/20">
           {restaurant.name} · Commande et paiement par QR code ·{" "}
-          <Link href="/" className="text-orange-400 hover:text-orange-300">Ma Table</Link>
+          <Link href="/" className="text-orange-400 hover:text-orange-300">MaTable.Pro</Link>
         </p>
       </footer>
     </div>

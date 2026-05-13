@@ -144,7 +144,7 @@ export default function LandingPage() {
             <div className="text-center md:text-left">
               <h2 className="mb-6 text-6xl font-black uppercase leading-none tracking-[-0.07em] text-orange-500 md:text-8xl">Et toi ?</h2>
               <p className="text-3xl font-black leading-tight text-white md:text-4xl">
-                Votre menu cartonne est muet face a un touriste. Ma Table, lui, parle la langue du telephone qui scanne.
+                Votre menu cartonne est muet face a un touriste. MaTable.Pro, lui, parle la langue du telephone qui scanne.
               </p>
               <p className="mt-8 text-2xl font-black leading-tight text-white md:text-3xl">
                 L'argent n'a pas de barriere de langue. Votre menu ne devrait pas en avoir non plus.
@@ -213,7 +213,7 @@ export default function LandingPage() {
             </h2>
 
             <p className="text-2xl md:text-3xl font-bold text-white/80 max-w-3xl mx-auto leading-snug">
-              Installez Ma Table. Si vous ne gagnez pas plus d'argent et ne gagnez pas de temps dans les 14 premiers jours, désinstallez-le. On s'inclinera.
+              Installez MaTable.Pro. Si vous ne gagnez pas plus d'argent et ne gagnez pas de temps dans les 14 premiers jours, désinstallez-le. On s'inclinera.
             </p>
           </motion.div>
         </section>

@@ -170,7 +170,7 @@ export default function FonctionnalitesPage() {
                   <thead>
                     <tr className="text-white/40 text-sm bg-white/[0.02]">
                       <th className="p-5 border-b border-white/10 font-bold w-1/2">Fonctionnalite</th>
-                      <th className="p-5 border-b border-white/10 text-center font-black text-orange-400">Ma Table</th>
+                      <th className="p-5 border-b border-white/10 text-center font-black text-orange-400">MaTable.Pro</th>
                       <th className="p-5 border-b border-white/10 text-center font-bold text-white/80">Concurrents SaaS</th>
                       <th className="p-5 border-b border-white/10 text-center font-bold text-white/50">Cahier / Papier</th>
                     </tr>
