@@ -43,16 +43,46 @@ export default function ServersPage() {
   const [nfcQrCodes, setNfcQrCodes] = useState<Record<string, string>>({});
   const [nfcWriting, setNfcWriting] = useState<string | null>(null);
   const [nfcWritten, setNfcWritten] = useState<string | null>(null);
+  const [serverUniqueQr, setServerUniqueQr] = useState<boolean>(true);
+  const [uniqueQrSaving, setUniqueQrSaving] = useState(false);
+  const [restaurantQrCode, setRestaurantQrCode] = useState<string | null>(null);
 
   useEffect(() => {
-    api<{ restaurant: { slug?: string | null } }>("/api/pro/me")
-      .then((r) => setSlug(r.restaurant.slug ?? null))
+    api<{ restaurant: { slug?: string | null; serverUniqueReviewQr?: boolean | null } }>("/api/pro/me")
+      .then((r) => {
+        setSlug(r.restaurant.slug ?? null);
+        setServerUniqueQr(r.restaurant.serverUniqueReviewQr ?? true);
+      })
       .catch(() => {});
   }, []);
 
   const reload = async () => {
     const r = await api<{ servers: Server[] }>("/api/pro/servers");
     setServers(r.servers);
+  };
+
+  // Generate restaurant-wide QR when serverUniqueQr is OFF
+  useEffect(() => {
+    if (serverUniqueQr || !slug) { setRestaurantQrCode(null); return; }
+    QRCode.toDataURL(`https://matable.pro/r/${slug}/review`, {
+      width: 300, margin: 1,
+      color: { dark: "#ffffff", light: "#0a0a0a" },
+    }).then(setRestaurantQrCode).catch(() => {});
+  }, [serverUniqueQr, slug]);
+
+  const toggleUniqueQr = async (val: boolean) => {
+    setUniqueQrSaving(true);
+    try {
+      await api("/api/pro/restaurant", {
+        method: "PATCH",
+        body: JSON.stringify({ serverUniqueReviewQr: val }),
+      });
+      setServerUniqueQr(val);
+    } catch {
+      setError("Impossible de sauvegarder le paramètre.");
+    } finally {
+      setUniqueQrSaving(false);
+    }
   };
 
   // Generate NFC QR codes for all servers once slug + servers are available
@@ -207,18 +237,91 @@ export default function ServersPage() {
         </div>
       )}
 
+      {/* ── Switch : ID unique par serveur ── */}
+      <div className="mb-6 rounded-xl border border-white/10 bg-white/5 p-4 flex items-start gap-4">
+        <button
+          type="button"
+          disabled={uniqueQrSaving}
+          onClick={() => toggleUniqueQr(!serverUniqueQr)}
+          className={`relative flex-shrink-0 w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 ${
+            serverUniqueQr ? "bg-orange-500" : "bg-white/20"
+          }`}
+          aria-checked={serverUniqueQr}
+          role="switch"
+        >
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+            serverUniqueQr ? "translate-x-6" : "translate-x-0"
+          }`} />
+        </button>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-white text-sm">ID unique par serveur</span>
+            {uniqueQrSaving && <span className="text-xs text-white/40 animate-pulse">Enregistrement…</span>}
+          </div>
+          {serverUniqueQr ? (
+            <p className="text-xs text-white/50 mt-0.5">
+              ✅ <strong className="text-orange-400">Activé</strong> — chaque serveur a son propre QR / NFC. Les avis Google sont attribués nominativement.
+            </p>
+          ) : (
+            <p className="text-xs text-white/50 mt-0.5">
+              ⚠️ <strong className="text-amber-400">Désactivé</strong> — un seul QR / NFC pour le restaurant entier. Impossible de créer des serveurs dans ce mode.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* ── Mode QR unique restaurant (serverUniqueQr OFF) ── */}
+      {!serverUniqueQr && slug && (
+        <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/5 p-6 space-y-4">
+          <h2 className="font-bold text-amber-400 text-sm">🪪 QR Code & NFC — Restaurant entier</h2>
+          <p className="text-xs text-white/50">Ce code unique dirige vos clients vers la page d'avis Google de votre restaurant, sans attribution à un serveur particulier.</p>
+          <div className="flex items-center gap-2 bg-black/30 border border-white/10 rounded-lg px-3 py-2">
+            <span className="font-mono text-[11px] text-white/60 flex-1 truncate">matable.pro/r/{slug}/review</span>
+            <button
+              type="button"
+              onClick={() => navigator.clipboard.writeText(`https://matable.pro/r/${slug}/review`)}
+              className="text-xs text-orange-400 hover:text-orange-300 transition-colors shrink-0 font-semibold"
+            >
+              📋 Copier
+            </button>
+          </div>
+          {restaurantQrCode ? (
+            <div className="flex items-center gap-4 p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
+              <div className="w-24 h-24 rounded-lg overflow-hidden border border-white/10 shrink-0">
+                <img src={restaurantQrCode} alt="QR restaurant" className="w-full h-full" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs text-white/50">QR code global du restaurant — à imprimer sur vos tables.</p>
+                <a
+                  href={restaurantQrCode}
+                  download="nfc-restaurant.png"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
+                >
+                  ⬇ Télécharger PNG
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-xs text-white/30">
+              <span className="w-4 h-4 border-2 border-white/20 border-t-transparent rounded-full animate-spin" />
+              Génération du QR…
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="grid md:grid-cols-2 gap-8 items-start">
         <div className="space-y-6">
-          <div className="rounded-lg border border-white/10 bg-white/5 flex gap-2 p-4">
+          <div className={`rounded-lg border flex gap-2 p-4 ${serverUniqueQr ? "border-white/10 bg-white/5" : "border-white/5 bg-white/[0.02] opacity-50 pointer-events-none"}`}>
             <input
               className="flex-1 border border-white/10 rounded-lg bg-white/5 px-3 py-2 text-sm text-white placeholder-white/50 focus:border-orange-500/50 focus:outline-none"
-              placeholder="Nom du serveur"
+              placeholder={serverUniqueQr ? "Nom du serveur" : "Désactivé — activez « ID unique par serveur »"}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && add()}
-              disabled={adding}
+              disabled={adding || !serverUniqueQr}
             />
-            <button className="px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-400 text-white font-semibold text-sm transition-all" onClick={add} disabled={adding || !newName.trim()}>
+            <button className="px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-400 text-white font-semibold text-sm transition-all" onClick={add} disabled={adding || !newName.trim() || !serverUniqueQr}>
               {adding ? "..." : "Ajouter"}
             </button>
           </div>
