@@ -46,6 +46,8 @@ export default function ServersPage() {
   const [serverUniqueQr, setServerUniqueQr] = useState<boolean>(true);
   const [uniqueQrSaving, setUniqueQrSaving] = useState(false);
   const [restaurantQrCode, setRestaurantQrCode] = useState<string | null>(null);
+  const [restaurantNfcWriting, setRestaurantNfcWriting] = useState(false);
+  const [restaurantNfcWritten, setRestaurantNfcWritten] = useState(false);
 
   useEffect(() => {
     api<{ restaurant: { slug?: string | null; serverUniqueReviewQr?: boolean | null } }>("/api/pro/me")
@@ -82,6 +84,26 @@ export default function ServersPage() {
       setError("Impossible de sauvegarder le paramètre.");
     } finally {
       setUniqueQrSaving(false);
+    }
+  };
+
+  const writeRestaurantNfc = async () => {
+    if (!slug) return;
+    if (!("NDEFReader" in window)) {
+      alert("L'écriture NFC n'est disponible que sur Chrome pour Android.");
+      return;
+    }
+    const url = `https://matable.pro/r/${slug}/review`;
+    try {
+      setRestaurantNfcWriting(true);
+      const ndef = new (window as any).NDEFReader();
+      await ndef.write({ records: [{ recordType: "url", data: url }] });
+      setRestaurantNfcWritten(true);
+      setTimeout(() => setRestaurantNfcWritten(false), 3000);
+    } catch (err: any) {
+      alert(`Écriture NFC annulée : ${err.message ?? "Erreur inconnue"}`);
+    } finally {
+      setRestaurantNfcWriting(false);
     }
   };
 
@@ -307,6 +329,26 @@ export default function ServersPage() {
               Génération du QR…
             </div>
           )}
+
+          {/* Bouton NFC + warning Chrome/Android */}
+          <div className="space-y-1.5">
+            <button
+              type="button"
+              onClick={writeRestaurantNfc}
+              disabled={restaurantNfcWriting}
+              className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-2 bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 rounded-lg text-blue-300 transition-colors disabled:opacity-60"
+            >
+              {restaurantNfcWriting ? (
+                <>
+                  <span className="w-3 h-3 border-2 border-blue-300 border-t-transparent rounded-full animate-spin shrink-0" />
+                  Approchez la carte NFC…
+                </>
+              ) : restaurantNfcWritten ? "✅ Carte encodée !" : "📱 Encoder la carte NFC"}
+            </button>
+            <p className="text-[11px] text-white/25 leading-relaxed">
+              ⚠ Réservé à <strong className="text-white/35">Chrome sur Android</strong> — sur iPhone, utilisez l'app <em>NFC Tools</em> et collez l'URL ci-dessus.
+            </p>
+          </div>
         </div>
       )}
 
