@@ -40,77 +40,122 @@ export default function PrintPage() {
     setTimeout(() => setCopied(null), 2000);
   };
 
-  // Generate & download PDF for one table (80mm wide, no print dialog)
-  const printSticker = async (t: Table) => {
+  // Core PDF builder — shared by both formats
+  const buildStickerPdf = async (t: Table, format: "auto" | "50x80") => {
     const qr = qrUrls[t.id];
     if (!qr) return;
     const hasNfc = nfcEnabled.has(t.id);
     const { jsPDF } = await import("jspdf");
 
-    const W = 80;   // mm
-    const pad = 6;  // mm
-    let y = pad;
+    const W = 80; // always 80mm wide
 
-    // Estimate total height
-    const qrSize = 58;
-    const extraLines = hasNfc ? 1 : 0;
-    const H = pad + 8 + 4 + 12 + 4 + 2 + qrSize + 2 + 2 + 8 + (extraLines * 6) + 6 + pad;
+    if (format === "50x80") {
+      // ── Compact 50×80mm — tout sur une seule ligne horizontale ──
+      const H = 50;
+      const qrSize = 38; // QR occupe toute la hauteur utile
+      const pdf = new jsPDF({ unit: "mm", format: [W, H], orientation: "landscape" });
 
-    const pdf = new jsPDF({ unit: "mm", format: [W, H], orientation: "portrait" });
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, W, H, "F");
 
-    // White background
-    pdf.setFillColor(255, 255, 255);
-    pdf.rect(0, 0, W, H, "F");
+      // Left: QR code
+      const qrX = 4;
+      const qrY = (H - qrSize) / 2;
+      pdf.addImage(qr, "PNG", qrX, qrY, qrSize, qrSize);
 
-    // "SCANNEZ POUR COMMANDER"
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(9);
-    pdf.setTextColor(55, 65, 81);
-    pdf.text("SCANNEZ POUR COMMANDER", W / 2, y + 5, { align: "center" });
-    y += 8;
+      // Right: text block
+      const textX = qrX + qrSize + 4;
+      const textW = W - textX - 3;
+      let ty = H / 2 - 10;
 
-    // "Table N"
-    pdf.setFontSize(26);
-    pdf.setTextColor(17, 17, 17);
-    pdf.text(`Table ${t.number}`, W / 2, y + 11, { align: "center" });
-    y += 14;
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(7);
+      pdf.setTextColor(55, 65, 81);
+      pdf.text("SCANNEZ POUR", textX, ty, { maxWidth: textW });
+      ty += 5;
+      pdf.text("COMMANDER", textX, ty, { maxWidth: textW });
+      ty += 7;
 
-    // Separator
-    pdf.setDrawColor(209, 213, 219);
-    pdf.setLineWidth(0.3);
-    pdf.line(4, y, W - 4, y);
-    y += 4;
+      pdf.setFontSize(16);
+      pdf.setTextColor(17, 17, 17);
+      pdf.text(`Table ${t.number}`, textX, ty, { maxWidth: textW });
+      ty += 7;
 
-    // QR code image
-    pdf.addImage(qr, "PNG", (W - qrSize) / 2, y, qrSize, qrSize);
-    y += qrSize + 4;
+      pdf.setFontSize(6.5);
+      pdf.setTextColor(234, 88, 12);
+      pdf.text("Scannez le QR code", textX, ty, { maxWidth: textW });
+      ty += 5;
 
-    // Separator
-    pdf.line(4, y, W - 4, y);
-    y += 4;
+      if (hasNfc) {
+        pdf.setFontSize(6);
+        pdf.setTextColor(79, 70, 229);
+        pdf.text("Ou posez votre tel. (NFC)", textX, ty, { maxWidth: textW });
+        ty += 5;
+      }
 
-    // CTA
-    pdf.setFontSize(8.5);
-    pdf.setTextColor(234, 88, 12);
-    pdf.text("SCANNEZ LE QR CODE", W / 2, y + 4, { align: "center" });
-    y += 7;
+      pdf.setFontSize(5.5);
+      pdf.setTextColor(156, 163, 175);
+      pdf.setFont("helvetica", "normal");
+      pdf.text("MaTable.Pro", textX, ty, { maxWidth: textW });
 
-    // NFC line
-    if (hasNfc) {
-      pdf.setFontSize(7.5);
-      pdf.setTextColor(79, 70, 229);
-      pdf.text("Ou posez votre telephone (NFC)", W / 2, y + 3.5, { align: "center" });
-      y += 6;
+      pdf.save(`table-${t.number}-50x80.pdf`);
+    } else {
+      // ── Auto height (tall format) ──
+      const pad = 6;
+      let y = pad;
+      const qrSize = 58;
+      const extraLines = hasNfc ? 1 : 0;
+      const H = pad + 8 + 4 + 12 + 4 + 2 + qrSize + 2 + 2 + 8 + (extraLines * 6) + 6 + pad;
+
+      const pdf = new jsPDF({ unit: "mm", format: [W, H], orientation: "portrait" });
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, W, H, "F");
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9);
+      pdf.setTextColor(55, 65, 81);
+      pdf.text("SCANNEZ POUR COMMANDER", W / 2, y + 5, { align: "center" });
+      y += 8;
+
+      pdf.setFontSize(26);
+      pdf.setTextColor(17, 17, 17);
+      pdf.text(`Table ${t.number}`, W / 2, y + 11, { align: "center" });
+      y += 14;
+
+      pdf.setDrawColor(209, 213, 219);
+      pdf.setLineWidth(0.3);
+      pdf.line(4, y, W - 4, y);
+      y += 4;
+
+      pdf.addImage(qr, "PNG", (W - qrSize) / 2, y, qrSize, qrSize);
+      y += qrSize + 4;
+
+      pdf.line(4, y, W - 4, y);
+      y += 4;
+
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(234, 88, 12);
+      pdf.text("SCANNEZ LE QR CODE", W / 2, y + 4, { align: "center" });
+      y += 7;
+
+      if (hasNfc) {
+        pdf.setFontSize(7.5);
+        pdf.setTextColor(79, 70, 229);
+        pdf.text("Ou posez votre telephone (NFC)", W / 2, y + 3.5, { align: "center" });
+        y += 6;
+      }
+
+      pdf.setFontSize(6.5);
+      pdf.setTextColor(156, 163, 175);
+      pdf.setFont("helvetica", "normal");
+      pdf.text("MaTable.Pro", W / 2, y + 4, { align: "center" });
+
+      pdf.save(`table-${t.number}-autocollant.pdf`);
     }
-
-    // Brand
-    pdf.setFontSize(6.5);
-    pdf.setTextColor(156, 163, 175);
-    pdf.setFont("helvetica", "normal");
-    pdf.text("MaTable.Pro", W / 2, y + 4, { align: "center" });
-
-    pdf.save(`table-${t.number}-autocollant.pdf`);
   };
+
+  const printSticker      = (t: Table) => buildStickerPdf(t, "auto");
+  const printSticker50x80 = (t: Table) => buildStickerPdf(t, "50x80");
 
   // Print all tables PDF (legacy)
   const printAllPdf = async () => {
@@ -336,17 +381,22 @@ export default function PrintPage() {
                 </div>
 
                 {/* Print + Export */}
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-1.5">
                   <button onClick={() => printSticker(t)} disabled={!qr}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-bold py-2 px-2 bg-orange-500/15 hover:bg-orange-500/25 border border-orange-500/30 rounded-xl text-orange-300 transition-colors disabled:opacity-40">
-                    🖨️ Imprimer
-                    {isNfcOn && <span className="text-[9px] text-indigo-300/70">+NFC</span>}
+                    className="inline-flex flex-col items-center justify-center gap-0.5 text-xs font-bold py-2 px-1 bg-orange-500/15 hover:bg-orange-500/25 border border-orange-500/30 rounded-xl text-orange-300 transition-colors disabled:opacity-40">
+                    <span>🖨️ PDF auto</span>
+                    <span className="text-[9px] text-orange-400/50 font-normal">80mm × auto</span>
+                  </button>
+                  <button onClick={() => printSticker50x80(t)} disabled={!qr}
+                    className="inline-flex flex-col items-center justify-center gap-0.5 text-xs font-bold py-2 px-1 bg-orange-500/15 hover:bg-orange-500/25 border border-orange-500/30 rounded-xl text-orange-300 transition-colors disabled:opacity-40">
+                    <span>🖨️ PDF compact</span>
+                    <span className="text-[9px] text-orange-400/50 font-normal">80×50mm</span>
                   </button>
                   <button onClick={() => exportPng(t)} disabled={!qr || exporting === t.id}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-bold py-2 px-2 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-xl text-emerald-300 transition-colors disabled:opacity-40">
+                    className="col-span-2 inline-flex items-center justify-center gap-1.5 text-xs font-bold py-2 px-2 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-xl text-emerald-300 transition-colors disabled:opacity-40">
                     {exporting === t.id
                       ? <><span className="w-3 h-3 border border-emerald-300 border-t-transparent rounded-full animate-spin" />PNG…</>
-                      : "🖼️ Exporter PNG"}
+                      : "🖼️ Exporter PNG (galerie)"}
                   </button>
                 </div>
               </div>
