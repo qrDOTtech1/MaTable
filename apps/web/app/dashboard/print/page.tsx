@@ -14,6 +14,7 @@ export default function PrintPage() {
   const [nfcWriting, setNfcWriting] = useState(false);
   const [nfcDone, setNfcDone] = useState<string | null>(null);
   const [nfcEnabled, setNfcEnabled] = useState<Set<string>>(new Set());
+  const [exporting, setExporting] = useState<string | null>(null);
 
   useEffect(() => {
     const o = window.location.origin;
@@ -161,6 +162,93 @@ export default function PrintPage() {
     pdf.save("qr-tables.pdf");
   };
 
+  // Export PNG via Canvas (no lib needed)
+  const exportPng = async (t: Table) => {
+    const qr = qrUrls[t.id];
+    if (!qr) return;
+    setExporting(t.id);
+    try {
+      const hasNfc = nfcEnabled.has(t.id);
+      // 80mm @ 12px/mm = 960px wide
+      const PX = 12; // px per mm
+      const W = 80 * PX;        // 960px
+      const QR = 58 * PX;       // 696px QR
+      const PAD = 6 * PX;       // 72px padding
+
+      const canvas = document.createElement("canvas");
+      canvas.width = W;
+      // We'll compute height dynamically after drawing text
+      // Estimate height first
+      canvas.height = 160 * PX;
+      const ctx = canvas.getContext("2d")!;
+
+      // Background
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      let y = PAD;
+
+      const center = (text: string, fontSize: number, color: string, bold = false) => {
+        ctx.font = `${bold ? "900" : "600"} ${fontSize}px 'Arial', sans-serif`;
+        ctx.fillStyle = color;
+        ctx.textAlign = "center";
+        ctx.fillText(text, W / 2, y);
+        y += fontSize * 1.4;
+      };
+
+      const sep = () => {
+        y += 4 * PX;
+        ctx.fillStyle = "#e5e7eb";
+        ctx.fillRect(4 * PX, y, W - 8 * PX, 2);
+        y += 4 * PX;
+      };
+
+      // Draw text elements
+      center("SCANNEZ POUR COMMANDER", 14 * PX / 10, "#374151", true);
+      y += 2 * PX;
+      center(`Table ${t.number}`, 28 * PX / 10, "#111111", true);
+      y += 2 * PX;
+      sep();
+
+      // QR code image
+      const qrImg = new Image();
+      await new Promise<void>((res) => {
+        qrImg.onload = () => res();
+        qrImg.src = qr;
+      });
+      const qrX = (W - QR) / 2;
+      ctx.drawImage(qrImg, qrX, y, QR, QR);
+      y += QR + 4 * PX;
+
+      sep();
+      center("📱 SCANNEZ LE QR CODE", 10 * PX / 10, "#ea580c", true);
+      y += 2 * PX;
+      if (hasNfc) {
+        center("✦ Ou posez votre téléphone (NFC)", 8.5 * PX / 10, "#4f46e5", true);
+        y += 2 * PX;
+      }
+      center("MaTable.Pro", 7 * PX / 10, "#9ca3af", false);
+      y += PAD;
+
+      // Resize canvas to actual content height
+      const finalCanvas = document.createElement("canvas");
+      finalCanvas.width = W;
+      finalCanvas.height = y;
+      const fCtx = finalCanvas.getContext("2d")!;
+      fCtx.fillStyle = "#ffffff";
+      fCtx.fillRect(0, 0, W, y);
+      fCtx.drawImage(canvas, 0, 0);
+
+      // Download
+      const a = document.createElement("a");
+      a.download = `table-${t.number}-qr.png`;
+      a.href = finalCanvas.toDataURL("image/png");
+      a.click();
+    } finally {
+      setExporting(null);
+    }
+  };
+
   // NFC write
   const writeNfc = async (t: Table) => {
     if (!("NDEFReader" in window)) {
@@ -268,12 +356,20 @@ export default function PrintPage() {
                   </button>
                 </div>
 
-                {/* Print sticker */}
-                <button onClick={() => printSticker(t)} disabled={!qr}
-                  className="w-full inline-flex items-center justify-center gap-2 text-xs font-bold py-2 px-3 bg-orange-500/15 hover:bg-orange-500/25 border border-orange-500/30 rounded-xl text-orange-300 transition-colors disabled:opacity-40">
-                  🖨️ Imprimer autocollant 80mm
-                  {isNfcOn && <span className="text-[9px] text-indigo-300/70">+ NFC</span>}
-                </button>
+                {/* Print + Export */}
+                <div className="flex gap-2">
+                  <button onClick={() => printSticker(t)} disabled={!qr}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-bold py-2 px-2 bg-orange-500/15 hover:bg-orange-500/25 border border-orange-500/30 rounded-xl text-orange-300 transition-colors disabled:opacity-40">
+                    🖨️ Imprimer
+                    {isNfcOn && <span className="text-[9px] text-indigo-300/70">+NFC</span>}
+                  </button>
+                  <button onClick={() => exportPng(t)} disabled={!qr || exporting === t.id}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-bold py-2 px-2 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-xl text-emerald-300 transition-colors disabled:opacity-40">
+                    {exporting === t.id
+                      ? <><span className="w-3 h-3 border border-emerald-300 border-t-transparent rounded-full animate-spin" />PNG…</>
+                      : "🖼️ Exporter PNG"}
+                  </button>
+                </div>
               </div>
             );
           })}
