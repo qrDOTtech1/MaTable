@@ -50,55 +50,58 @@ export default function PrintPage() {
     const W = 80; // always 80mm wide
 
     if (format === "50x80") {
-      // ── Compact 50×80mm — tout sur une seule ligne horizontale ──
+      // ── Compact 80×50mm — QR gauche, texte droite, tout miniaturisé ──
       const H = 50;
-      const qrSize = 38; // QR occupe toute la hauteur utile
-      const pdf = new jsPDF({ unit: "mm", format: [W, H], orientation: "portrait" });
+      const qrSize = 28;                    // QR petit mais lisible
+      const qrX = 3;
+      const qrY = (H - qrSize) / 2;        // centré verticalement
+      const textX = qrX + qrSize + 3;      // = 34mm
+      const textW = W - textX - 2;         // = 44mm disponibles
 
+      const pdf = new jsPDF({ unit: "mm", format: [W, H], orientation: "portrait" });
       pdf.setFillColor(255, 255, 255);
       pdf.rect(0, 0, W, H, "F");
 
-      // Left: QR code
-      const qrX = 4;
-      const qrY = (H - qrSize) / 2;
+      // QR
       pdf.addImage(qr, "PNG", qrX, qrY, qrSize, qrSize);
 
-      // Right: text block
-      const textX = qrX + qrSize + 4;
-      const textW = W - textX - 3;
-      let ty = H / 2 - 10;
+      // Séparateur vertical léger
+      pdf.setDrawColor(220, 220, 220);
+      pdf.setLineWidth(0.2);
+      pdf.line(textX - 1.5, 4, textX - 1.5, H - 4);
+
+      // Texte — calé verticalement au centre
+      let ty = H / 2 - 11;
 
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(7);
-      pdf.setTextColor(55, 65, 81);
-      pdf.text("SCANNEZ POUR", textX, ty, { maxWidth: textW });
+      pdf.setFontSize(5.5);
+      pdf.setTextColor(100, 116, 139);
+      pdf.text("SCANNEZ POUR COMMANDER", textX, ty, { maxWidth: textW });
       ty += 5;
-      pdf.text("COMMANDER", textX, ty, { maxWidth: textW });
-      ty += 7;
 
-      pdf.setFontSize(16);
+      pdf.setFontSize(13);
       pdf.setTextColor(17, 17, 17);
       pdf.text(`Table ${t.number}`, textX, ty, { maxWidth: textW });
       ty += 7;
 
-      pdf.setFontSize(6.5);
+      pdf.setFontSize(5.5);
       pdf.setTextColor(234, 88, 12);
       pdf.text("Scannez le QR code", textX, ty, { maxWidth: textW });
-      ty += 5;
+      ty += 4.5;
 
       if (hasNfc) {
-        pdf.setFontSize(6);
+        pdf.setFontSize(5);
         pdf.setTextColor(79, 70, 229);
         pdf.text("Ou posez votre tel. (NFC)", textX, ty, { maxWidth: textW });
-        ty += 5;
+        ty += 4;
       }
 
-      pdf.setFontSize(5.5);
-      pdf.setTextColor(156, 163, 175);
+      pdf.setFontSize(4.5);
+      pdf.setTextColor(180, 180, 180);
       pdf.setFont("helvetica", "normal");
       pdf.text("MaTable.Pro", textX, ty, { maxWidth: textW });
 
-      pdf.save(`table-${t.number}-50x80.pdf`);
+      pdf.save(`table-${t.number}-80x50.pdf`);
     } else {
       // ── Auto height (tall format) ──
       const pad = 6;
