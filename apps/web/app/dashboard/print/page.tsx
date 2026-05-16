@@ -40,97 +40,76 @@ export default function PrintPage() {
     setTimeout(() => setCopied(null), 2000);
   };
 
-  // Print sticker for one table — optimized for 80mm thermal/label printer
-  const printSticker = (t: Table) => {
+  // Generate & download PDF for one table (80mm wide, no print dialog)
+  const printSticker = async (t: Table) => {
     const qr = qrUrls[t.id];
     if (!qr) return;
     const hasNfc = nfcEnabled.has(t.id);
-    const win = window.open("", "_blank", "width=320,height=500");
-    if (!win) return;
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-    <title>Table ${t.number}</title>
-    <style>
-      * { margin:0; padding:0; box-sizing:border-box; }
-      @page {
-        size: 80mm auto;
-        margin: 0;
-      }
-      body {
-        width: 80mm;
-        background: #fff;
-        font-family: 'Helvetica Neue', Arial, sans-serif;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-      .sticker {
-        width: 80mm;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 6mm 4mm 5mm;
-        gap: 3mm;
-      }
-      .headline {
-        font-size: 11pt;
-        font-weight: 900;
-        color: #111;
-        text-align: center;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      .table-num {
-        font-size: 28pt;
-        font-weight: 900;
-        color: #111;
-        letter-spacing: -1px;
-        line-height: 1;
-      }
-      .sep {
-        width: 72mm;
-        height: 0.4mm;
-        background: #ccc;
-      }
-      .qr img {
-        width: 58mm;
-        height: 58mm;
-        display: block;
-      }
-      .cta {
-        font-size: 10pt;
-        font-weight: 800;
-        color: #ea580c;
-        text-align: center;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-      }
-      .nfc-line {
-        font-size: 8.5pt;
-        color: #4f46e5;
-        font-weight: 700;
-        text-align: center;
-      }
-      .brand {
-        font-size: 7pt;
-        color: #9ca3af;
-        font-weight: 600;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-      }
-    </style></head><body>
-    <div class="sticker">
-      <p class="headline">Scannez pour commander</p>
-      <p class="table-num">Table ${t.number}</p>
-      <div class="sep"></div>
-      <div class="qr"><img src="${qr}" alt="QR"/></div>
-      <div class="sep"></div>
-      <p class="cta">📱 Scannez le QR code</p>
-      ${hasNfc ? `<p class="nfc-line">✦ Ou posez votre téléphone (NFC)</p>` : ""}
-      <p class="brand">MaTable.Pro</p>
-    </div>
-    <script>window.onload=()=>{ window.print(); window.onafterprint=()=>window.close(); }<\/script>
-    </body></html>`;
-    win.document.write(html);
-    win.document.close();
+    const { jsPDF } = await import("jspdf");
+
+    const W = 80;   // mm
+    const pad = 6;  // mm
+    let y = pad;
+
+    // Estimate total height
+    const qrSize = 58;
+    const extraLines = hasNfc ? 1 : 0;
+    const H = pad + 8 + 4 + 12 + 4 + 2 + qrSize + 2 + 2 + 8 + (extraLines * 6) + 6 + pad;
+
+    const pdf = new jsPDF({ unit: "mm", format: [W, H], orientation: "portrait" });
+
+    // White background
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(0, 0, W, H, "F");
+
+    // "SCANNEZ POUR COMMANDER"
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9);
+    pdf.setTextColor(55, 65, 81);
+    pdf.text("SCANNEZ POUR COMMANDER", W / 2, y + 5, { align: "center" });
+    y += 8;
+
+    // "Table N"
+    pdf.setFontSize(26);
+    pdf.setTextColor(17, 17, 17);
+    pdf.text(`Table ${t.number}`, W / 2, y + 11, { align: "center" });
+    y += 14;
+
+    // Separator
+    pdf.setDrawColor(209, 213, 219);
+    pdf.setLineWidth(0.3);
+    pdf.line(4, y, W - 4, y);
+    y += 4;
+
+    // QR code image
+    pdf.addImage(qr, "PNG", (W - qrSize) / 2, y, qrSize, qrSize);
+    y += qrSize + 4;
+
+    // Separator
+    pdf.line(4, y, W - 4, y);
+    y += 4;
+
+    // CTA
+    pdf.setFontSize(8.5);
+    pdf.setTextColor(234, 88, 12);
+    pdf.text("📱 SCANNEZ LE QR CODE", W / 2, y + 4, { align: "center" });
+    y += 7;
+
+    // NFC line
+    if (hasNfc) {
+      pdf.setFontSize(7.5);
+      pdf.setTextColor(79, 70, 229);
+      pdf.text("✦ Ou posez votre téléphone (NFC)", W / 2, y + 3.5, { align: "center" });
+      y += 6;
+    }
+
+    // Brand
+    pdf.setFontSize(6.5);
+    pdf.setTextColor(156, 163, 175);
+    pdf.setFont("helvetica", "normal");
+    pdf.text("MaTable.Pro", W / 2, y + 4, { align: "center" });
+
+    pdf.save(`table-${t.number}-autocollant.pdf`);
   };
 
   // Print all tables PDF (legacy)
