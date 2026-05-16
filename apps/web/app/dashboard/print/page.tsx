@@ -53,7 +53,7 @@ export default function PrintPage() {
       // ── Compact 50×80mm — tout sur une seule ligne horizontale ──
       const H = 50;
       const qrSize = 38; // QR occupe toute la hauteur utile
-      const pdf = new jsPDF({ unit: "mm", format: [W, H], orientation: "landscape" });
+      const pdf = new jsPDF({ unit: "mm", format: [W, H], orientation: "portrait" });
 
       pdf.setFillColor(255, 255, 255);
       pdf.rect(0, 0, W, H, "F");
