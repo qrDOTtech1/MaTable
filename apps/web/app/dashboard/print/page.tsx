@@ -92,14 +92,14 @@ export default function PrintPage() {
     // CTA
     pdf.setFontSize(8.5);
     pdf.setTextColor(234, 88, 12);
-    pdf.text("📱 SCANNEZ LE QR CODE", W / 2, y + 4, { align: "center" });
+    pdf.text("SCANNEZ LE QR CODE", W / 2, y + 4, { align: "center" });
     y += 7;
 
     // NFC line
     if (hasNfc) {
       pdf.setFontSize(7.5);
       pdf.setTextColor(79, 70, 229);
-      pdf.text("✦ Ou posez votre téléphone (NFC)", W / 2, y + 3.5, { align: "center" });
+      pdf.text("Ou posez votre telephone (NFC)", W / 2, y + 3.5, { align: "center" });
       y += 6;
     }
 
