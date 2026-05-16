@@ -39,47 +39,94 @@ export default function PrintPage() {
     setTimeout(() => setCopied(null), 2000);
   };
 
-  // Print sticker for one table
+  // Print sticker for one table — optimized for 80mm thermal/label printer
   const printSticker = (t: Table) => {
     const qr = qrUrls[t.id];
     if (!qr) return;
     const hasNfc = nfcEnabled.has(t.id);
-    const win = window.open("", "_blank", "width=700,height=600");
+    const win = window.open("", "_blank", "width=320,height=500");
     if (!win) return;
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-    <title>Table ${t.number} — QR Commander</title>
+    <title>Table ${t.number}</title>
     <style>
       * { margin:0; padding:0; box-sizing:border-box; }
-      body { background:#fff; font-family:'Helvetica Neue',Arial,sans-serif; }
-      @media print { body{margin:0;} .sticker{break-inside:avoid;page-break-inside:avoid;} }
-      .page { display:flex; flex-direction:column; align-items:center; gap:20px; padding:20px; }
-      .sticker {
-        display:flex; flex-direction:column; align-items:center;
-        width:210px; border:1.5px dashed #d1d5db; border-radius:16px;
-        padding:18px 16px 14px; background:#fff; gap:8px;
+      @page {
+        size: 80mm auto;
+        margin: 0;
       }
-      .table-num { font-size:32px; font-weight:900; color:#111; letter-spacing:-1px; }
-      .headline { font-size:12px; font-weight:800; color:#374151; text-align:center; text-transform:uppercase; letter-spacing:0.5px; }
-      .qr img { width:140px; height:140px; display:block; border-radius:6px; }
-      .sep { width:80%; height:1px; background:#f1f5f9; }
-      .cta { font-size:11px; font-weight:800; color:#f97316; text-align:center; letter-spacing:0.5px; text-transform:uppercase; }
-      .nfc-line { font-size:9.5px; color:#6366f1; font-weight:700; text-align:center; margin-top:2px; }
-      .brand { font-size:8px; color:#94a3b8; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; margin-top:2px; }
+      body {
+        width: 80mm;
+        background: #fff;
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .sticker {
+        width: 80mm;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 6mm 4mm 5mm;
+        gap: 3mm;
+      }
+      .headline {
+        font-size: 11pt;
+        font-weight: 900;
+        color: #111;
+        text-align: center;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .table-num {
+        font-size: 28pt;
+        font-weight: 900;
+        color: #111;
+        letter-spacing: -1px;
+        line-height: 1;
+      }
+      .sep {
+        width: 72mm;
+        height: 0.4mm;
+        background: #ccc;
+      }
+      .qr img {
+        width: 58mm;
+        height: 58mm;
+        display: block;
+      }
+      .cta {
+        font-size: 10pt;
+        font-weight: 800;
+        color: #ea580c;
+        text-align: center;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+      .nfc-line {
+        font-size: 8.5pt;
+        color: #4f46e5;
+        font-weight: 700;
+        text-align: center;
+      }
+      .brand {
+        font-size: 7pt;
+        color: #9ca3af;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+      }
     </style></head><body>
-    <div class="page">
-      ${[0,1,2].map(() => `
-      <div class="sticker">
-        <p class="headline">Scannez pour commander</p>
-        <p class="table-num">Table ${t.number}</p>
-        <div class="sep"></div>
-        <div class="qr"><img src="${qr}" alt="QR Table ${t.number}"/></div>
-        <div class="sep"></div>
-        <p class="cta">📱 Scannez le QR code</p>
-        ${hasNfc ? `<p class="nfc-line">✦ Ou posez votre téléphone (NFC)</p>` : ""}
-        <p class="brand">MaTable.Pro</p>
-      </div>`).join("")}
+    <div class="sticker">
+      <p class="headline">Scannez pour commander</p>
+      <p class="table-num">Table ${t.number}</p>
+      <div class="sep"></div>
+      <div class="qr"><img src="${qr}" alt="QR"/></div>
+      <div class="sep"></div>
+      <p class="cta">📱 Scannez le QR code</p>
+      ${hasNfc ? `<p class="nfc-line">✦ Ou posez votre téléphone (NFC)</p>` : ""}
+      <p class="brand">MaTable.Pro</p>
     </div>
-    <script>window.onload=()=>{window.print();}<\/script>
+    <script>window.onload=()=>{ window.print(); window.onafterprint=()=>window.close(); }<\/script>
     </body></html>`;
     win.document.write(html);
     win.document.close();
@@ -224,8 +271,8 @@ export default function PrintPage() {
                 {/* Print sticker */}
                 <button onClick={() => printSticker(t)} disabled={!qr}
                   className="w-full inline-flex items-center justify-center gap-2 text-xs font-bold py-2 px-3 bg-orange-500/15 hover:bg-orange-500/25 border border-orange-500/30 rounded-xl text-orange-300 transition-colors disabled:opacity-40">
-                  🖨️ Imprimer autocollants ×3
-                  {isNfcOn && <span className="text-[9px] text-indigo-300/70">+ mention NFC</span>}
+                  🖨️ Imprimer autocollant 80mm
+                  {isNfcOn && <span className="text-[9px] text-indigo-300/70">+ NFC</span>}
                 </button>
               </div>
             );
