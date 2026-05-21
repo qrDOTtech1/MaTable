@@ -5,7 +5,11 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
-const HIDDEN_PATHS = ["/register", "/login", "/dashboard"];
+// Hide on:
+//  - pro/admin areas (register/login/dashboard)
+//  - customer-facing flows (review page, restaurant vitrine, order page) — those
+//    are not the right audience for the 14-day trial CTA.
+const HIDDEN_PATHS = ["/register", "/login", "/dashboard", "/r/", "/order/"];
 
 export function FloatingCTAWrapper() {
   const pathname = usePathname();

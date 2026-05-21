@@ -138,6 +138,27 @@ function GoogleReviewCta({ href, onClick }: { href: string; onClick?: () => void
   );
 }
 
+// ── Nova IA CTA — alternative path shown right under the Google review CTA so
+// hesitant customers know they can let our AI craft the review from their ratings.
+function NovaIaCta({ onClick }: { onClick: () => void }) {
+  return (
+    <div className="rounded-2xl border border-orange-500/20 bg-gradient-to-br from-orange-500/10 via-orange-500/5 to-transparent p-4 space-y-3">
+      <p className="text-sm text-orange-100/90 leading-snug">
+        <span className="font-semibold">Pas d'inspiration ?</span>{" "}
+        Laissez <span className="font-semibold text-orange-300">Nova IA</span> vous rédiger un avis personnalisé.
+      </p>
+      <button
+        type="button"
+        onClick={onClick}
+        className="w-full px-4 py-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm transition-colors shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2"
+      >
+        <span aria-hidden>✨</span>
+        Continuer avec Nova IA
+      </button>
+    </div>
+  );
+}
+
 // ── Star row — extracted as a top-level component for performance ─────────────
 function StarRow({ label, icon, value, onChange }: { label: string; icon: React.ReactNode; value: number; onChange: (v: number) => void }) {
   return (
@@ -689,10 +710,19 @@ export default function PublicReviewPage() {
         <div className="animate-fade-in space-y-6">
           {/* Lien Google direct — si configuré dans les paramètres */}
           {config.googleReviewLink && (
-            <GoogleReviewCta
-              href={config.googleReviewLink}
-              onClick={() => setTimeout(() => setStep("tip"), 300)}
-            />
+            <>
+              <GoogleReviewCta
+                href={config.googleReviewLink}
+                onClick={() => setTimeout(() => setStep("tip"), 300)}
+              />
+              <NovaIaCta
+                onClick={() => {
+                  // Skip the server selection and continue with Nova IA flow
+                  setSelectedServers([]);
+                  setStep("rating");
+                }}
+              />
+            </>
           )}
 
           <div className="text-center space-y-2">
@@ -755,10 +785,18 @@ export default function PublicReviewPage() {
         <div className="animate-fade-in space-y-6">
           {/* Google CTA — also rendered here so single-server NFC entries (which skip the "server" step) still see it */}
           {config.googleReviewLink && (
-            <GoogleReviewCta
-              href={config.googleReviewLink}
-              onClick={() => setTimeout(() => setStep("tip"), 300)}
-            />
+            <>
+              <GoogleReviewCta
+                href={config.googleReviewLink}
+                onClick={() => setTimeout(() => setStep("tip"), 300)}
+              />
+              <NovaIaCta
+                onClick={() => {
+                  // Already on the rating step — bring the stars block into view
+                  document.getElementById("rating-stars")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              />
+            </>
           )}
 
           {/* NFC banner — shown when server was pre-selected via NFC card */}
@@ -777,7 +815,7 @@ export default function PublicReviewPage() {
             </p>
           </div>
 
-          <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] p-6 rounded-3xl space-y-6 shadow-2xl">
+          <div id="rating-stars" className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] p-6 rounded-3xl space-y-6 shadow-2xl scroll-mt-4">
             {effectiveCategories.map(cat => (
               <StarRow
                 key={cat.key}
