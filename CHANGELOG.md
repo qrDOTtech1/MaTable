@@ -16,6 +16,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 - **Catégories d'évaluation configurables (campagne)** : dans l'onglet *Paramètres IA → Avis*, le restaurateur peut activer/désactiver, renommer, ré-icôner ou ajouter ses propres critères en étoiles (max 12). Les clés par défaut `food/service/atmosphere/value` restent réservées pour conserver la cohérence du radar de synthèse.
 
 ### Modifié — Reviews
+- **Vue « Votre avis est prêt » plus immersive** : libellés *Version 1 / 2* en orange gras avec halo lumineux, cards mieux détachées du fond (opacité +50 %, gradient discret sur la version mise en avant), animations d'entrée stagger + spring sur l'emoji titre, halo pulsé sur la version recommandée, transition copie/publication animée. Le bouton *Continuer* n'apparaît plus que si une étape post-avis utile est configurée (pourboire et/ou cadeau).
 - **Feedback bas score généralisé** : la zone de retour libre apparaît dès qu'**une** catégorie (peu importe laquelle) est notée ≤ 3 étoiles. Le libellé devient « Comment nous améliorer ? » (sans le nom du serveur en préfixe).
 - **Bouton « Passer l'avis » retiré** : le raccourci « Laisser un avis Google » en haut de page suffit comme bypass.
 - **Redirection post-Google** : après clic sur le lien Google, l'app route vers l'étape *pourboire* si les pourboires sont actifs, sinon vers l'*offre/cadeau* si une récompense est configurée, sinon vers le *merci* final.

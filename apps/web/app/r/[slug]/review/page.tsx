@@ -1139,16 +1139,36 @@ export default function PublicReviewPage() {
       )}
 
       {step === "drafts" && (
-        <div className="animate-fade-in space-y-6">
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-bold mb-2">Votre avis est pret !</h2>
-            <p className="text-sm text-white/50">Modifiez si besoin, puis copiez la version que vous preferez.</p>
-          </div>
+        <motion.div
+          className="space-y-6"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <motion.div
+            className="text-center mb-6"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.05 }}
+          >
+            <h2 className="text-2xl font-black mb-2">
+              <motion.span
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.6, type: "spring", stiffness: 200, damping: 12 }}
+                className="inline-block"
+              >
+                ✨
+              </motion.span>{" "}
+              Votre avis est prêt !
+            </h2>
+            <p className="text-sm text-white/50">Modifiez si besoin, puis copiez la version que vous préférez.</p>
+          </motion.div>
 
           {generating ? (
             <div className="text-center p-8 space-y-4">
               <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-orange-400 font-medium">L'IA redige votre avis...</p>
+              <p className="text-orange-400 font-medium">L'IA rédige votre avis...</p>
               {liveText && (
                 <div className="mt-6 p-4 bg-white/5 rounded-xl text-left font-mono text-xs whitespace-pre-wrap text-white/70 overflow-hidden break-words border border-white/10">
                   {liveText}
@@ -1157,82 +1177,115 @@ export default function PublicReviewPage() {
             </div>
           ) : drafts ? (
             <div className="space-y-4">
-              {/* Draft version 1 */}
-              {editingDraft === 1 ? (
-                <div className="bg-white/5 border border-orange-500/40 p-4 rounded-2xl space-y-3">
-                  <textarea
-                    value={editText}
-                    onChange={e => setEditText(e.target.value)}
-                    rows={5}
-                    className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-orange-500/50 resize-none"
-                  />
-                  <div className="flex gap-2">
-                    <button onClick={saveEditDraft} className="flex-1 py-2 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-xl text-sm transition-colors">Enregistrer</button>
-                    <button onClick={() => setEditingDraft(null)} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/60 rounded-xl text-sm transition-colors">Annuler</button>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-white/5 hover:bg-white/[0.07] border border-white/10 p-5 rounded-2xl transition-colors group">
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <span className="text-[10px] uppercase tracking-wider text-white/30 font-bold">Version 1</span>
-                    <button onClick={() => startEditDraft(1)} className="text-[10px] uppercase tracking-wider text-white/30 hover:text-orange-400 font-bold transition-colors flex items-center gap-1">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      Modifier
-                    </button>
-                  </div>
-                  <p className="text-sm leading-relaxed mb-4">{drafts.version1}</p>
-                  <button
-                    onClick={() => copyAndGoToGoogle(drafts.version1, 1)}
-                    className="w-full py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-500 text-white"
+              {([1, 2] as const).map((vn, idx) => {
+                const text = vn === 1 ? drafts.version1 : drafts.version2;
+                const isPrimary = vn === 1;
+                return editingDraft === vn ? (
+                  <motion.div
+                    key={`edit-${vn}`}
+                    initial={{ opacity: 0, scale: 0.97 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.25 }}
+                    className="bg-white/[0.08] border border-orange-500/40 p-4 rounded-2xl space-y-3 shadow-xl shadow-orange-500/10"
                   >
-                    {copiedDraft === 1 ? "Copie !" : "Copier & Publier sur Google"} {copiedDraft !== 1 && <span className="text-xs">↗</span>}
-                  </button>
-                </div>
-              )}
-
-              {/* Draft version 2 */}
-              {editingDraft === 2 ? (
-                <div className="bg-white/5 border border-orange-500/40 p-4 rounded-2xl space-y-3">
-                  <textarea
-                    value={editText}
-                    onChange={e => setEditText(e.target.value)}
-                    rows={5}
-                    className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-orange-500/50 resize-none"
-                  />
-                  <div className="flex gap-2">
-                    <button onClick={saveEditDraft} className="flex-1 py-2 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-xl text-sm transition-colors">Enregistrer</button>
-                    <button onClick={() => setEditingDraft(null)} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/60 rounded-xl text-sm transition-colors">Annuler</button>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-white/5 hover:bg-white/[0.07] border border-white/10 p-5 rounded-2xl transition-colors group">
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <span className="text-[10px] uppercase tracking-wider text-white/30 font-bold">Version 2</span>
-                    <button onClick={() => startEditDraft(2)} className="text-[10px] uppercase tracking-wider text-white/30 hover:text-orange-400 font-bold transition-colors flex items-center gap-1">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      Modifier
-                    </button>
-                  </div>
-                  <p className="text-sm leading-relaxed mb-4">{drafts.version2}</p>
-                  <button
-                    onClick={() => copyAndGoToGoogle(drafts.version2, 2)}
-                    className="w-full py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white"
+                    <textarea
+                      value={editText}
+                      onChange={e => setEditText(e.target.value)}
+                      rows={5}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-orange-500/50 resize-none"
+                    />
+                    <div className="flex gap-2">
+                      <button onClick={saveEditDraft} className="flex-1 py-2 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-xl text-sm transition-colors">Enregistrer</button>
+                      <button onClick={() => setEditingDraft(null)} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/60 rounded-xl text-sm transition-colors">Annuler</button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key={`view-${vn}`}
+                    initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.15 + idx * 0.12, ease: [0.16, 1, 0.3, 1] }}
+                    whileHover={{ scale: 1.01, transition: { duration: 0.2 } }}
+                    className={`relative p-5 rounded-2xl transition-colors group overflow-hidden ${
+                      isPrimary
+                        ? "bg-gradient-to-br from-orange-500/[0.12] via-white/[0.08] to-white/[0.05] border border-orange-500/30 shadow-lg shadow-orange-500/10"
+                        : "bg-white/[0.09] border border-white/15 hover:bg-white/[0.12]"
+                    }`}
                   >
-                    {copiedDraft === 2 ? "Copie !" : "Copier & Publier sur Google"} {copiedDraft !== 2 && <span className="text-xs">↗</span>}
-                  </button>
-                </div>
-              )}
+                    {isPrimary && (
+                      <motion.div
+                        aria-hidden
+                        className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-orange-500/20 blur-2xl pointer-events-none"
+                        animate={{ scale: [1, 1.15, 1], opacity: [0.6, 0.9, 0.6] }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                      />
+                    )}
+                    <div className="relative flex items-start justify-between gap-2 mb-3">
+                      <span className="text-base font-black uppercase tracking-wider text-orange-400 drop-shadow-[0_0_8px_rgba(249,115,22,0.35)]">
+                        Version {vn}
+                      </span>
+                      <button onClick={() => startEditDraft(vn)} className="text-[10px] uppercase tracking-wider text-white/40 hover:text-orange-400 font-bold transition-colors flex items-center gap-1">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Modifier
+                      </button>
+                    </div>
+                    <p className="relative text-sm leading-relaxed mb-4 text-white/90">{text}</p>
+                    <motion.button
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => copyAndGoToGoogle(text, vn)}
+                      className={`relative w-full py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                        isPrimary
+                          ? "bg-orange-600 hover:bg-orange-500 text-white shadow-md shadow-orange-500/30"
+                          : "bg-white/10 hover:bg-white/15 border border-white/15 text-white/85 hover:text-white"
+                      }`}
+                    >
+                      <AnimatePresence mode="wait" initial={false}>
+                        {copiedDraft === vn ? (
+                          <motion.span
+                            key="copied"
+                            initial={{ opacity: 0, y: -6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 6 }}
+                            transition={{ duration: 0.2 }}
+                            className="inline-flex items-center gap-1"
+                          >
+                            ✓ Copié !
+                          </motion.span>
+                        ) : (
+                          <motion.span
+                            key="copy"
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -6 }}
+                            transition={{ duration: 0.2 }}
+                            className="inline-flex items-center gap-1"
+                          >
+                            Copier &amp; Publier sur Google <span className="text-xs">↗</span>
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+                    </motion.button>
+                  </motion.div>
+                );
+              })}
 
-              {/* Continue button */}
-              <button
-                onClick={goToPostReviewStep}
-                className="w-full py-4 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-2xl transition-all shadow-lg shadow-orange-500/20 mt-2"
-              >
-                Continuer
-              </button>
+              {/* Continue button — only useful when a post-review step (tip or voucher) is configured.
+                  Otherwise it would just bounce to the final "merci" screen with nothing to do. */}
+              {(tipsEnabled || voucher) && (
+                <motion.button
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.5 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={goToPostReviewStep}
+                  className="w-full py-4 bg-white/[0.07] hover:bg-white/[0.12] border border-white/15 text-white/80 hover:text-white font-bold rounded-2xl transition-all mt-2"
+                >
+                  {tipsEnabled && voucher ? "Continuer — pourboire & cadeau" : tipsEnabled ? "Continuer vers le pourboire" : "Continuer vers votre cadeau"}
+                </motion.button>
+              )}
             </div>
           ) : null}
-        </div>
+        </motion.div>
       )}
 
       {step === "tip" && tipsEnabled && (
