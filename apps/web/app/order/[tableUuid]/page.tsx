@@ -785,12 +785,33 @@ export default function OrderPage() {
                         })()}
                       </div>
                       {m.quantityDiscounts && m.quantityDiscounts.length > 0 && (
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {[...m.quantityDiscounts].sort((a, b) => a.minQty - b.minQty).map((t, i) => (
-                            <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                              🎯 {t.minQty}+ → {t.type === "PERCENT" ? `-${t.value}%` : `-${(t.value/100).toFixed(2)}€/u`}
-                            </span>
-                          ))}
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {[...m.quantityDiscounts].sort((a, b) => a.minQty - b.minQty).map((t, i) => {
+                            const unit = effectiveUnitPriceCents(m.priceCents, t.minQty, m.quantityDiscounts);
+                            const totalC = unit * t.minQty;
+                            const totalFull = m.priceCents * t.minQty;
+                            const savedC = totalFull - totalC;
+                            return (
+                              <button
+                                key={i}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCart(c => {
+                                    const next = { ...c, [m.id]: (c[m.id] || 0) + t.minQty };
+                                    try { localStorage.setItem(cartKey(tableUuid), JSON.stringify(next)); } catch {}
+                                    return next;
+                                  });
+                                }}
+                                className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 transition-all hover:scale-105"
+                                title={`Ajoute ${t.minQty} ${m.name} pour ${(totalC/100).toFixed(2)} € (économie ${(savedC/100).toFixed(2)} €)`}
+                              >
+                                <span className="font-black text-emerald-300 text-xs">{t.minQty}×</span>
+                                <span className="text-[10px] text-white/60 line-through">{(totalFull/100).toFixed(2)}€</span>
+                                <span className="font-black text-emerald-200 text-sm">{(totalC/100).toFixed(2)} €</span>
+                                <span className="text-[9px] text-emerald-400 ml-0.5">+</span>
+                              </button>
+                            );
+                          })}
                         </div>
                       )}
                       
