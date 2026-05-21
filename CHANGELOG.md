@@ -11,6 +11,12 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ## [Unreleased] — v1.2 (Nova IA & Real-time)
 
+### Ajouté — Reviews
+- **Catégories d'évaluation configurables (campagne)** : dans l'onglet *Paramètres IA → Avis*, le restaurateur peut activer/désactiver, renommer, ré-icôner ou ajouter ses propres critères en étoiles (max 12). Les clés par défaut `food/service/atmosphere/value` restent réservées pour conserver la cohérence du radar de synthèse.
+
+### Corrigé — Reviews
+- **CTA Avis Google manquant sur la vue serveur unique (NFC)** : quand le client arrive via une carte NFC personnelle (`?server=...`), le flow saute désormais directement à l'étape *Notes* — le bouton « Laisser un avis Google » est donc aussi affiché en haut de cette étape pour ne plus disparaître.
+
 ### Ajouté — Pricing
 - **Remises sur quantité (menu pro)** : éditeur de paliers par plat (`% ` ou `€/unité` à partir de N commandés, jusqu'à 10 paliers).
 - **Application client temps réel** : prix barré + prix remisé sur la fiche plat dès que le seuil est atteint, badges `🎯 N+ → -X%` visibles en permanence, ligne *« Vous économisez X € »* dans la barre panier.

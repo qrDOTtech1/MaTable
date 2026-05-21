@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 type Server = { id: string; name: string; photoUrl: string | null };
 type RestaurantPhoto = { id: string; url: string };
+type RatingCategory = { key: string; label: string; icon: string; enabled?: boolean };
 type Config = {
   restaurant: { id: string; name: string; photos?: RestaurantPhoto[] };
   googleReviewLink: string | null;
@@ -15,7 +16,22 @@ type Config = {
   servers: Server[];
   businessType?: string;
   reviewCustomQuestions?: string | null;
+  reviewRatingCategories?: RatingCategory[];
 };
+
+/** Default rating categories — used when the pro hasn't customised the list. */
+const DEFAULT_RESTAURANT_CATEGORIES: RatingCategory[] = [
+  { key: "food",       label: "Cuisine",     icon: "🍽️", enabled: true },
+  { key: "service",    label: "Service",     icon: "😊", enabled: true },
+  { key: "atmosphere", label: "Ambiance",    icon: "🏠", enabled: true },
+  { key: "value",      label: "Rapport Q/P", icon: "💰", enabled: true },
+];
+const DEFAULT_BOUTIQUE_CATEGORIES: RatingCategory[] = [
+  { key: "food",       label: "Produits / Services", icon: "🛍️", enabled: true },
+  { key: "service",    label: "Accueil",             icon: "😊", enabled: true },
+  { key: "atmosphere", label: "Ambiance",            icon: "🏠", enabled: true },
+  { key: "value",      label: "Rapport Q/P",         icon: "💰", enabled: true },
+];
 
 type MenuLite = {
   id: string;
@@ -90,6 +106,35 @@ function ProgressBar({ current, onBack }: { current: Step; onBack: (() => void) 
         />
       </div>
     </div>
+  );
+}
+
+// ── Google review CTA — shown on multiple steps so single-server NFC entries don't miss it
+function GoogleReviewCta({ href, onClick }: { href: string; onClick?: () => void }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={onClick}
+      className="flex items-center justify-between w-full px-5 py-4 rounded-2xl bg-[#1a1a2e] border border-white/[0.08] hover:border-orange-500/40 hover:bg-orange-500/5 transition-all group"
+    >
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+          <svg viewBox="0 0 48 48" width="20" height="20">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
+        </div>
+        <div>
+          <div className="text-sm font-bold text-white/90 leading-tight">Laisser un avis Google</div>
+          <div className="text-[11px] text-white/35 leading-tight">Rapide · Directement sur Google Maps</div>
+        </div>
+      </div>
+      <svg className="w-4 h-4 text-white/30 group-hover:text-orange-400 transition-colors shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+    </a>
   );
 }
 
@@ -171,10 +216,19 @@ export default function PublicReviewPage() {
   const [step, setStep] = useState<Step>(tipParam === "success" ? "claim" : "server");
   const [selectedServers, setSelectedServers] = useState<Server[]>([]);
   const [nfcServerBanner, setNfcServerBanner] = useState(false);
-  const [ratings, setRatings] = useState({ food: 0, service: 0, atmosphere: 0, value: 0 });
+  const [ratings, setRatings] = useState<Record<string, number>>({ food: 0, service: 0, atmosphere: 0, value: 0 });
 
   // Back navigation — compute where "back" should go based on current step
   const isBoutique = config?.businessType === "BOUTIQUE";
+
+  // Effective rating categories — pro config wins, fallback to historical defaults.
+  // Only enabled categories are shown and required.
+  const effectiveCategories: RatingCategory[] = (() => {
+    const fromConfig = (config?.reviewRatingCategories ?? []).filter(c => c.enabled !== false);
+    if (fromConfig.length > 0) return fromConfig;
+    return isBoutique ? DEFAULT_BOUTIQUE_CATEGORIES : DEFAULT_RESTAURANT_CATEGORIES;
+  })();
+  const allCategoriesRated = effectiveCategories.every(c => (ratings[c.key] ?? 0) > 0);
   const selectedServer = selectedServers[0] ?? null;
   const selectedServerLabel = selectedServers.length === 0
     ? "l'équipe"
@@ -358,7 +412,8 @@ export default function PublicReviewPage() {
         photoIds: (dishPhotos[menuItemId] ?? []).map(p => p.id),
       }));
 
-    const hasServerRating = ratings.service > 0 && selectedServers.length === 1 && selectedServer && selectedServer.id !== "team";
+    const serviceRating = ratings.service ?? 0;
+    const hasServerRating = serviceRating > 0 && selectedServers.length === 1 && selectedServer && selectedServer.id !== "team";
 
     if (dishReviews.length === 0 && !hasServerRating) return;
 
@@ -368,7 +423,7 @@ export default function PublicReviewPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           serverId: hasServerRating ? selectedServer!.id : undefined,
-          serverRating: hasServerRating ? ratings.service : undefined,
+          serverRating: hasServerRating ? serviceRating : undefined,
           serverComment: hasServerRating && serverComment.trim() ? serverComment.trim() : undefined,
           dishReviews: dishReviews.length > 0 ? dishReviews : undefined,
         }),
@@ -376,7 +431,7 @@ export default function PublicReviewPage() {
     } catch {
       // silencieux — le client reste dans le flow review même si l'enregistrement échoue
     }
-  }, [dishRatings, dishComments, dishPhotos, ratings.service, selectedServer, selectedServers.length, params.slug, serverComment]);
+  }, [dishRatings, dishComments, dishPhotos, ratings, selectedServer, selectedServers.length, params.slug, serverComment]);
 
   // Upload d'une photo de plat par le client (5 MB max, accepté côté API)
   const uploadDishPhoto = useCallback(async (menuItemId: string, file: File) => {
@@ -447,6 +502,7 @@ export default function PublicReviewPage() {
         restaurantId: config?.restaurant.id,
         serverName: selectedServerLabel,
         ratings,
+        ratingLabels: Object.fromEntries(effectiveCategories.map(c => [c.key, c.label])),
         history,
         businessType: config?.businessType ?? "RESTAURANT",
         customQuestions: config?.reviewCustomQuestions ?? undefined,
@@ -633,29 +689,10 @@ export default function PublicReviewPage() {
         <div className="animate-fade-in space-y-6">
           {/* Lien Google direct — si configuré dans les paramètres */}
           {config.googleReviewLink && (
-            <a
+            <GoogleReviewCta
               href={config.googleReviewLink}
-              target="_blank"
-              rel="noopener noreferrer"
               onClick={() => setTimeout(() => setStep("tip"), 300)}
-              className="flex items-center justify-between w-full px-5 py-4 rounded-2xl bg-[#1a1a2e] border border-white/[0.08] hover:border-orange-500/40 hover:bg-orange-500/5 transition-all group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                  <svg viewBox="0 0 48 48" width="20" height="20">
-                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                  </svg>
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-white/90 leading-tight">Laisser un avis Google</div>
-                  <div className="text-[11px] text-white/35 leading-tight">Rapide · Directement sur Google Maps</div>
-                </div>
-              </div>
-              <svg className="w-4 h-4 text-white/30 group-hover:text-orange-400 transition-colors shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            </a>
+            />
           )}
 
           <div className="text-center space-y-2">
@@ -716,6 +753,14 @@ export default function PublicReviewPage() {
 
       {step === "rating" && (
         <div className="animate-fade-in space-y-6">
+          {/* Google CTA — also rendered here so single-server NFC entries (which skip the "server" step) still see it */}
+          {config.googleReviewLink && (
+            <GoogleReviewCta
+              href={config.googleReviewLink}
+              onClick={() => setTimeout(() => setStep("tip"), 300)}
+            />
+          )}
+
           {/* NFC banner — shown when server was pre-selected via NFC card */}
           {nfcServerBanner && selectedServer && (
             <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl px-4 py-2.5 text-center -mt-2">
@@ -733,14 +778,19 @@ export default function PublicReviewPage() {
           </div>
 
           <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] p-6 rounded-3xl space-y-6 shadow-2xl">
-            <StarRow label={isBoutique ? "Produits / Services" : "Cuisine"} icon={isBoutique ? "🛍️" : "🍽️"} value={ratings.food} onChange={v => setRatings(r => ({ ...r, food: v }))} />
-            <StarRow label={isBoutique ? "Accueil" : "Service"} icon="😊" value={ratings.service} onChange={v => setRatings(r => ({ ...r, service: v }))} />
-            <StarRow label="Ambiance" icon="🏠" value={ratings.atmosphere} onChange={v => setRatings(r => ({ ...r, atmosphere: v }))} />
-            <StarRow label="Rapport Q/P" icon="💰" value={ratings.value} onChange={v => setRatings(r => ({ ...r, value: v }))} />
+            {effectiveCategories.map(cat => (
+              <StarRow
+                key={cat.key}
+                label={cat.label}
+                icon={cat.icon || "⭐"}
+                value={ratings[cat.key] ?? 0}
+                onChange={v => setRatings(r => ({ ...r, [cat.key]: v }))}
+              />
+            ))}
           </div>
 
           {/* Commentaire libre sur le serveur — apparait si la note Service est <= 3 */}
-          {ratings.service > 0 && ratings.service <= 3 && selectedServers.length === 1 && selectedServer && selectedServer.id !== "team" && (
+          {(ratings.service ?? 0) > 0 && (ratings.service ?? 0) <= 3 && selectedServers.length === 1 && selectedServer && selectedServer.id !== "team" && (
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 space-y-2">
               <label className="text-xs font-bold text-amber-300 uppercase tracking-wider">
                 {selectedServer.name} — qu'est-ce qui n'a pas marché ?
@@ -757,7 +807,7 @@ export default function PublicReviewPage() {
 
           <div className="pt-4">
             <button
-              disabled={!ratings.food || !ratings.service || !ratings.atmosphere || !ratings.value}
+              disabled={!allCategoriesRated}
               onClick={handleRatingsSubmit}
               className="w-full py-4 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:hover:bg-orange-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-orange-500/20"
             >

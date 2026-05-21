@@ -30,7 +30,15 @@ const FLAG_LABELS: Record<string, { label: string; color: string }> = {
 type ChatMessage = { role: "ai" | "user"; content: string };
 type CustomerReview = { id: string; serverName: string; ratings: any; reviewText: string; chatHistory?: ChatMessage[] | null; createdAt: string };
 type ServerTip = { id: string; serverName: string; amountCents: number; createdAt: string };
-type RestaurantConfig = { id: string; slug: string; name: string; tipsEnabled?: boolean; googleReviewLink?: string; reviewVoucherConfig?: { active: boolean; title: string; description: string; code: string; tipAmountsCents?: number[] } };
+type RatingCategory = { key: string; label: string; icon: string; enabled: boolean };
+type RestaurantConfig = { id: string; slug: string; name: string; tipsEnabled?: boolean; googleReviewLink?: string; reviewVoucherConfig?: { active: boolean; title: string; description: string; code: string; tipAmountsCents?: number[] }; reviewRatingCategories?: RatingCategory[] };
+
+const DEFAULT_RATING_CATEGORIES: RatingCategory[] = [
+  { key: "food",       label: "Cuisine",     icon: "🍽️", enabled: true },
+  { key: "service",    label: "Service",     icon: "😊", enabled: true },
+  { key: "atmosphere", label: "Ambiance",    icon: "🏠", enabled: true },
+  { key: "value",      label: "Rapport Q/P", icon: "💰", enabled: true },
+];
 type ServerData = { id: string; name: string; photoUrl: string | null; active: boolean; avgRating: number | null; reviewsCount: number };
 
 const DEFAULT_QUICK_TIP_AMOUNTS = ["2", "3", "5", "10"];
@@ -314,6 +322,7 @@ export default function ReviewsPage() {
   const [voucherTitle, setVoucherTitle] = useState("");
   const [voucherDesc, setVoucherDesc] = useState("");
   const [voucherCode, setVoucherCode] = useState("");
+  const [ratingCategories, setRatingCategories] = useState<RatingCategory[]>(DEFAULT_RATING_CATEGORIES);
   const [saving, setSaving] = useState(false);
 
   // Live updates — flash banner shown when a new review arrives via WebSocket
@@ -361,6 +370,14 @@ export default function ReviewsPage() {
           if (Array.isArray(r.restaurant.reviewVoucherConfig.tipAmountsCents) && r.restaurant.reviewVoucherConfig.tipAmountsCents.length > 0) {
             setQuickTipAmounts(r.restaurant.reviewVoucherConfig.tipAmountsCents.slice(0, 4).map(formatTipAmountInput));
           }
+        }
+        if (Array.isArray(r.restaurant.reviewRatingCategories) && r.restaurant.reviewRatingCategories.length > 0) {
+          setRatingCategories(r.restaurant.reviewRatingCategories.map(c => ({
+            key: c.key,
+            label: c.label,
+            icon: c.icon ?? "",
+            enabled: c.enabled !== false,
+          })));
         }
         if (r.restaurant.slug) {
           QRCode.toDataURL(`https://matable.pro/r/${r.restaurant.slug}/review`, { width: 400, margin: 2 })
@@ -513,6 +530,14 @@ export default function ReviewsPage() {
         body: JSON.stringify({
           googleReviewLink: googleLink,
           tipsEnabled,
+          reviewRatingCategories: ratingCategories
+            .map(c => ({
+              key: c.key.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 40),
+              label: c.label.trim().slice(0, 60),
+              icon: (c.icon || "").trim().slice(0, 8),
+              enabled: c.enabled !== false,
+            }))
+            .filter(c => c.key && c.label),
           reviewVoucherConfig: {
             active: voucherActive,
             title: voucherTitle,
@@ -861,6 +886,77 @@ export default function ReviewsPage() {
 
       {tab === "campaign" && (
         <div className="space-y-8">
+          {/* Catégories d'évaluation (étoiles) ─────────────────────────────────── */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <h3 className="font-bold text-yellow-400">⭐ Catégories d'évaluation</h3>
+              <button
+                type="button"
+                onClick={() => setRatingCategories(prev => [...prev, { key: `custom_${prev.length + 1}`, label: "Nouveau critère", icon: "✨", enabled: true }])}
+                className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white/80 font-bold transition-colors"
+              >
+                + Ajouter un critère
+              </button>
+            </div>
+            <p className="text-sm text-white/50 mb-4">
+              Les notes que le client donne en étoiles (Cuisine, Service, etc.). Activez/désactivez, renommez ou ajoutez vos propres critères.
+              <span className="block mt-1 text-[11px] text-white/30">
+                Les clés <code className="text-white/60">food / service / atmosphere / value</code> alimentent le radar de synthèse — laissez-les actives pour conserver l'historique.
+              </span>
+            </p>
+            <div className="space-y-2">
+              {ratingCategories.map((cat, idx) => {
+                const isDefault = ["food", "service", "atmosphere", "value"].includes(cat.key);
+                return (
+                  <div key={idx} className={`flex flex-wrap items-center gap-2 p-2 rounded-lg border ${cat.enabled ? "border-white/10 bg-white/[0.03]" : "border-white/5 bg-white/[0.01] opacity-60"}`}>
+                    <input
+                      type="checkbox"
+                      checked={cat.enabled}
+                      onChange={e => setRatingCategories(prev => prev.map((c, i) => i === idx ? { ...c, enabled: e.target.checked } : c))}
+                      className="rounded border-white/20 bg-white/5 text-orange-500 focus:ring-orange-500/20"
+                      title={cat.enabled ? "Désactiver" : "Activer"}
+                    />
+                    <input
+                      type="text"
+                      value={cat.icon}
+                      onChange={e => setRatingCategories(prev => prev.map((c, i) => i === idx ? { ...c, icon: e.target.value.slice(0, 4) } : c))}
+                      placeholder="🍽️"
+                      className="w-12 text-center bg-black/20 border border-white/10 rounded px-2 py-1 text-sm"
+                    />
+                    <input
+                      type="text"
+                      value={cat.label}
+                      onChange={e => setRatingCategories(prev => prev.map((c, i) => i === idx ? { ...c, label: e.target.value.slice(0, 60) } : c))}
+                      placeholder="Libellé"
+                      className="flex-1 min-w-[140px] bg-black/20 border border-white/10 rounded px-2 py-1 text-sm"
+                    />
+                    <input
+                      type="text"
+                      value={cat.key}
+                      onChange={e => setRatingCategories(prev => prev.map((c, i) => i === idx ? { ...c, key: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 40) } : c))}
+                      disabled={isDefault}
+                      placeholder="cle"
+                      className="w-32 bg-black/20 border border-white/10 rounded px-2 py-1 text-xs font-mono text-white/60 disabled:opacity-50"
+                      title={isDefault ? "Clé réservée (statistiques)" : "Clé technique (a-z, 0-9, _)"}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setRatingCategories(prev => prev.filter((_, i) => i !== idx))}
+                      disabled={isDefault}
+                      className="text-red-400/60 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed px-2"
+                      title={isDefault ? "Catégorie par défaut — désactivez plutôt que supprimer" : "Supprimer"}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            {ratingCategories.filter(c => c.enabled).length === 0 && (
+              <p className="mt-3 text-xs text-amber-400 font-semibold">⚠️ Au moins une catégorie doit être activée.</p>
+            )}
+          </div>
+
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="card">
               <h3 className="font-bold mb-4 text-orange-400">1. Lien Google My Business</h3>
