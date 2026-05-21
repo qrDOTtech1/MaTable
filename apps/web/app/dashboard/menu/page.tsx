@@ -22,7 +22,7 @@ const DIET_LABELS: Record<string, string> = {
 
 type ModifierOption = { id: string; name: string; priceDeltaCents: number };
 type ModifierGroup = { id: string; name: string; required: boolean; multiple: boolean; options: ModifierOption[] };
-type QuantityDiscount = { minQty: number; type: "PERCENT" | "FIXED_CENTS"; value: number };
+type QuantityTier = { qty: number; priceCents: number };
 type Item = {
   id: string; name: string; description?: string | null; priceCents: number;
   category?: string | null; available: boolean; imageUrl?: string | null;
@@ -32,7 +32,7 @@ type Item = {
   modifierGroups: ModifierGroup[];
   suggestedPairings: string[];
   upsellItems: string[];
-  quantityDiscounts: QuantityDiscount[];
+  quantityTiers: QuantityTier[];
 };
 
 type UploadRes = { id: string; path: string };
@@ -43,7 +43,7 @@ const emptyForm = {
   stockEnabled: false, stockQty: "", lowStockThreshold: "5",
   waitMinutes: "0",
   suggestedPairings: "", upsellItems: [] as string[],
-  quantityDiscounts: [] as QuantityDiscount[],
+  quantityTiers: [] as QuantityTier[],
 };
 
 export default function MenuPage() {
@@ -126,7 +126,7 @@ export default function MenuPage() {
       waitMinutes: (it.waitMinutes ?? 0).toString(),
       suggestedPairings: (it.suggestedPairings ?? []).join(", "),
       upsellItems: it.upsellItems ?? [],
-      quantityDiscounts: it.quantityDiscounts ?? [],
+      quantityTiers: it.quantityTiers ?? [],
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -149,9 +149,9 @@ export default function MenuPage() {
       waitMinutes: parseInt(form.waitMinutes) || 0,
       suggestedPairings: form.suggestedPairings.split(",").map(s => s.trim()).filter(Boolean),
       upsellItems: form.upsellItems,
-      quantityDiscounts: form.quantityDiscounts
-        .filter(t => t.minQty >= 2 && t.value > 0)
-        .map(t => ({ minQty: Math.floor(t.minQty), type: t.type, value: Math.floor(t.value) })),
+      quantityTiers: form.quantityTiers
+        .filter(t => t.qty >= 1 && t.priceCents > 0)
+        .map(t => ({ qty: Math.floor(t.qty), priceCents: Math.floor(t.priceCents) })),
     };
     if (editId) {
       await api(`/api/pro/menu/${editId}`, { method: "PATCH", body: JSON.stringify(payload) });
@@ -331,136 +331,107 @@ export default function MenuPage() {
           </div>
         </div>
 
-        {/* Remises sur quantités */}
+        {/* Paliers quantite / prix total — le client choisit explicitement une ligne */}
         <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
           <div className="flex items-center justify-between mb-2">
-            <label className="label !mb-0">🎯 Remises sur quantité</label>
+            <label className="label !mb-0">📦 Paliers de prix par quantité</label>
             <button
               type="button"
               className="btn-ghost text-xs"
-              onClick={() => setForm(f => ({
-                ...f,
-                quantityDiscounts: [...f.quantityDiscounts, { minQty: 3, type: "PERCENT", value: 10 }],
-              }))}
+              onClick={() => setForm(f => {
+                // Calcul intelligent de la qty suivante (next palier = +1 ou +2 selon liste)
+                const sorted = [...f.quantityTiers].sort((a, b) => a.qty - b.qty);
+                const lastQty = sorted.length > 0 ? sorted[sorted.length - 1].qty : 0;
+                const nextQty = lastQty === 0 ? 1 : lastQty + (lastQty < 3 ? 2 : 3);
+                const basePriceCents = Math.round(parseFloat(f.price || "0") * 100) || 1000;
+                return {
+                  ...f,
+                  quantityTiers: [...f.quantityTiers, { qty: nextQty, priceCents: basePriceCents * nextQty }],
+                };
+              })}
             >
               + Ajouter un palier
             </button>
           </div>
-          {form.quantityDiscounts.length === 0 ? (
+          {form.quantityTiers.length === 0 ? (
             <p className="text-[11px] text-white/30">
-              Ex. À partir de 3 commandés → -10%. À partir de 6 → 2€ de remise par unité.
+              Exemple : 1 unité = 8 € · 3 unités = 22 € · 6 unités = 40 €. Le client choisira le palier sur la card du plat.
             </p>
           ) : (
             <div className="space-y-2">
-              {form.quantityDiscounts.map((t, idx) => (
+              {form.quantityTiers.map((t, idx) => (
                 <div key={idx} className="flex flex-wrap items-center gap-2 text-xs text-white">
-                  <span className="text-white/50">À partir de</span>
+                  <span className="text-white/50">Pour</span>
                   <input
                     type="number"
-                    min={2}
-                    max={999}
-                    className="w-16 border border-white/10 rounded px-2 py-1 bg-white/5 text-white"
-                    value={t.minQty}
+                    min={1}
+                    max={9999}
+                    className="w-20 border border-white/10 rounded px-2 py-1 bg-white/5 text-white"
+                    value={t.qty}
                     onChange={e => {
-                      const v = parseInt(e.target.value) || 2;
+                      const v = Math.max(1, parseInt(e.target.value) || 1);
                       setForm(f => ({
                         ...f,
-                        quantityDiscounts: f.quantityDiscounts.map((x, i) => i === idx ? { ...x, minQty: v } : x),
+                        quantityTiers: f.quantityTiers.map((x, i) => i === idx ? { ...x, qty: v } : x),
                       }));
                     }}
                   />
-                  <span className="text-white/50">commandés →</span>
-                  <select
-                    className="border border-white/10 rounded px-2 py-1 bg-white/5 text-white"
-                    value={t.type}
-                    onChange={e => {
-                      const type = e.target.value as QuantityDiscount["type"];
-                      setForm(f => ({
-                        ...f,
-                        quantityDiscounts: f.quantityDiscounts.map((x, i) => i === idx ? { ...x, type } : x),
-                      }));
-                    }}
-                  >
-                    <option value="PERCENT">% de remise</option>
-                    <option value="FIXED_CENTS">€ de remise / unité</option>
-                  </select>
+                  <span className="text-white/50">unité{t.qty > 1 ? "s" : ""} →</span>
+                  <span className="text-white/50">prix total</span>
                   <input
                     type="number"
                     min={0}
-                    step={t.type === "PERCENT" ? 1 : 0.01}
-                    max={t.type === "PERCENT" ? 100 : undefined}
-                    className="w-20 border border-white/10 rounded px-2 py-1 bg-white/5 text-white"
-                    value={t.type === "PERCENT" ? t.value : (t.value / 100).toFixed(2)}
+                    step={0.01}
+                    className="w-24 border border-white/10 rounded px-2 py-1 bg-white/5 text-white"
+                    value={(t.priceCents / 100).toFixed(2)}
                     onChange={e => {
                       const raw = parseFloat(e.target.value);
-                      const value = t.type === "PERCENT"
-                        ? Math.max(0, Math.min(100, Math.round(raw || 0)))
-                        : Math.max(0, Math.round((raw || 0) * 100));
+                      const value = Math.max(0, Math.round((isFinite(raw) ? raw : 0) * 100));
                       setForm(f => ({
                         ...f,
-                        quantityDiscounts: f.quantityDiscounts.map((x, i) => i === idx ? { ...x, value } : x),
+                        quantityTiers: f.quantityTiers.map((x, i) => i === idx ? { ...x, priceCents: value } : x),
                       }));
                     }}
                   />
-                  <span className="text-white/40">{t.type === "PERCENT" ? "%" : "€"}</span>
+                  <span className="text-white/40">€</span>
                   <button
                     type="button"
-                    className="text-red-400/60 hover:text-red-400"
+                    className="text-red-400/60 hover:text-red-400 ml-auto"
                     onClick={() => setForm(f => ({
                       ...f,
-                      quantityDiscounts: f.quantityDiscounts.filter((_, i) => i !== idx),
+                      quantityTiers: f.quantityTiers.filter((_, i) => i !== idx),
                     }))}
+                    aria-label="Supprimer ce palier"
                   >
                     ✕
                   </button>
                 </div>
               ))}
               <p className="text-[10px] text-white/30">
-                Le palier appliqué est celui avec le plus grand seuil atteint par la quantité commandée.
+                Le client verra ces lignes sur la card du plat et choisira un palier. Triées automatiquement par quantité croissante.
               </p>
 
-              {/* Aperçu des bundles tels qu'ils s'afficheront dans le menu client */}
+              {/* Apercu cote client */}
               {(() => {
-                const formPriceCents = Math.round(parseFloat(form.price || "0") * 100);
-                if (formPriceCents <= 0 || form.quantityDiscounts.length === 0) return null;
+                if (form.quantityTiers.length === 0) return null;
+                const sorted = [...form.quantityTiers].sort((a, b) => a.qty - b.qty);
                 return (
-                <div className="mt-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-                  <p className="text-[11px] text-emerald-300 font-bold uppercase tracking-wider mb-2">
-                    Aperçu côté client (ce que verront vos clients)
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    <span className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs">
-                      <span className="text-white/60">1× </span>
-                      <span className="font-black text-orange-300">{(formPriceCents / 100).toFixed(2)} €</span>
-                    </span>
-                    {[...form.quantityDiscounts].sort((a, b) => a.minQty - b.minQty).map((t, i) => {
-                      let unit = formPriceCents;
-                      const applicable = form.quantityDiscounts
-                        .filter(x => x.minQty <= t.minQty)
-                        .sort((a, b) => a.minQty - b.minQty);
-                      const best = applicable[applicable.length - 1];
-                      if (best) {
-                        unit = best.type === "PERCENT"
-                          ? Math.max(0, Math.round(formPriceCents * (1 - best.value / 100)))
-                          : Math.max(0, formPriceCents - best.value);
-                      }
-                      const total = unit * t.minQty;
-                      const totalFull = formPriceCents * t.minQty;
-                      const saved = totalFull - total;
-                      return (
+                  <div className="mt-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                    <p className="text-[11px] text-emerald-300 font-bold uppercase tracking-wider mb-2">
+                      Aperçu côté client
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {sorted.map((t, i) => (
                         <span key={i} className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-xs flex items-center gap-1.5">
-                          <span className="font-black text-emerald-300">{t.minQty}×</span>
-                          <span className="text-[10px] text-white/40 line-through">{(totalFull/100).toFixed(2)}€</span>
-                          <span className="font-black text-emerald-200">{(total/100).toFixed(2)} €</span>
-                          <span className="text-[9px] text-emerald-400">économie {(saved/100).toFixed(2)}€</span>
+                          <span className="font-black text-emerald-300">{t.qty}×</span>
+                          <span className="font-black text-emerald-200">{(t.priceCents / 100).toFixed(2)} €</span>
                         </span>
-                      );
-                    })}
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-white/40 mt-2 italic">
+                      Chaque palier sera cliquable par le client pour ajouter directement cette quantité au panier.
+                    </p>
                   </div>
-                  <p className="text-[10px] text-white/40 mt-2 italic">
-                    Le client cliquera sur un bundle pour ajouter directement cette quantité au panier.
-                  </p>
-                </div>
                 );
               })()}
             </div>
@@ -597,14 +568,16 @@ export default function MenuPage() {
                           {it.waitMinutes === 0 && (
                             <span className="text-xs text-white/30">⚡ Instantané</span>
                           )}
-                          {it.quantityDiscounts?.length > 0 && (
+                          {it.quantityTiers?.length > 0 && (
                             <span
                               className="text-xs px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded"
-                              title={it.quantityDiscounts.map(t =>
-                                `≥${t.minQty}: ${t.type === "PERCENT" ? `-${t.value}%` : `-${(t.value/100).toFixed(2)}€/u`}`
-                              ).join(" · ")}
+                              title={it.quantityTiers
+                                .slice()
+                                .sort((a, b) => a.qty - b.qty)
+                                .map((t) => `${t.qty}× = ${(t.priceCents / 100).toFixed(2)}€`)
+                                .join(" · ")}
                             >
-                              🎯 {it.quantityDiscounts.length} palier{it.quantityDiscounts.length > 1 ? "s" : ""}
+                              📦 {it.quantityTiers.length} palier{it.quantityTiers.length > 1 ? "s" : ""}
                             </span>
                           )}
                         </div>
