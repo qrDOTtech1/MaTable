@@ -15,6 +15,11 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 - **CTA Nova IA sur la page d'avis** : sous le bouton « Laisser un avis Google » s'affiche désormais un encart « Pas d'inspiration ? Laissez Nova IA vous rédiger un avis personnalisé » + bouton *Continuer avec Nova IA* qui poursuit le flow assisté.
 - **Catégories d'évaluation configurables (campagne)** : dans l'onglet *Paramètres IA → Avis*, le restaurateur peut activer/désactiver, renommer, ré-icôner ou ajouter ses propres critères en étoiles (max 12). Les clés par défaut `food/service/atmosphere/value` restent réservées pour conserver la cohérence du radar de synthèse.
 
+### Modifié — Reviews
+- **Feedback bas score généralisé** : la zone de retour libre apparaît dès qu'**une** catégorie (peu importe laquelle) est notée ≤ 3 étoiles. Le libellé devient « Comment nous améliorer ? » (sans le nom du serveur en préfixe).
+- **Bouton « Passer l'avis » retiré** : le raccourci « Laisser un avis Google » en haut de page suffit comme bypass.
+- **Redirection post-Google** : après clic sur le lien Google, l'app route vers l'étape *pourboire* si les pourboires sont actifs, sinon vers l'*offre/cadeau* si une récompense est configurée, sinon vers le *merci* final.
+
 ### Corrigé — Reviews
 - **Bouton flottant « Essai 14j » masqué côté client** : il ne s'affiche plus sur les routes `/r/*` (avis + vitrine) et `/order/*` (commande client). Il reste visible uniquement sur les landings/marketing à destination des prospects restaurateurs.
 - **CTA Avis Google manquant sur la vue serveur unique (NFC)** : quand le client arrive via une carte NFC personnelle (`?server=...`), le flow saute désormais directement à l'étape *Notes* — le bouton « Laisser un avis Google » est donc aussi affiché en haut de cette étape pour ne plus disparaître.

@@ -652,7 +652,14 @@ export default function PublicReviewPage() {
   const voucher = normalizeVoucher(config);
   const tipsEnabled = config.tipsEnabled !== false;
   const quickTipAmounts = normalizeQuickTipAmounts(config);
-  const goToPostReviewStep = () => setStep(tipsEnabled ? "tip" : "claim");
+  // Where to land after the customer either finishes the review or takes the
+  // Google shortcut. Honours the campaign config: tip step if tips are on,
+  // voucher claim if an offer is configured, otherwise the final thank-you.
+  const goToPostReviewStep = () => {
+    if (tipsEnabled) return setStep("tip");
+    if (voucher) return setStep("claim");
+    return setStep("voucher");
+  };
   const backTarget = getBackTarget();
 
   const restaurantPhotos = (config.restaurant.photos ?? []).map(p => ({
@@ -713,7 +720,7 @@ export default function PublicReviewPage() {
             <>
               <GoogleReviewCta
                 href={config.googleReviewLink}
-                onClick={() => setTimeout(() => setStep("tip"), 300)}
+                onClick={() => setTimeout(goToPostReviewStep, 300)}
               />
               <NovaIaCta
                 onClick={() => {
@@ -788,7 +795,7 @@ export default function PublicReviewPage() {
             <>
               <GoogleReviewCta
                 href={config.googleReviewLink}
-                onClick={() => setTimeout(() => setStep("tip"), 300)}
+                onClick={() => setTimeout(goToPostReviewStep, 300)}
               />
               <NovaIaCta
                 onClick={() => {
@@ -827,11 +834,15 @@ export default function PublicReviewPage() {
             ))}
           </div>
 
-          {/* Commentaire libre sur le serveur — apparait si la note Service est <= 3 */}
-          {(ratings.service ?? 0) > 0 && (ratings.service ?? 0) <= 3 && selectedServers.length === 1 && selectedServer && selectedServer.id !== "team" && (
+          {/* Feedback libre — apparait dès qu'une catégorie (n'importe laquelle) est notée <= 3.
+              On capture un retour générique d'amélioration, sans nommer le serveur. */}
+          {effectiveCategories.some(c => {
+            const v = ratings[c.key] ?? 0;
+            return v > 0 && v <= 3;
+          }) && (
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 space-y-2">
               <label className="text-xs font-bold text-amber-300 uppercase tracking-wider">
-                {selectedServer.name} — qu'est-ce qui n'a pas marché ?
+                Comment nous améliorer ?
               </label>
               <textarea
                 value={serverComment}
@@ -851,14 +862,7 @@ export default function PublicReviewPage() {
             >
               Continuer
             </button>
-            {!isBoutique && (
-              <button
-                onClick={goToPostReviewStep}
-                className="w-full mt-4 text-sm text-white/40 hover:text-white transition-colors underline underline-offset-4"
-              >
-                {tipsEnabled ? "Passer l'avis et laisser juste un pourboire" : "Passer l'avis"}
-              </button>
-            )}
+            {/* Bouton « Passer l'avis » retiré — l'utilisateur dispose déjà du raccourci Google en haut de page. */}
           </div>
         </div>
       )}
