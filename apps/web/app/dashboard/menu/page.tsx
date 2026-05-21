@@ -420,7 +420,10 @@ export default function MenuPage() {
               </p>
 
               {/* Aperçu des bundles tels qu'ils s'afficheront dans le menu client */}
-              {form.priceCents > 0 && form.quantityDiscounts.length > 0 && (
+              {(() => {
+                const formPriceCents = Math.round(parseFloat(form.price || "0") * 100);
+                if (formPriceCents <= 0 || form.quantityDiscounts.length === 0) return null;
+                return (
                 <div className="mt-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
                   <p className="text-[11px] text-emerald-300 font-bold uppercase tracking-wider mb-2">
                     Aperçu côté client (ce que verront vos clients)
@@ -428,22 +431,21 @@ export default function MenuPage() {
                   <div className="flex flex-wrap gap-1.5">
                     <span className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs">
                       <span className="text-white/60">1× </span>
-                      <span className="font-black text-orange-300">{(form.priceCents / 100).toFixed(2)} €</span>
+                      <span className="font-black text-orange-300">{(formPriceCents / 100).toFixed(2)} €</span>
                     </span>
                     {[...form.quantityDiscounts].sort((a, b) => a.minQty - b.minQty).map((t, i) => {
-                      let unit = form.priceCents;
-                      // recalcule avec tous les paliers de seuil <= t.minQty
+                      let unit = formPriceCents;
                       const applicable = form.quantityDiscounts
                         .filter(x => x.minQty <= t.minQty)
                         .sort((a, b) => a.minQty - b.minQty);
                       const best = applicable[applicable.length - 1];
                       if (best) {
                         unit = best.type === "PERCENT"
-                          ? Math.max(0, Math.round(form.priceCents * (1 - best.value / 100)))
-                          : Math.max(0, form.priceCents - best.value);
+                          ? Math.max(0, Math.round(formPriceCents * (1 - best.value / 100)))
+                          : Math.max(0, formPriceCents - best.value);
                       }
                       const total = unit * t.minQty;
-                      const totalFull = form.priceCents * t.minQty;
+                      const totalFull = formPriceCents * t.minQty;
                       const saved = totalFull - total;
                       return (
                         <span key={i} className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-xs flex items-center gap-1.5">
@@ -459,7 +461,8 @@ export default function MenuPage() {
                     Le client cliquera sur un bundle pour ajouter directement cette quantité au panier.
                   </p>
                 </div>
-              )}
+                );
+              })()}
             </div>
           )}
         </div>

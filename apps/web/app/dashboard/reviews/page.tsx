@@ -986,7 +986,7 @@ export default function ReviewsPage() {
   .offer-icon { font-size: 32px; margin-bottom: 8px; }
   .offer-title { font-size: 20px; font-weight: 800; color: #c2410c; margin-bottom: 4px; }
   .offer-desc { font-size: 14px; color: #92400e; }
-  .footer-print { position: fixed; bottom: 30px; left: 0; right: 0; text-align: center; font-size: 12px; color: #bbb; letter-spacing: 1px; }
+
 </style>
 </head>
 <body>
@@ -999,7 +999,7 @@ export default function ReviewsPage() {
   <div class="sub-message">Scannez le QR code avec votre telephone</div>
   ${offerHtml}
 </div>
-<div class="footer-print">matable.pro</div>
+
 </body>
 </html>`;
                   // Use hidden iframe to avoid popup blockers
