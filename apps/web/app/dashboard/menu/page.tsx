@@ -22,6 +22,7 @@ const DIET_LABELS: Record<string, string> = {
 
 type ModifierOption = { id: string; name: string; priceDeltaCents: number };
 type ModifierGroup = { id: string; name: string; required: boolean; multiple: boolean; options: ModifierOption[] };
+type QuantityDiscount = { minQty: number; type: "PERCENT" | "FIXED_CENTS"; value: number };
 type Item = {
   id: string; name: string; description?: string | null; priceCents: number;
   category?: string | null; available: boolean; imageUrl?: string | null;
@@ -31,6 +32,7 @@ type Item = {
   modifierGroups: ModifierGroup[];
   suggestedPairings: string[];
   upsellItems: string[];
+  quantityDiscounts: QuantityDiscount[];
 };
 
 type UploadRes = { id: string; path: string };
@@ -41,6 +43,7 @@ const emptyForm = {
   stockEnabled: false, stockQty: "", lowStockThreshold: "5",
   waitMinutes: "0",
   suggestedPairings: "", upsellItems: [] as string[],
+  quantityDiscounts: [] as QuantityDiscount[],
 };
 
 export default function MenuPage() {
@@ -123,6 +126,7 @@ export default function MenuPage() {
       waitMinutes: (it.waitMinutes ?? 0).toString(),
       suggestedPairings: (it.suggestedPairings ?? []).join(", "),
       upsellItems: it.upsellItems ?? [],
+      quantityDiscounts: it.quantityDiscounts ?? [],
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -145,6 +149,9 @@ export default function MenuPage() {
       waitMinutes: parseInt(form.waitMinutes) || 0,
       suggestedPairings: form.suggestedPairings.split(",").map(s => s.trim()).filter(Boolean),
       upsellItems: form.upsellItems,
+      quantityDiscounts: form.quantityDiscounts
+        .filter(t => t.minQty >= 2 && t.value > 0)
+        .map(t => ({ minQty: Math.floor(t.minQty), type: t.type, value: Math.floor(t.value) })),
     };
     if (editId) {
       await api(`/api/pro/menu/${editId}`, { method: "PATCH", body: JSON.stringify(payload) });
@@ -324,6 +331,97 @@ export default function MenuPage() {
           </div>
         </div>
 
+        {/* Remises sur quantités */}
+        <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+          <div className="flex items-center justify-between mb-2">
+            <label className="label !mb-0">🎯 Remises sur quantité</label>
+            <button
+              type="button"
+              className="btn-ghost text-xs"
+              onClick={() => setForm(f => ({
+                ...f,
+                quantityDiscounts: [...f.quantityDiscounts, { minQty: 3, type: "PERCENT", value: 10 }],
+              }))}
+            >
+              + Ajouter un palier
+            </button>
+          </div>
+          {form.quantityDiscounts.length === 0 ? (
+            <p className="text-[11px] text-white/30">
+              Ex. À partir de 3 commandés → -10%. À partir de 6 → 2€ de remise par unité.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {form.quantityDiscounts.map((t, idx) => (
+                <div key={idx} className="flex flex-wrap items-center gap-2 text-xs text-white">
+                  <span className="text-white/50">À partir de</span>
+                  <input
+                    type="number"
+                    min={2}
+                    max={999}
+                    className="w-16 border border-white/10 rounded px-2 py-1 bg-white/5 text-white"
+                    value={t.minQty}
+                    onChange={e => {
+                      const v = parseInt(e.target.value) || 2;
+                      setForm(f => ({
+                        ...f,
+                        quantityDiscounts: f.quantityDiscounts.map((x, i) => i === idx ? { ...x, minQty: v } : x),
+                      }));
+                    }}
+                  />
+                  <span className="text-white/50">commandés →</span>
+                  <select
+                    className="border border-white/10 rounded px-2 py-1 bg-white/5 text-white"
+                    value={t.type}
+                    onChange={e => {
+                      const type = e.target.value as QuantityDiscount["type"];
+                      setForm(f => ({
+                        ...f,
+                        quantityDiscounts: f.quantityDiscounts.map((x, i) => i === idx ? { ...x, type } : x),
+                      }));
+                    }}
+                  >
+                    <option value="PERCENT">% de remise</option>
+                    <option value="FIXED_CENTS">€ de remise / unité</option>
+                  </select>
+                  <input
+                    type="number"
+                    min={0}
+                    step={t.type === "PERCENT" ? 1 : 0.01}
+                    max={t.type === "PERCENT" ? 100 : undefined}
+                    className="w-20 border border-white/10 rounded px-2 py-1 bg-white/5 text-white"
+                    value={t.type === "PERCENT" ? t.value : (t.value / 100).toFixed(2)}
+                    onChange={e => {
+                      const raw = parseFloat(e.target.value);
+                      const value = t.type === "PERCENT"
+                        ? Math.max(0, Math.min(100, Math.round(raw || 0)))
+                        : Math.max(0, Math.round((raw || 0) * 100));
+                      setForm(f => ({
+                        ...f,
+                        quantityDiscounts: f.quantityDiscounts.map((x, i) => i === idx ? { ...x, value } : x),
+                      }));
+                    }}
+                  />
+                  <span className="text-white/40">{t.type === "PERCENT" ? "%" : "€"}</span>
+                  <button
+                    type="button"
+                    className="text-red-400/60 hover:text-red-400"
+                    onClick={() => setForm(f => ({
+                      ...f,
+                      quantityDiscounts: f.quantityDiscounts.filter((_, i) => i !== idx),
+                    }))}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <p className="text-[10px] text-white/30">
+                Le palier appliqué est celui avec le plus grand seuil atteint par la quantité commandée.
+              </p>
+            </div>
+          )}
+        </div>
+
         <div>
           <label className="label">Photo</label>
           <div className="flex flex-col md:flex-row gap-2 md:items-center">
@@ -453,6 +551,16 @@ export default function MenuPage() {
                           )}
                           {it.waitMinutes === 0 && (
                             <span className="text-xs text-white/30">⚡ Instantané</span>
+                          )}
+                          {it.quantityDiscounts?.length > 0 && (
+                            <span
+                              className="text-xs px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded"
+                              title={it.quantityDiscounts.map(t =>
+                                `≥${t.minQty}: ${t.type === "PERCENT" ? `-${t.value}%` : `-${(t.value/100).toFixed(2)}€/u`}`
+                              ).join(" · ")}
+                            >
+                              🎯 {it.quantityDiscounts.length} palier{it.quantityDiscounts.length > 1 ? "s" : ""}
+                            </span>
                           )}
                         </div>
                         {it.description && <div className="text-xs text-white/50 truncate">{it.description}</div>}

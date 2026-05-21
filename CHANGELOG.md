@@ -11,6 +11,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ## [Unreleased] — v1.2 (Nova IA & Real-time)
 
+### Ajouté — Pricing
+- **Remises sur quantité (menu pro)** : éditeur de paliers par plat (`% ` ou `€/unité` à partir de N commandés, jusqu'à 10 paliers).
+- **Application client temps réel** : prix barré + prix remisé sur la fiche plat dès que le seuil est atteint, badges `🎯 N+ → -X%` visibles en permanence, ligne *« Vous économisez X € »* dans la barre panier.
+
 ### Ajouté — Nova IA (Phase 3)
 - **Magic Scan** : Interface d'upload avec analyse IA Vision pour remplir automatiquement les fiches plats (nom, prix, description, allergènes).
 - **Nova Chatbot** : Assistant interactif flottant sur la page de commande client et le dashboard pro.

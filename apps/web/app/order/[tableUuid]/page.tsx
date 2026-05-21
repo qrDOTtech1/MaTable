@@ -7,6 +7,7 @@ import { api, API_URL } from "@/lib/api";
 import { ImageLightbox } from "./ImageLightbox";
 import { NovaAssistant } from "@/components/ui";
 
+type QuantityDiscount = { minQty: number; type: "PERCENT" | "FIXED_CENTS"; value: number };
 type MenuItem = {
   id: string; name: string; description?: string | null;
   priceCents: number; category?: string | null; imageUrl?: string | null;
@@ -14,7 +15,22 @@ type MenuItem = {
   waitMinutes?: number;
   suggestedPairings?: string[]; // Arrays of pairing strings, e.g. ["Un bon vin rouge", "Une bière ambrée"]
   upsellItems?: string[]; // Array of MenuItem IDs to suggest
+  quantityDiscounts?: QuantityDiscount[];
 };
+
+/** Effective unit price for a given quantity, matches server-side logic. */
+function effectiveUnitPriceCents(base: number, qty: number, tiers?: QuantityDiscount[]): number {
+  if (!tiers || tiers.length === 0 || qty < 1) return base;
+  const sorted = [...tiers].sort((a, b) => a.minQty - b.minQty);
+  let applied: QuantityDiscount | null = null;
+  for (const t of sorted) {
+    if (qty >= t.minQty) applied = t;
+    else break;
+  }
+  if (!applied) return base;
+  if (applied.type === "PERCENT") return Math.max(0, Math.round(base * (1 - applied.value / 100)));
+  return Math.max(0, base - applied.value);
+}
 type TableInfo = {
   table: { id: string; number: number; zone?: string };
   restaurant: {
@@ -229,7 +245,21 @@ export default function OrderPage() {
 
   const cartTotal = useMemo(() => {
     if (!info) return 0;
-    return info.menu.reduce((s, m) => s + (cart[m.id] || 0) * m.priceCents, 0);
+    return info.menu.reduce((s, m) => {
+      const qty = cart[m.id] || 0;
+      if (!qty) return s;
+      return s + qty * effectiveUnitPriceCents(m.priceCents, qty, m.quantityDiscounts);
+    }, 0);
+  }, [cart, info]);
+
+  const cartSavings = useMemo(() => {
+    if (!info) return 0;
+    return info.menu.reduce((s, m) => {
+      const qty = cart[m.id] || 0;
+      if (!qty) return s;
+      const unit = effectiveUnitPriceCents(m.priceCents, qty, m.quantityDiscounts);
+      return s + qty * (m.priceCents - unit);
+    }, 0);
   }, [cart, info]);
 
   const unpaidOrders = myOrders.filter(o => o.status !== "PAID" && o.status !== "CANCELLED");
@@ -740,8 +770,29 @@ export default function OrderPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-bold text-white text-sm leading-tight">{m.name}</h3>
-                        <span className="font-black text-orange-400 text-sm shrink-0">{(m.priceCents / 100).toFixed(2)} €</span>
+                        {(() => {
+                          const qty = cart[m.id] || 0;
+                          const unit = effectiveUnitPriceCents(m.priceCents, qty, m.quantityDiscounts);
+                          const discounted = qty > 0 && unit < m.priceCents;
+                          return discounted ? (
+                            <span className="flex flex-col items-end shrink-0 leading-tight">
+                              <span className="text-[10px] text-white/30 line-through">{(m.priceCents / 100).toFixed(2)} €</span>
+                              <span className="font-black text-emerald-400 text-sm">{(unit / 100).toFixed(2)} €</span>
+                            </span>
+                          ) : (
+                            <span className="font-black text-orange-400 text-sm shrink-0">{(m.priceCents / 100).toFixed(2)} €</span>
+                          );
+                        })()}
                       </div>
+                      {m.quantityDiscounts && m.quantityDiscounts.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {[...m.quantityDiscounts].sort((a, b) => a.minQty - b.minQty).map((t, i) => (
+                            <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              🎯 {t.minQty}+ → {t.type === "PERCENT" ? `-${t.value}%` : `-${(t.value/100).toFixed(2)}€/u`}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       
                       {m.suggestedPairings && m.suggestedPairings.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap gap-1">
@@ -982,6 +1033,11 @@ export default function OrderPage() {
             <div>
               <p className="text-xs text-white/40">Votre panier</p>
               <p className="text-xl font-black text-white">{(cartTotal / 100).toFixed(2)} €</p>
+              {cartSavings > 0 && (
+                <p className="text-[11px] font-semibold text-emerald-400">
+                  🎯 Vous économisez {(cartSavings / 100).toFixed(2)} €
+                </p>
+              )}
             </div>
             <button
               onClick={submitOrder}
