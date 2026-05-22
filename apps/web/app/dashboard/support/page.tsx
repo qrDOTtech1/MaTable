@@ -58,7 +58,7 @@ export default function SupportPage() {
   return (
     <div className="p-8 max-w-4xl">
       <h1 className="text-2xl font-bold text-white mb-1">SAV / Support</h1>
-      <p className="text-sm text-white/40 mb-6">Envoyez un message directement a l'equipe MaTable</p>
+      <p className="text-sm text-white/40 mb-6">Envoyez un message directement a l'equipe MaTable.Pro</p>
 
       {/* Form */}
       <form onSubmit={submit} className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-6 space-y-4 mb-8">
@@ -95,7 +95,7 @@ export default function SupportPage() {
         </div>
         {success && (
           <div className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-2">
-            Message envoye ! L'equipe MaTable vous repondra rapidement.
+            Message envoye ! L'equipe MaTable.Pro vous repondra rapidement.
           </div>
         )}
       </form>
@@ -126,7 +126,7 @@ export default function SupportPage() {
                 <p className="text-sm text-white/60 whitespace-pre-wrap">{t.message}</p>
                 {t.adminReply && (
                   <div className="mt-3 bg-orange-500/5 border border-orange-500/20 rounded-lg p-3">
-                    <p className="text-xs text-orange-400 font-bold mb-1">Reponse MaTable :</p>
+                    <p className="text-xs text-orange-400 font-bold mb-1">Reponse MaTable.Pro :</p>
                     <p className="text-sm text-white/70 whitespace-pre-wrap">{t.adminReply}</p>
                     {t.repliedAt && (
                       <p className="text-xs text-white/30 mt-1">{new Date(t.repliedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>

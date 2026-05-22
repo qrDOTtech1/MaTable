@@ -199,7 +199,7 @@ export default function ReceiptPage() {
         {/* Footer */}
         <div className="text-center text-xs text-gray-400 border-t border-dashed border-gray-300 pt-5 space-y-1">
           <p>Merci de votre visite !</p>
-          <p>Powered by <strong>MaTable</strong> · matable.pro</p>
+          <p>Powered by <strong>MaTable.Pro</strong> · matable.pro</p>
           {emailSent && <p>Ticket envoye a {emailInput}</p>}
         </div>
       </div>

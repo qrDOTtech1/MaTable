@@ -72,7 +72,7 @@ function LoginForm() {
         {/* Formulaire de connexion */}
         {!showForgot && (
           <form onSubmit={onSubmit} className="card space-y-4">
-            <h1 className="text-2xl font-bold">Ma <span className="text-orange-500">Table</span></h1>
+            <h1 className="text-2xl font-bold">MaTable<span className="text-orange-500">Pro</span></h1>
             <p className="text-sm text-white/50">Connexion restaurateur</p>
             {justRegistered && (
               <div className="text-sm text-green-400 bg-green-500/10 border border-green-500/20 p-2 rounded">
@@ -119,7 +119,8 @@ function LoginForm() {
         {showForgot && (
           <div className="card space-y-4">
             <div>
-              <h1 className="text-2xl font-bold">Mot de passe <span className="text-orange-500">oublié</span></h1>
+              <h1 className="text-2xl font-bold">MaTable<span className="text-orange-500">Pro</span></h1>
+            <p className="text-lg font-semibold text-white/80 mt-1">Mot de passe oublié</p>
               <p className="text-sm text-white/50 mt-1">
                 Entrez votre email — nous vous envoyons un mot de passe temporaire.
               </p>
