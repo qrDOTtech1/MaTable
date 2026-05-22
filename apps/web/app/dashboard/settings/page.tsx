@@ -36,6 +36,37 @@ export default function SettingsPage() {
   const [savingPins, setSavingPins] = useState(false);
   const [savedPins, setSavedPins] = useState(false);
 
+  // Change password
+  const [pwdForm, setPwdForm] = useState({ current: "", next: "", confirm: "" });
+  const [showPwd, setShowPwd] = useState(false);
+  const [savingPwd, setSavingPwd] = useState(false);
+  const [pwdError, setPwdError] = useState<string | null>(null);
+  const [pwdSaved, setPwdSaved] = useState(false);
+
+  const changePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwdError(null);
+    if (pwdForm.next.length < 6) { setPwdError("Le nouveau mot de passe doit faire au moins 6 caractères."); return; }
+    if (pwdForm.next !== pwdForm.confirm) { setPwdError("Les deux mots de passe ne correspondent pas."); return; }
+    setSavingPwd(true);
+    try {
+      await api("/api/pro/account/password", {
+        method: "PATCH",
+        body: JSON.stringify({ currentPassword: pwdForm.current, newPassword: pwdForm.next }),
+      });
+      setPwdSaved(true);
+      setPwdForm({ current: "", next: "", confirm: "" });
+      setTimeout(() => setPwdSaved(false), 3000);
+    } catch (err: any) {
+      const msg = err?.message ?? "";
+      if (msg.includes("wrong_current_password")) setPwdError("Mot de passe actuel incorrect.");
+      else if (msg.includes("no_password_set")) setPwdError("Aucun mot de passe associé à ce compte.");
+      else setPwdError(msg || "Erreur lors du changement de mot de passe.");
+    } finally {
+      setSavingPwd(false);
+    }
+  };
+
   useEffect(() => {
     api<{ restaurant: Restaurant }>("/api/pro/me")
       .then((r) => setForm(r.restaurant))
@@ -557,6 +588,51 @@ export default function SettingsPage() {
             📋 Copier
           </button>
         </div>
+      </section>
+
+      {/* Changer le mot de passe */}
+      <section className="mt-8 max-w-2xl bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 space-y-4">
+        <div>
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">🔑 Changer le mot de passe</h2>
+          <p className="text-xs text-white/40 mt-1">Mettez à jour votre mot de passe de connexion.</p>
+        </div>
+        <form onSubmit={changePassword} className="space-y-3">
+          {[
+            { id: "current", label: "Mot de passe actuel", field: "current" as const },
+            { id: "next", label: "Nouveau mot de passe", field: "next" as const },
+            { id: "confirm", label: "Confirmer le nouveau mot de passe", field: "confirm" as const },
+          ].map(({ id, label, field }) => (
+            <div key={id}>
+              <label className="text-xs text-white/40 block mb-1">{label}</label>
+              <div className="relative">
+                <input
+                  type={showPwd ? "text" : "password"}
+                  value={pwdForm[field]}
+                  onChange={(e) => setPwdForm(p => ({ ...p, [field]: e.target.value }))}
+                  className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white font-mono placeholder-white/20 focus:outline-none focus:border-orange-500/50 pr-10"
+                  placeholder="••••••••"
+                  autoComplete={field === "current" ? "current-password" : "new-password"}
+                />
+                {field === "confirm" && (
+                  <button type="button" onClick={() => setShowPwd(p => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 text-xs">
+                    {showPwd ? "🙈" : "👁"}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+          {pwdError && (
+            <div className="px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-400">{pwdError}</div>
+          )}
+          <div className="flex items-center gap-3 pt-1">
+            <button type="submit" disabled={savingPwd || !pwdForm.current || !pwdForm.next || !pwdForm.confirm}
+              className="px-6 py-2.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-bold rounded-xl transition-colors text-sm">
+              {savingPwd ? "Mise à jour…" : "Changer le mot de passe"}
+            </button>
+            {pwdSaved && <span className="text-emerald-400 text-sm font-medium">✓ Mot de passe modifié</span>}
+          </div>
+        </form>
       </section>
 
       {/* Galerie photos du restaurant */}
