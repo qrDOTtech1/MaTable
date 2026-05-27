@@ -86,7 +86,7 @@ export default function TarifsPage() {
               >
                 Créez votre solution.<br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">
-                  Payez ce que vous utilisez.
+                  3 forfaits. Dès 59€/mois.
                 </span>
               </motion.h1>
               <motion.p
@@ -95,7 +95,7 @@ export default function TarifsPage() {
                 transition={{ delay: 0.3 }}
                 className="text-xl text-white/50 max-w-2xl mx-auto"
               >
-                Ne payez que pour ce que vous activez. Plus vous vous engagez, plus le tarif baisse.
+                Starter, Pro, Business. Mensuel sans engagement ou annuel avec −12 %. Sans surprise.
               </motion.p>
             </div>
           </section>

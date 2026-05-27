@@ -288,7 +288,7 @@ export default function HomePage() {
             name: "Combien coûte MaTable Pro ?",
             acceptedAnswer: {
               "@type": "Answer",
-              text: "MaTable Pro démarre à 79€ HT/mois pour le module Avis Google & Réputation avec un engagement de 12 mois. Les prix varient selon la durée d'engagement (3, 6, 9 ou 12 mois) et les modules choisis. Des remises volume vont jusqu'à -20% pour 4 modules ou plus. Essai gratuit de 14 jours sans carte bancaire.",
+              text: "MaTable Pro propose 3 forfaits : Starter à 59€ HT/mois (Avis + Commande + Portail Serveur), Pro à 119€ HT/mois (+ Réservations), Business à 249€ HT/mois (+ Nova IA Stock, Finance, Contab). Mensuel sans engagement ou annuel avec -12%. Essai gratuit de 14 jours sans carte bancaire.",
             },
           },
           {

@@ -5,15 +5,56 @@ export const stats = [
   { value: "×4", label: "Moins de no-shows" },
 ];
 
-export const MODULES = [
-  { id: "avis", name: "Avis Google & Réputation", desc: "Campagne QR, IA rédactionnelle, Bons de réduction auto.", price: 79, required: true },
-  { id: "qr", name: "Commande & Paiement", desc: "Menu digital QR, paiement fractionné ou espèces, tickets.", price: 99, required: false },
-  { id: "server", name: "Portail Serveur (Live)", desc: "Portail serveur, portail cuisine dédié et portail caisse — gestion des tables, suivi commandes en temps réel, appels instantanés.", price: 69, required: false },
-  { id: "stock", name: "Nova Stock IA", desc: "Listes de courses auto, alertes de ruptures, food cost. Quota mensuel inclus.", price: 89, required: false },
-  { id: "finance", name: "Nova Finance IA", desc: "Food cost réel, KPIs, marges, prévisions CA et recommandations de rentabilité. Quota mensuel inclus.", price: 69, required: false },
-  { id: "contab", name: "Nova Contab IA", desc: "Exports comptables, TVA, rapports de fin de mois intelligents. Quota mensuel inclus.", price: 69, required: false },
-  { id: "reservations", name: "Réservations Intelligentes", desc: "Créneaux dynamiques, arrhes Stripe, confirmation automatique, anti no-show et gestion de salle en temps réel.", price: 129, required: false },
-];
+/**
+ * PLANS — source de vérité tarifaire côté landing.
+ * Doit rester synchronisé avec MaTableAdmin/src/app/dashboard/documents/pricing.ts
+ */
+export const PLANS = [
+  {
+    id: "starter",
+    name: "Starter",
+    priceMonthly: 59,
+    color: "emerald" as const,
+    popular: false,
+    desc: "L'essentiel pour digitaliser votre salle dès le premier jour.",
+    features: [
+      "Avis Google & Réputation (campagne QR, IA rédactionnelle)",
+      "Commande & Paiement QR (menu digital, paiement fractionné)",
+      "Portail Serveur · Portail Cuisine · Portail Caisse",
+    ],
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    priceMonthly: 119,
+    color: "orange" as const,
+    popular: true,
+    desc: "La solution complète pour piloter votre restaurant au quotidien.",
+    features: [
+      "Tout le forfait Starter",
+      "Réservations Intelligentes (créneaux dynamiques, arrhes Stripe, anti no-show)",
+    ],
+  },
+  {
+    id: "business",
+    name: "Business",
+    priceMonthly: 249,
+    color: "purple" as const,
+    popular: false,
+    desc: "Performance maximale — IA complète pour les restaurateurs ambitieux.",
+    features: [
+      "Tout le forfait Pro",
+      "Nova Stock IA (liste de courses auto, alertes ruptures, food cost)",
+      "Nova Finance IA (KPIs, marges, prévisions CA, recommandations rentabilité)",
+      "Nova Contab IA (exports comptables, TVA, rapports de fin de mois)",
+    ],
+  },
+] as const;
+
+export type PlanId = (typeof PLANS)[number]["id"];
+
+/** Remise annuelle (en %) — appliquée sur le prix mensuel */
+export const ANNUAL_DISCOUNT_PERCENT = 12;
 
 export const features = [
   { icon: "📱", title: "Scan → Commande. C'est tout.", desc: "Pas d'app. Pas de compte. Le client scanne, choisit, commande. Simplicite desarmante.", highlight: true, category: "commande" },
@@ -81,15 +122,6 @@ export const comparisons = [
   { feature: "Essai gratuit sans CB", us: "✓", starter: "✕", dino: "✕" },
 ];
 
-export const DURATIONS = [
-  { key: "3m",  label: "3 mois",   sub: "Sans risque",         realMult: 1.07, fakeDiscount: 0  },
-  { key: "6m",  label: "6 mois",   sub: "Le plus populaire",   realMult: 1.05, fakeDiscount: 2  },
-  { key: "9m",  label: "9 mois",   sub: "Presque annuel",      realMult: 1.03, fakeDiscount: 4  },
-  { key: "12m", label: "12 mois",  sub: "Tarif de reference",  realMult: 1.00, fakeDiscount: 7  },
-  { key: "12a", label: "12 mois",  sub: "Paiement annuel",     realMult: 0.95, fakeDiscount: 12 },
-] as const;
-
-export type DurationKey = typeof DURATIONS[number]["key"];
 
 export const teaserCards = [
   {
@@ -120,7 +152,7 @@ export const teaserCards = [
     href: "/tarifs",
     icon: "💶",
     title: "Tarifs",
-    desc: "Payez uniquement ce que vous utilisez. Dès 79€/mois.",
+    desc: "3 forfaits clairs, sans engagement. Dès 59€/mois.",
     cta: "Construire →",
     color: "green",
   },
@@ -187,12 +219,12 @@ export const faqCategories = [
     id: "pricing",
     label: "Tarifs et engagement",
     title: "Ce que vous payez, et pourquoi",
-    intro: "Le modele est lisible : vous activez les modules dont vous avez besoin et la duree d'engagement fait evoluer le tarif.",
+    intro: "Le modele est lisible : 3 forfaits fixes, mensuel sans engagement ou annuel avec -12 %.",
     items: [
       {
         question: "Comment sont calcules les tarifs ?",
         answer:
-          "Vous choisissez vos modules, puis votre duree d'engagement. Plus l'engagement est long, plus le prix mensuel baisse. Des remises volume s'appliquent aussi lorsque vous activez plusieurs modules.",
+          "3 forfaits fixes : Starter a 59 €/mois, Pro a 119 €/mois, Business a 249 €/mois. Mensuel sans engagement ou annuel avec -12 % sur le prix mensuel. Pas de modules a la carte, pas de frais caches.",
       },
       {
         question: "Y a-t-il un essai gratuit ?",
@@ -200,9 +232,9 @@ export const faqCategories = [
           "Oui. Vous pouvez tester MaTable Pro pendant 14 jours sans carte bancaire. L'objectif est que vous voyiez rapidement si la solution vous fait gagner du temps, du chiffre ou de la serenite au quotidien.",
       },
       {
-        question: "Peut-on commencer petit puis ajouter des modules plus tard ?",
+        question: "Peut-on changer de forfait apres la souscription ?",
         answer:
-          "Oui. Vous pouvez demarrer avec un besoin precis puis enrichir la solution au fil de votre croissance. L'interet de MaTable Pro est justement de faire cohabiter plusieurs briques dans un seul environnement plutot que d'empiler des outils disperses.",
+          "Oui. Vous pouvez passer d'un forfait a un autre a tout moment. Une montee en forfait est effective immediatement, un passage a un forfait inferieur prend effet a la prochaine echeance mensuelle.",
       },
       {
         question: "Y a-t-il des frais caches ou du materiel impose ?",

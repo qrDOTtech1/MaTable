@@ -3,11 +3,11 @@ import TarifsClient from "./TarifsClient";
 
 export const metadata: Metadata = {
   title: "Tarifs — MaTable Pro",
-  description: "Construisez votre solution restaurant sur-mesure. Dès 79€/mois : Avis Google IA, Commande QR, Portail Serveur, Réservations, Nova Stock & Finance IA. Essai gratuit 14 jours.",
+  description: "3 forfaits clairs pour digitaliser votre restaurant. Starter dès 59€/mois — sans engagement, résiliable à tout moment. Essai gratuit 14 jours sans CB.",
   alternates: { canonical: "https://matable.pro/tarifs" },
   openGraph: {
-    title: "Tarifs MaTable Pro — Payez ce que vous utilisez",
-    description: "7 modules indépendants. Dès 79€/mois. Remises jusqu'à -20% selon l'engagement. Essai gratuit 14 jours sans CB.",
+    title: "Tarifs MaTable Pro — Starter 59€, Pro 119€, Business 249€",
+    description: "3 forfaits fixes, sans engagement. Starter 59€, Pro 119€, Business 249€. Annuel −12%. Essai gratuit 14 jours sans CB.",
     url: "https://matable.pro/tarifs",
     type: "website",
   },
@@ -20,7 +20,7 @@ export default function TarifsPage() {
     "@id": "https://matable.pro/tarifs#webpage",
     url: "https://matable.pro/tarifs",
     name: "Tarifs MaTable Pro",
-    description: "Construisez votre solution restaurant sur-mesure. 7 modules indépendants dès 79€/mois.",
+    description: "3 forfaits MaTable.Pro dès 59€/mois. Starter, Pro, Business — sans engagement.",
     breadcrumb: {
       "@type": "BreadcrumbList",
       itemListElement: [

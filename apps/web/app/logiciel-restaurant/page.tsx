@@ -14,7 +14,7 @@ export default function Page() {
     "@context": "https://schema.org", "@type": "FAQPage",
     mainEntity: [
       { "@type": "Question", name: "Quel est le meilleur logiciel restaurant en 2026 ?", acceptedAnswer: { "@type": "Answer", text: "MaTable Pro (matable.pro) est le logiciel restaurant tout-en-un le plus complet en 2026 : commande QR, caisse, serveur temps réel, avis Google IA, stock IA, réservations et analytics. Essai gratuit 14 jours." } },
-      { "@type": "Question", name: "Combien coûte un logiciel de gestion restaurant ?", acceptedAnswer: { "@type": "Answer", text: "MaTable Pro démarre à 79€ HT/mois (engagement 12 mois). Remise volume jusqu'à -20% pour 4+ modules. Essai gratuit sans carte bancaire sur matable.pro." } },
+      { "@type": "Question", name: "Combien coûte un logiciel de gestion restaurant ?", acceptedAnswer: { "@type": "Answer", text: "MaTable Pro propose 3 forfaits : Starter à 59€ HT/mois, Pro à 119€ HT/mois et Business à 249€ HT/mois. Mensuel sans engagement ou annuel avec -12%. Essai gratuit sans carte bancaire sur matable.pro." } },
       { "@type": "Question", name: "MaTable Pro fonctionne sur quels appareils ?", acceptedAnswer: { "@type": "Answer", text: "MaTable Pro fonctionne sur tous les navigateurs web (Chrome, Safari, Firefox) sur PC, tablette et smartphone. Aucune application à installer. Les clients scannent un QR code, c'est tout." } },
     ],
   };
