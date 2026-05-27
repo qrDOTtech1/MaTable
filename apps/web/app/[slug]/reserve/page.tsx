@@ -19,6 +19,7 @@ export default function ReservePage() {
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [zones, setZones] = useState<string[]>([]);
+  const [loadingZones, setLoadingZones] = useState(false);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [step, setStep] = useState<"form" | "done">("form");
@@ -49,14 +50,16 @@ export default function ReservePage() {
   // Load available zones
   useEffect(() => {
     if (!restaurant) return;
+    setLoadingZones(true);
     fetch(`${API_URL}/api/r/${slug}/zones`)
       .then((r) => r.json())
       .then((d) => {
         setZones(d.zones ?? []);
-        // Pre-select first zone if only one
-        if ((d.zones ?? []).length === 1) setZone(d.zones[0]);
+        const loadedZones = d.zones ?? [];
+        if (loadedZones.length === 1) setZone(loadedZones[0]);
       })
-      .catch(() => {});
+      .catch(() => setZones([]))
+      .finally(() => setLoadingZones(false));
   }, [restaurant]);
 
   // Load availability slots
@@ -185,41 +188,56 @@ export default function ReservePage() {
             </div>
           </div>
 
-          {/* Sélection de zone — affiché uniquement si plusieurs zones existent */}
-          {zones.length > 1 && (
-            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] p-4">
-              <label className="text-xs text-white/50 uppercase tracking-wider font-bold block mb-3">
-                Zone / Espace
-              </label>
-              <div className="flex flex-wrap gap-2">
+          {/* Sélection de zone */}
+          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] p-4">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <label className="text-xs text-white/50 uppercase tracking-wider font-bold block">
+                  Zone / Espace souhaité
+                </label>
+                <p className="text-[11px] text-white/30 mt-1">
+                  Choisissez une zone si le restaurant l'a configurée. Sinon, nous attribuons la meilleure table disponible.
+                </p>
+              </div>
+              {loadingZones && (
+                <span className="text-[10px] text-white/30 font-semibold uppercase tracking-wider">Chargement…</span>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setZone("")}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
+                  zone === ""
+                    ? "bg-orange-500/20 border-orange-500/30 text-orange-300"
+                    : "bg-white/[0.05] border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.1]"
+                }`}
+              >
+                Peu importe
+              </button>
+              {zones.map((z) => (
                 <button
+                  key={z}
                   type="button"
-                  onClick={() => setZone("")}
+                  onClick={() => setZone(z)}
                   className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
-                    zone === ""
+                    zone === z
                       ? "bg-orange-500/20 border-orange-500/30 text-orange-300"
                       : "bg-white/[0.05] border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.1]"
                   }`}
                 >
-                  🗺️ Peu importe
+                  {z}
                 </button>
-                {zones.map((z) => (
-                  <button
-                    key={z}
-                    type="button"
-                    onClick={() => setZone(z)}
-                    className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
-                      zone === z
-                        ? "bg-orange-500/20 border-orange-500/30 text-orange-300"
-                        : "bg-white/[0.05] border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.1]"
-                    }`}
-                  >
-                    {z}
-                  </button>
-                ))}
-              </div>
+              ))}
             </div>
-          )}
+
+            {!loadingZones && zones.length === 0 && (
+              <p className="text-[11px] text-amber-300/70 mt-3">
+                Aucune zone réservable n'est configurée pour ce restaurant. La réservation reste possible sans préférence de zone.
+              </p>
+            )}
+          </div>
 
           {/* Créneaux */}
           <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] p-4">
