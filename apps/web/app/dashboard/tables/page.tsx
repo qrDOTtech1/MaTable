@@ -20,8 +20,14 @@ type Table = {
   seats: number;
   label?: string | null;
   zone?: string | null;
+  reservable: boolean;
   assignedServerId?: string | null;
   sessions: Session[];
+};
+
+type ZoneConfig = {
+  zone: string;
+  minFreeWalkIn: number;
 };
 
 const ALL_ZONES = "__all__";
@@ -33,10 +39,32 @@ export default function TablesPage() {
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [zoneFilter, setZoneFilter] = useState<string>(ALL_ZONES);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [zoneConfigs, setZoneConfigs] = useState<ZoneConfig[]>([]);
+  const [showQuotas, setShowQuotas] = useState(false);
+  const [savingQuota, setSavingQuota] = useState<string | null>(null);
 
   const reload = async () => {
     const r = await api<{ tables: Table[] }>("/api/pro/tables");
     setTables(r.tables);
+  };
+
+  const reloadZoneConfigs = async () => {
+    try {
+      const r = await api<{ configs: ZoneConfig[] }>("/api/pro/zone-configs");
+      setZoneConfigs(r.configs);
+    } catch {}
+  };
+
+  const saveQuota = async (zone: string, minFreeWalkIn: number) => {
+    setSavingQuota(zone);
+    try {
+      await api(`/api/pro/zone-configs/${encodeURIComponent(zone)}`, {
+        method: "PUT",
+        body: JSON.stringify({ minFreeWalkIn }),
+      });
+      await reloadZoneConfigs();
+    } catch {}
+    setSavingQuota(null);
   };
 
   useEffect(() => {
@@ -47,6 +75,7 @@ export default function TablesPage() {
     api<{ servers: Server[] }>("/api/pro/servers")
       .then((r) => setServers(r.servers.filter((s: any) => s.active)))
       .catch(() => {});
+    reloadZoneConfigs();
   }, []);
 
   useEffect(() => {
@@ -136,7 +165,7 @@ export default function TablesPage() {
               · {tables.reduce((a, t) => a + t.seats, 0)} couverts total
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <select
               value={zoneFilter}
               onChange={(e) => setZoneFilter(e.target.value)}
@@ -146,6 +175,15 @@ export default function TablesPage() {
               {zones.map((z) => <option key={z} value={z}>{z}</option>)}
               <option value={NO_ZONE}>Sans zone</option>
             </select>
+            {zones.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowQuotas((v) => !v)}
+                className={`px-3 py-2 rounded-lg text-sm font-bold border transition-colors ${showQuotas ? "bg-orange-500/20 border-orange-500/40 text-orange-300" : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"}`}
+              >
+                🚶 Quotas walk-in
+              </button>
+            )}
             <Button onClick={add}>+ Ajouter une table</Button>
           </div>
         </div>
@@ -168,6 +206,7 @@ export default function TablesPage() {
                     <p className="text-xl font-bold text-white">Table {t.number}</p>
                     {t.label && <p className="text-xs text-white/50">{t.label}</p>}
                     {t.zone && <p className="text-[10px] text-orange-300 font-bold uppercase tracking-wider mt-0.5">📍 {t.zone}</p>}
+                    {!t.reservable && <p className="text-[10px] text-amber-400 font-bold uppercase tracking-wider mt-0.5">🚶 Walk-in uniquement</p>}
                   </div>
                   <Badge variant={active ? "cooking" : "default"}>
                     {active ? "🔴 Occupée" : "⚪ Libre"}
@@ -222,6 +261,19 @@ export default function TablesPage() {
                         <option value="">— Aucun</option>
                         {servers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                       </select>
+                    </div>
+                    <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/5 border border-white/10">
+                      <div>
+                        <p className="text-xs font-bold text-white">Réservable en ligne</p>
+                        <p className="text-[10px] text-white/40">Si désactivé : walk-in uniquement, jamais proposée à la réservation</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => patch(t.id, { reservable: !t.reservable })}
+                        className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${t.reservable ? "bg-emerald-500" : "bg-white/20"}`}
+                      >
+                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${t.reservable ? "translate-x-5" : "translate-x-0.5"}`} />
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -298,6 +350,68 @@ export default function TablesPage() {
         {filtered.length === 0 && (
           <div className="text-center py-12 text-white/40 text-sm border border-dashed border-white/10 rounded-2xl">
             {tables.length === 0 ? "Aucune table. Cliquez sur « Ajouter une table »." : "Aucune table dans cette zone."}
+          </div>
+        )}
+
+        {/* ── Section quotas walk-in ───────────────────────────────────────── */}
+        {showQuotas && zones.length > 0 && (
+          <div className="mt-2 bg-white/5 border border-orange-500/20 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-lg">🚶</span>
+              <div>
+                <h3 className="text-sm font-bold text-white">Quotas walk-in par zone</h3>
+                <p className="text-xs text-white/40">Nombre minimum de tables toujours gardées libres pour les arrivées spontanées.</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {zones.map((zone) => {
+                const totalReservable = tables.filter((t) => t.zone === zone && t.reservable).length;
+                const totalAll = tables.filter((t) => t.zone === zone).length;
+                const currentConfig = zoneConfigs.find((c) => c.zone === zone);
+                const currentQuota = currentConfig?.minFreeWalkIn ?? 0;
+                const isSaving = savingQuota === zone;
+
+                return (
+                  <div key={zone} className="flex items-center gap-4 p-3 rounded-xl bg-white/5 border border-white/10">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-white truncate">📍 {zone}</p>
+                      <p className="text-[11px] text-white/40">
+                        {totalAll} table{totalAll > 1 ? "s" : ""} au total
+                        {totalReservable < totalAll && ` · ${totalAll - totalReservable} walk-in fixe${totalAll - totalReservable > 1 ? "s" : ""}`}
+                        {" · "}{totalReservable} réservable{totalReservable > 1 ? "s" : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <label className="text-[11px] text-white/50 whitespace-nowrap">Tables walk-in à réserver :</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={totalReservable}
+                        defaultValue={currentQuota}
+                        key={currentQuota}
+                        onBlur={(e) => {
+                          const v = Math.min(totalReservable, Math.max(0, parseInt(e.target.value) || 0));
+                          if (v !== currentQuota) saveQuota(zone, v);
+                        }}
+                        className="w-16 px-2 py-1.5 rounded-lg bg-white/10 border border-white/10 text-white text-sm text-center focus:border-orange-500 focus:outline-none"
+                      />
+                      {isSaving && <span className="text-[10px] text-orange-400 animate-pulse">Sauvegarde…</span>}
+                      {!isSaving && currentQuota > 0 && (
+                        <span className="text-[10px] text-emerald-400 font-bold">
+                          ✓ {currentQuota} table{currentQuota > 1 ? "s" : ""} réservée{currentQuota > 1 ? "s" : ""} walk-in
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="text-[11px] text-white/30 mt-3 italic">
+              Exemple : Terrasse = 8 tables, quota = 2 → le moteur de réservation en ligne ne peut remplir que 6 tables, les 2 dernières restent pour les walk-ins.
+              Les tables marquées "Walk-in uniquement" sur les cartes ci-dessus sont en plus de ce quota.
+            </p>
           </div>
         )}
       </div>
