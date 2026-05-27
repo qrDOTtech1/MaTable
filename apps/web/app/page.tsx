@@ -288,7 +288,7 @@ export default function HomePage() {
             name: "Combien coûte MaTable Pro ?",
             acceptedAnswer: {
               "@type": "Answer",
-              text: "MaTable Pro propose 3 forfaits : Starter à 59€ HT/mois (Avis + Commande + Portail Serveur), Pro à 119€ HT/mois (+ Réservations), Business à 249€ HT/mois (+ Nova IA Stock, Finance, Contab). Mensuel sans engagement ou annuel avec -12%. Essai gratuit de 14 jours sans carte bancaire.",
+              text: "MaTable Pro propose 3 forfaits : Starter à 59€ HT/mois (Avis + Commande + Portail Serveur), Pro à 119€ HT/mois (+ Réservations + Programme Fidélité inclus), Business à 249€ HT/mois (+ Nova IA Stock, Finance, Contab). Mensuel sans engagement ou annuel avec -12%. Essai gratuit de 14 jours sans carte bancaire.",
             },
           },
           {

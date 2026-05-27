@@ -83,7 +83,7 @@ export default function LandingPage() {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 1 }}
               className="text-xl md:text-2xl text-white/50 max-w-4xl mx-auto mb-10 leading-relaxed font-medium"
             >
-              MaTable Pro (matable / matablepro), c'est le logiciel restaurant tout-en-un : commande QR, portail serveur en temps réel, caisse, avis Google IA, stock, réservations et analytics dans une seule solution cohérente.
+              MaTable Pro (matable / matablepro), c'est le logiciel restaurant tout-en-un : commande QR, portail serveur en temps réel, caisse, avis Google IA, stock, réservations, fidélité client et analytics dans une seule solution cohérente.
             </motion.p>
 
             <motion.div
@@ -122,6 +122,63 @@ export default function LandingPage() {
         <div id="demo">
           <LandingProductCarousel />
         </div>
+
+        {/* ── Loyalty Included ───────────────────────────────────────────────── */}
+        <section className="border-y border-white/5 bg-[#0d0b08] px-6 py-24 relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(249,115,22,0.18),transparent_35%),radial-gradient(circle_at_80%_80%,rgba(16,185,129,0.12),transparent_35%)] pointer-events-none" />
+          <div className="relative z-10 mx-auto grid max-w-6xl gap-10 md:grid-cols-[0.9fr_1.1fr] md:items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="space-y-5"
+            >
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-emerald-300">
+                Inclus forfait Pro
+              </span>
+              <h2 className="text-4xl font-black leading-tight md:text-6xl">
+                La fidélité client n'est pas une option.
+                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-emerald-300">
+                  Elle est incluse.
+                </span>
+              </h2>
+              <p className="text-lg leading-relaxed text-white/55">
+                Dès le forfait Pro, MaTable intègre un programme fidélité complet : fiches clients, points, niveaux VIP,
+                offres personnalisées et récompenses utilisables au prochain passage. Pas de logiciel séparé, pas de double saisie.
+              </p>
+              <Link href="/tarifs" className="inline-flex rounded-xl bg-orange-500 px-7 py-4 font-black text-white transition hover:bg-orange-400">
+                Voir le forfait Pro →
+              </Link>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="rounded-[2rem] border border-white/10 bg-black/40 p-6 shadow-2xl shadow-orange-500/10 backdrop-blur"
+            >
+              <div className="rounded-2xl bg-white/[0.04] p-5">
+                <div className="mb-5 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-white/35">Programme Fidélité</p>
+                    <h3 className="text-2xl font-black text-white">Clients qui reviennent</h3>
+                  </div>
+                  <div className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-black text-emerald-300">PRO</div>
+                </div>
+                {[
+                  ["Points automatiques", "À chaque addition réglée"],
+                  ["Offres & récompenses", "Dessert offert, points x2, remise ciblée"],
+                  ["Niveaux VIP", "Bronze, Silver, Gold, ambassadeurs"],
+                ].map(([title, desc]) => (
+                  <div key={title} className="mb-3 rounded-xl border border-white/8 bg-white/[0.03] p-4">
+                    <div className="font-black text-white">✓ {title}</div>
+                    <div className="text-sm text-white/45">{desc}</div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </section>
 
         {/* ── Language Campaign ─────────────────────────────────────────────── */}
         <section className="border-b border-white/5 bg-black px-6 py-24">

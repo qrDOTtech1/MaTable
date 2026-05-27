@@ -33,6 +33,7 @@ export const PLANS = [
     features: [
       "Tout le forfait Starter",
       "Réservations Intelligentes (créneaux dynamiques, arrhes Stripe, anti no-show)",
+      "Programme Fidélité inclus (clients, points, offres et récompenses)",
     ],
   },
   {
@@ -71,6 +72,7 @@ export const features = [
   { icon: "👤", title: "Portail Serveur", desc: "Dashboard individuel avec PIN. Appels de table en direct, fermetures de session, vue Kanban.", highlight: false, category: "gestion" },
   { icon: "🎯", title: "Up-Selling Intelligent", desc: "Suggestions d'ajouts lors de la commande (ex: 'Un supplement frites ?') pour gonfler le panier moyen.", highlight: true, category: "gestion" },
   { icon: "📅", title: "Reservations de fer", desc: "Creneaux dynamiques et arrhes Stripe. Les no-shows sont desormais un mauvais souvenir.", highlight: false, category: "gestion" },
+  { icon: "💎", title: "Fidélité intégrée", desc: "Clients, points, niveaux VIP et récompenses. Inclus dès le forfait Pro, sans outil séparé.", highlight: true, category: "gestion" },
   { icon: "🌿", title: "Allergenes EU (14)", desc: "14 allergenes affiches automatiquement. Vous etes en regle, vos clients en securite.", highlight: false, category: "gestion" },
   { icon: "⭐", title: "Avis verifies", desc: "Seuls ceux qui ont paye peuvent noter. Fini les faux avis Google, place a la verite.", highlight: false, category: "gestion" },
   { icon: "📊", title: "Analytics Recharts", desc: "CA, ticket moyen, top serveurs, top plats. Des graphiques clairs et interactifs.", highlight: false, category: "gestion" },
@@ -115,6 +117,7 @@ export const comparisons = [
   { feature: "Défis serveurs générés par IA (quotidiens)", us: "✓", starter: "✕", dino: "✕" },
   { feature: "Avis vérifiés anti-fraude", us: "✓", starter: "✕", dino: "✕" },
   { feature: "Réservations + arrhes Stripe", us: "✓", starter: "✓", dino: "✕" },
+  { feature: "Programme fidélité inclus dès le forfait Pro", us: "✓", starter: "✕", dino: "Module séparé" },
   { feature: "Allergènes EU (14) automatiques", us: "✓", starter: "✕", dino: "✕" },
   { feature: "Analytics de précision (CA, tips, splits)", us: "✓", starter: "Basique", dino: "✕" },
   { feature: "Page vitrine SEO incluse", us: "✓", starter: "✕", dino: "✕" },
@@ -224,7 +227,7 @@ export const faqCategories = [
       {
         question: "Comment sont calcules les tarifs ?",
         answer:
-          "3 forfaits fixes : Starter a 59 €/mois, Pro a 119 €/mois, Business a 249 €/mois. Mensuel sans engagement ou annuel avec -12 % sur le prix mensuel. Pas de modules a la carte, pas de frais caches.",
+          "3 forfaits fixes : Starter a 59 €/mois, Pro a 119 €/mois, Business a 249 €/mois. Le forfait Pro inclut aussi le programme fidelite (clients, points, offres et recompenses). Mensuel sans engagement ou annuel avec -12 % sur le prix mensuel. Pas de modules a la carte, pas de frais caches.",
       },
       {
         question: "Y a-t-il un essai gratuit ?",

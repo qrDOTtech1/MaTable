@@ -30,6 +30,7 @@
 | `/dashboard` | Vue cuisine temps réel |
 | `/dashboard/tables` | Gestion des tables |
 | `/dashboard/menu` | Gestion du menu |
+| `/dashboard/loyalty` | Programme fidélité inclus dès le forfait Pro |
 | `/dashboard/print` | Génération PDF des QR codes |
 | `/order/[tableUuid]` | Page client (scan QR → commande) |
 
@@ -87,6 +88,7 @@ apps/web/
     └── api.ts                    ← Fetch wrapper + token localStorage
 ```
 
+**Fidélité :** le module clients, points, offres et récompenses est inclus dès le forfait Pro et doit apparaître dans les documents commerciaux/devis.  
 **Auth pro :** JWT Bearer stocké en `localStorage` (`atable_pro_token`), envoyé en header `Authorization: Bearer <token>`.  
 **Session client :** JWT par table stocké en `localStorage` (`atable_session_<tableId>`), invalide dès paiement.  
 **Panier :** Persisté en `localStorage` (`atable_cart_<tableId>`), survit au refresh.

@@ -95,7 +95,7 @@ export default function TarifsPage() {
                 transition={{ delay: 0.3 }}
                 className="text-xl text-white/50 max-w-2xl mx-auto"
               >
-                Starter, Pro, Business. Mensuel sans engagement ou annuel avec −12 %. Sans surprise.
+                Starter, Pro, Business. Le forfait Pro inclut aussi la fidélité client. Mensuel sans engagement ou annuel avec −12 %. Sans surprise.
               </motion.p>
             </div>
           </section>
@@ -104,6 +104,34 @@ export default function TarifsPage() {
           <section ref={builderRef} className="py-10 px-6 bg-[#0f0f0f]">
             <div className="max-w-5xl mx-auto">
               <PricingBuilder />
+            </div>
+          </section>
+
+          <section className="px-6 py-20 bg-black border-y border-white/5">
+            <div className="max-w-5xl mx-auto grid gap-8 md:grid-cols-[1fr_1.2fr] md:items-center">
+              <div>
+                <span className="inline-flex rounded-full border border-emerald-500/25 bg-emerald-500/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-emerald-300 mb-5">
+                  Inclus Pro
+                </span>
+                <h2 className="text-4xl md:text-5xl font-black leading-tight mb-4">
+                  La fidélité est incluse dans le forfait Pro.
+                </h2>
+                <p className="text-white/50 leading-relaxed">
+                  Vous pouvez créer votre base clients, créditer des points, configurer des récompenses et suivre les niveaux VIP sans payer un module séparé.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  "Fiches clients fidélité",
+                  "Points et historique",
+                  "Offres personnalisées",
+                  "Niveaux VIP",
+                ].map((item) => (
+                  <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-sm font-bold text-white/80">
+                    <span className="text-emerald-400">✓</span> {item}
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
 
