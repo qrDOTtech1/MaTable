@@ -12,6 +12,7 @@ type Restaurant = {
   phone?: string | null; email?: string | null;
   acceptReservations: boolean; depositPerGuestCents: number;
   avgPrepMinutes: number; reservationPolicy?: string | null;
+  reservationAlertEmail?: string | null;
   tipsEnabled: boolean; serviceCallEnabled: boolean; reviewsEnabled: boolean;
   isPartner: boolean;
   openingHours?: OpeningHour[];
@@ -349,6 +350,17 @@ export default function SettingsPage() {
               <div>
                 <label className="label">Politique d'annulation</label>
                 <textarea className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30" rows={2} value={form.reservationPolicy ?? ""} onChange={f("reservationPolicy")} />
+              </div>
+              <div>
+                <label className="label">Email d'alerte (notification nouvelle réservation)</label>
+                <input
+                  type="email"
+                  className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30"
+                  placeholder="patron@monresto.fr"
+                  value={form.reservationAlertEmail ?? ""}
+                  onChange={f("reservationAlertEmail")}
+                />
+                <p className="text-xs text-white/30 mt-1">Vous recevrez un email à chaque nouvelle réservation en ligne.</p>
               </div>
             </>
           )}

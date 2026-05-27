@@ -139,7 +139,7 @@ function parseImportFile(raw: string, filename: string): Omit<Customer, "id" | "
 // ── Component principal ──────────────────────────────────────────────────────
 
 export default function LoyaltyPage() {
-  const [tab, setTab] = useState<"overview" | "customers" | "offers">("overview");
+  const [tab, setTab] = useState<"overview" | "customers" | "offers" | "config">("overview");
   const [stats, setStats]       = useState<Stats | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [custTotal, setCustTotal] = useState(0);
@@ -149,6 +149,11 @@ export default function LoyaltyPage() {
   const [offers, setOffers]       = useState<Offer[]>([]);
   const [loading, setLoading]     = useState(false);
   const [msg, setMsg]             = useState<{ type: "ok"|"err"; text: string } | null>(null);
+
+  // Loyalty config (auto-points)
+  const [loyaltyConfig, setLoyaltyConfig] = useState({ enabled: false, ptsPerEuro: 10, minSpendCents: 0 });
+  const [configLoaded, setConfigLoaded]   = useState(false);
+  const [savingConfig, setSavingConfig]   = useState(false);
 
   // Modals
   const [addCustOpen, setAddCustOpen]     = useState(false);
@@ -190,6 +195,13 @@ export default function LoyaltyPage() {
   useEffect(() => { loadStats(); }, [loadStats]);
   useEffect(() => { if (tab === "customers") loadCustomers(1, search, tierFilter); }, [tab]);
   useEffect(() => { if (tab === "offers") loadOffers(); }, [tab]);
+  useEffect(() => {
+    if (tab === "config" && !configLoaded) {
+      api<{ enabled: boolean; ptsPerEuro: number; minSpendCents: number }>("/api/pro/loyalty/config")
+        .then((r) => { setLoyaltyConfig(r); setConfigLoaded(true); })
+        .catch(() => {});
+    }
+  }, [tab, configLoaded]);
 
   // ── Search debounce
   const searchTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -238,9 +250,10 @@ export default function LoyaltyPage() {
       {/* Tabs */}
       <div className="flex gap-1 bg-white/[0.03] border border-white/[0.06] rounded-xl p-1">
         {([
-          { id: "overview",   icon: "🏠", label: "Vue d'ensemble" },
-          { id: "customers",  icon: "👥", label: `Clients${stats ? ` (${stats.customers.total})` : ""}` },
-          { id: "offers",     icon: "🎁", label: `Offres${stats ? ` (${stats.offers.active} actives)` : ""}` },
+          { id: "overview",  icon: "🏠", label: "Vue d'ensemble" },
+          { id: "customers", icon: "👥", label: `Clients${stats ? ` (${stats.customers.total})` : ""}` },
+          { id: "offers",    icon: "🎁", label: `Offres${stats ? ` (${stats.offers.active} actives)` : ""}` },
+          { id: "config",    icon: "⚙️", label: "Config points" },
         ] as const).map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all ${
@@ -667,6 +680,123 @@ export default function LoyaltyPage() {
             }}
           />
         </Modal>
+      )}
+
+      {/* ── TAB: CONFIG ── */}
+      {tab === "config" && (
+        <div className="space-y-6 max-w-xl">
+          <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 space-y-5">
+            <div>
+              <h2 className="text-base font-bold text-white mb-1">⚡ Attribution automatique de points</h2>
+              <p className="text-xs text-white/40 leading-relaxed">
+                À chaque table réglée, les points sont automatiquement crédités au client fidélité correspondant (recherche par nom).
+                Le client doit déjà exister dans votre liste pour recevoir les points.
+              </p>
+            </div>
+
+            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={loyaltyConfig.enabled}
+                  onChange={(e) => setLoyaltyConfig((c) => ({ ...c, enabled: e.target.checked }))}
+                />
+                <div className={`w-11 h-6 rounded-full transition-colors ${loyaltyConfig.enabled ? "bg-orange-500" : "bg-white/10"}`} />
+                <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${loyaltyConfig.enabled ? "translate-x-5" : ""}`} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white">Activer les points automatiques</p>
+                <p className="text-xs text-white/40">Créditez des points à chaque commande payée</p>
+              </div>
+            </label>
+
+            {loyaltyConfig.enabled && (
+              <div className="space-y-4 pt-2">
+                <div>
+                  <label className="text-xs font-bold text-white/50 uppercase tracking-wider block mb-2">
+                    Points par euro dépensé
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min={1}
+                      max={1000}
+                      value={loyaltyConfig.ptsPerEuro}
+                      onChange={(e) => setLoyaltyConfig((c) => ({ ...c, ptsPerEuro: Math.max(1, parseInt(e.target.value) || 1) }))}
+                      className="w-24 bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500/50"
+                    />
+                    <span className="text-sm text-white/50">pts / €</span>
+                  </div>
+                  <p className="text-xs text-white/30 mt-1">
+                    Ex : avec {loyaltyConfig.ptsPerEuro} pts/€, une addition de 50 € = {loyaltyConfig.ptsPerEuro * 50} points
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-white/50 uppercase tracking-wider block mb-2">
+                    Dépense minimale pour gagner des points (€)
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.5}
+                      value={(loyaltyConfig.minSpendCents / 100).toFixed(2)}
+                      onChange={(e) => setLoyaltyConfig((c) => ({ ...c, minSpendCents: Math.round(parseFloat(e.target.value) * 100) || 0 }))}
+                      className="w-24 bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500/50"
+                    />
+                    <span className="text-sm text-white/50">€ minimum</span>
+                  </div>
+                  <p className="text-xs text-white/30 mt-1">
+                    Laisser à 0 pour créditer des points dès le 1er euro.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-white/[0.06]">
+              <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-3 mb-4">
+                <p className="text-xs font-bold text-white/40 uppercase tracking-wider mb-2">Niveaux de fidélité</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["bronze","silver","gold","platinum"] as Tier[]).map(tier => {
+                    const t = TIERS[tier];
+                    return (
+                      <div key={tier} className={`flex items-center gap-2 p-2 rounded-lg ${t.bg} border ${t.border}`}>
+                        <span>{t.icon}</span>
+                        <div>
+                          <p className={`text-xs font-bold ${t.color}`}>{t.label}</p>
+                          <p className="text-[10px] text-white/30">≥ {t.minPts.toLocaleString("fr-FR")} pts</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <button
+                disabled={savingConfig}
+                onClick={async () => {
+                  setSavingConfig(true);
+                  try {
+                    await api("/api/pro/loyalty/config", {
+                      method: "PATCH",
+                      body: JSON.stringify(loyaltyConfig),
+                    });
+                    toast("✓ Configuration sauvegardée");
+                  } catch {
+                    toast("Erreur lors de la sauvegarde", "err");
+                  } finally {
+                    setSavingConfig(false);
+                  }
+                }}
+                className="w-full py-3 bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-bold rounded-xl transition-colors"
+              >
+                {savingConfig ? "Sauvegarde…" : "Sauvegarder la configuration"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
