@@ -90,6 +90,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
         ...(has("nova_contab") ? [{ href: "/dashboard/novacontab", icon: "🧮", label: "URSSAF & TVA" }] : []),
         ...(has("reviews") ? [{ href: "/dashboard/reviews", icon: "⭐", label: "Avis des clients" }] : []),
         ...(has("reservations") ? [{ href: "/dashboard/reservations", icon: "📅", label: "Reservations" }] : []),
+        { href: "/dashboard/loyalty", icon: "💎", label: "Fidélité" },
         ...(has("orders") ? [{ href: "/dashboard/invoices", icon: "🧾", label: "Factures" }] : []),
       ],
     },
