@@ -31,7 +31,7 @@ export const PLANS = [
     popular: true,
     desc: "La solution complète pour piloter votre restaurant au quotidien.",
     features: [
-      "Tout le forfait Starter",
+      "Tout le forfait Starter dont Avis Google, Commande & Paiement QR, Portail Serveur, Portail Cuisine et Portail Caisse",
       "Réservations Intelligentes (créneaux dynamiques, arrhes Stripe, anti no-show)",
       "Programme Fidélité inclus (clients, points, offres et récompenses)",
     ],
@@ -44,7 +44,7 @@ export const PLANS = [
     popular: false,
     desc: "Performance maximale — IA complète pour les restaurateurs ambitieux.",
     features: [
-      "Tout le forfait Pro",
+      "Tout le forfait Pro dont Starter complet, Réservations Intelligentes et Programme Fidélité",
       "Nova Stock IA (liste de courses auto, alertes ruptures, food cost)",
       "Nova Finance IA (KPIs, marges, prévisions CA, recommandations rentabilité)",
       "Nova Contab IA (exports comptables, TVA, rapports de fin de mois)",
