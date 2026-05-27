@@ -25,6 +25,21 @@ const DAYS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Sa
 const DAYS_ORDERED = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const DAY_INDEX: Record<string, number> = { Lundi: 1, Mardi: 2, Mercredi: 3, Jeudi: 4, Vendredi: 5, Samedi: 6, Dimanche: 0 };
 const minToTime = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+const OPENING_SERVICES = [
+  { key: "midi", label: "Midi", hint: "ex : 11:00 → 14:00", defaultOpen: 11 * 60, defaultClose: 14 * 60 },
+  { key: "soir", label: "Soir", hint: "ex : 18:00 → 22:00", defaultOpen: 18 * 60, defaultClose: 22 * 60 },
+] as const;
+
+type OpeningServiceKey = (typeof OPENING_SERVICES)[number]["key"];
+
+function normalizeOpeningHours(hours?: OpeningHour[]): OpeningHour[] {
+  return (hours ?? [])
+    .map((h) => ({
+      ...h,
+      service: h.service ?? (h.openMin < 15 * 60 ? "midi" : "soir"),
+    }))
+    .sort((a, b) => a.dayOfWeek - b.dayOfWeek || (a.service ?? "").localeCompare(b.service ?? "") || a.openMin - b.openMin);
+}
 
 export default function SettingsPage() {
   const [form, setForm] = useState<Partial<Restaurant>>({});
@@ -70,7 +85,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     api<{ restaurant: Restaurant }>("/api/pro/me")
-      .then((r) => setForm(r.restaurant))
+      .then((r) => setForm({ ...r.restaurant, openingHours: normalizeOpeningHours(r.restaurant.openingHours) }))
       .catch(redirectOn401);
     api<ServicePins>("/api/pro/service-pins")
       .then((r) => setPins(r))
@@ -114,6 +129,12 @@ export default function SettingsPage() {
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanedOpeningHours = normalizeOpeningHours(form.openingHours);
+    const invalidOpeningHour = cleanedOpeningHours.find((h) => h.closeMin <= h.openMin);
+    if (invalidOpeningHour) {
+      setError(`Horaire invalide : ${DAYS[invalidOpeningHour.dayOfWeek]} ${minToTime(invalidOpeningHour.openMin)}-${minToTime(invalidOpeningHour.closeMin)}.`);
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -136,7 +157,7 @@ export default function SettingsPage() {
           serviceCallEnabled: form.serviceCallEnabled ?? true,
           reviewsEnabled: form.reviewsEnabled ?? true,
           isPartner: form.isPartner ?? false,
-          openingHours: form.openingHours ?? [],
+          openingHours: cleanedOpeningHours,
           businessType: form.businessType ?? "RESTAURANT",
           reviewCustomQuestions: form.reviewCustomQuestions?.trim() || null,
         }),
@@ -165,26 +186,36 @@ export default function SettingsPage() {
 
   const saveOpeningHours = async () => {
     try {
+      const cleanedOpeningHours = normalizeOpeningHours(form.openingHours);
+      const invalidOpeningHour = cleanedOpeningHours.find((h) => h.closeMin <= h.openMin);
+      if (invalidOpeningHour) {
+        setError(`Horaire invalide : ${DAYS[invalidOpeningHour.dayOfWeek]} ${minToTime(invalidOpeningHour.openMin)}-${minToTime(invalidOpeningHour.closeMin)}.`);
+        return;
+      }
       await api("/api/pro/restaurant", {
         method: "PATCH",
-        body: JSON.stringify({ openingHours: form.openingHours ?? [] }),
+        body: JSON.stringify({ openingHours: cleanedOpeningHours }),
       });
     } catch (err) {
       console.error("Failed to save opening hours:", err);
     }
   };
 
-  const addOpeningHour = () => {
+  const addOpeningHour = (dayOfWeek = 1, service: OpeningServiceKey = "midi") => {
+    const preset = OPENING_SERVICES.find((s) => s.key === service) ?? OPENING_SERVICES[0];
     setForm(p => ({
       ...p,
-      openingHours: [...(p.openingHours ?? []), { dayOfWeek: 1, openMin: 540, closeMin: 1380 }]
+      openingHours: normalizeOpeningHours([
+        ...(p.openingHours ?? []),
+        { dayOfWeek, openMin: preset.defaultOpen, closeMin: preset.defaultClose, service: preset.key },
+      ])
     }));
   };
 
-  const updateOpeningHour = (idx: number, field: keyof OpeningHour, value: number) => {
+  const updateOpeningHour = (idx: number, field: keyof OpeningHour, value: number | string) => {
     setForm(p => ({
       ...p,
-      openingHours: (p.openingHours ?? []).map((h, i) => i === idx ? { ...h, [field]: value } : h)
+      openingHours: normalizeOpeningHours((p.openingHours ?? []).map((h, i) => i === idx ? { ...h, [field]: value } : h))
     }));
   };
 
@@ -194,6 +225,9 @@ export default function SettingsPage() {
       openingHours: (p.openingHours ?? []).filter((_, i) => i !== idx)
     }));
   };
+
+  const hasOpeningService = (dayOfWeek: number, service: OpeningServiceKey) =>
+    (form.openingHours ?? []).some((h) => h.dayOfWeek === dayOfWeek && (h.service ?? "") === service);
 
   return (
     <div className="p-8">
@@ -213,40 +247,87 @@ export default function SettingsPage() {
         {/* Opening Hours */}
         <div className="card space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-white">Horaires d'ouverture</h2>
-            <button type="button" className="text-sm text-orange-400 hover:text-orange-300" onClick={addOpeningHour}>
-              + Ajouter un créneau
+            <div>
+              <h2 className="font-semibold text-white">Horaires d'ouverture</h2>
+              <p className="text-xs text-white/40 mt-1">Configurez plusieurs services par jour : midi, soir, ou un créneau personnalisé.</p>
+            </div>
+            <button type="button" className="text-sm text-orange-400 hover:text-orange-300" onClick={() => addOpeningHour()}>
+              + Créneau libre
             </button>
           </div>
           {(form.openingHours ?? []).length === 0 ? (
-            <p className="text-sm text-white/50">Aucun horaire défini. Cliquez pour ajouter.</p>
+            <p className="text-sm text-white/50">Aucun horaire défini. Ajoutez par exemple Midi et Soir sur les jours d'ouverture.</p>
           ) : (
             <div className="space-y-2">
-              {(form.openingHours ?? []).map((h, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <select
-                    className="border border-white/10 rounded px-2 py-1 bg-white/5 text-white"
-                    value={h.dayOfWeek}
-                    onChange={(e) => updateOpeningHour(idx, "dayOfWeek", parseInt(e.target.value))}
-                  >
-                    {DAYS_ORDERED.map((d) => <option key={d} value={DAY_INDEX[d]}>{d}</option>)}
-                  </select>
-                  <input
-                    type="time"
-                    className="border border-white/10 rounded px-2 py-1 bg-white/5 text-white"
-                    value={minToTime(h.openMin)}
-                    onChange={(e) => updateOpeningHour(idx, "openMin", timeToMin(e.target.value))}
-                  />
-                  <span className="text-white/50">-</span>
-                  <input
-                    type="time"
-                    className="border border-white/10 rounded px-2 py-1 bg-white/5 text-white"
-                    value={minToTime(h.closeMin)}
-                    onChange={(e) => updateOpeningHour(idx, "closeMin", timeToMin(e.target.value))}
-                  />
-                  <button type="button" className="text-red-400/50 hover:text-red-400" onClick={() => removeOpeningHour(idx)}>✕</button>
-                </div>
-              ))}
+              {DAYS_ORDERED.map((day) => {
+                const dayOfWeek = DAY_INDEX[day];
+                const dayHours = (form.openingHours ?? [])
+                  .map((h, idx) => ({ h, idx }))
+                  .filter(({ h }) => h.dayOfWeek === dayOfWeek)
+                  .sort((a, b) => a.h.openMin - b.h.openMin);
+
+                return (
+                  <div key={day} className="rounded-xl border border-white/10 bg-white/[0.025] p-3 space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-bold text-white">{day}</p>
+                        <p className="text-[11px] text-white/35">
+                          {dayHours.length === 0 ? "Fermé" : dayHours.map(({ h }) => `${h.service ? `${h.service} ` : ""}${minToTime(h.openMin)}-${minToTime(h.closeMin)}`).join(" · ")}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {OPENING_SERVICES.map((service) => (
+                          <button
+                            key={service.key}
+                            type="button"
+                            disabled={hasOpeningService(dayOfWeek, service.key)}
+                            className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-white/60 transition hover:border-orange-500/40 hover:text-orange-300 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-white/10 disabled:hover:text-white/60"
+                            title={service.hint}
+                            onClick={() => addOpeningHour(dayOfWeek, service.key)}
+                          >
+                            + {service.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {dayHours.length > 0 && (
+                      <div className="space-y-2 pt-2 border-t border-white/[0.06]">
+                        {dayHours.map(({ h, idx }) => {
+                          const invalid = h.closeMin <= h.openMin;
+                          return (
+                            <div key={idx} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
+                              <select
+                                className="border border-white/10 rounded px-2 py-1.5 bg-white/5 text-white text-sm"
+                                value={h.service ?? "personnalise"}
+                                onChange={(e) => updateOpeningHour(idx, "service", e.target.value)}
+                              >
+                                <option value="midi">Midi</option>
+                                <option value="soir">Soir</option>
+                                <option value="personnalise">Personnalisé</option>
+                              </select>
+                              <input
+                                type="time"
+                                className={`border rounded px-2 py-1.5 bg-white/5 text-white text-sm ${invalid ? "border-red-500/60" : "border-white/10"}`}
+                                value={minToTime(h.openMin)}
+                                onChange={(e) => updateOpeningHour(idx, "openMin", timeToMin(e.target.value))}
+                              />
+                              <input
+                                type="time"
+                                className={`border rounded px-2 py-1.5 bg-white/5 text-white text-sm ${invalid ? "border-red-500/60" : "border-white/10"}`}
+                                value={minToTime(h.closeMin)}
+                                onChange={(e) => updateOpeningHour(idx, "closeMin", timeToMin(e.target.value))}
+                              />
+                              <button type="button" className="text-red-400/50 hover:text-red-400 px-1" onClick={() => removeOpeningHour(idx)}>✕</button>
+                              {invalid && <p className="col-span-full text-[11px] text-red-400">L'heure de fin doit être après l'heure d'ouverture.</p>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
           {(form.openingHours ?? []).length > 0 && (

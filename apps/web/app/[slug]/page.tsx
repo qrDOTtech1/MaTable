@@ -340,7 +340,10 @@ export default async function RestaurantPublicPage({ params }: { params: Promise
                       <span>{DAYS[dow]}{isToday && " ·"}</span>
                       <span>
                         {slots
-                          ? slots.map((h) => `${minToTime(h.openMin)}–${minToTime(h.closeMin)}`).join(", ")
+                          ? slots
+                              .sort((a, b) => a.openMin - b.openMin)
+                              .map((h) => `${h.service ? `${h.service} ` : ""}${minToTime(h.openMin)}–${minToTime(h.closeMin)}`)
+                              .join(", ")
                           : <span className="text-white/20">Fermé</span>}
                       </span>
                     </div>
