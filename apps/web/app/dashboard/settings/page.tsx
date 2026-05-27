@@ -13,6 +13,7 @@ type Restaurant = {
   acceptReservations: boolean; depositPerGuestCents: number;
   avgPrepMinutes: number; reservationPolicy?: string | null;
   reservationAlertEmail?: string | null;
+  reservationAlertEmails?: string[];
   tipsEnabled: boolean; serviceCallEnabled: boolean; reviewsEnabled: boolean;
   isPartner: boolean;
   openingHours?: OpeningHour[];
@@ -46,6 +47,7 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [alertEmailDraft, setAlertEmailDraft] = useState("");
 
   // Service PINs
   const [pins, setPins] = useState<ServicePins>({ caissePin: null, cuisinePin: null });
@@ -85,7 +87,13 @@ export default function SettingsPage() {
 
   useEffect(() => {
     api<{ restaurant: Restaurant }>("/api/pro/me")
-      .then((r) => setForm({ ...r.restaurant, openingHours: normalizeOpeningHours(r.restaurant.openingHours) }))
+      .then((r) => setForm({
+        ...r.restaurant,
+        openingHours: normalizeOpeningHours(r.restaurant.openingHours),
+        reservationAlertEmails: r.restaurant.reservationAlertEmails?.length
+          ? r.restaurant.reservationAlertEmails
+          : (r.restaurant.reservationAlertEmail ? [r.restaurant.reservationAlertEmail] : []),
+      }))
       .catch(redirectOn401);
     api<ServicePins>("/api/pro/service-pins")
       .then((r) => setPins(r))
@@ -153,6 +161,7 @@ export default function SettingsPage() {
           depositPerGuestCents: form.depositPerGuestCents ?? 0,
           avgPrepMinutes: form.avgPrepMinutes ?? 90,
           reservationPolicy: form.reservationPolicy?.trim() || undefined,
+          reservationAlertEmails: Array.from(new Set((form.reservationAlertEmails ?? []).map(e => e.trim().toLowerCase()).filter(Boolean))),
           tipsEnabled: form.tipsEnabled ?? true,
           serviceCallEnabled: form.serviceCallEnabled ?? true,
           reviewsEnabled: form.reviewsEnabled ?? true,
@@ -433,15 +442,56 @@ export default function SettingsPage() {
                 <textarea className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30" rows={2} value={form.reservationPolicy ?? ""} onChange={f("reservationPolicy")} />
               </div>
               <div>
-                <label className="label">Email d'alerte (notification nouvelle réservation)</label>
-                <input
-                  type="email"
-                  className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30"
-                  placeholder="patron@monresto.fr"
-                  value={form.reservationAlertEmail ?? ""}
-                  onChange={f("reservationAlertEmail")}
-                />
-                <p className="text-xs text-white/30 mt-1">Vous recevrez un email à chaque nouvelle réservation en ligne.</p>
+                <label className="label">Emails d'alerte réservation</label>
+                <p className="text-xs text-white/35 mb-2">
+                  Ajoutez plusieurs destinataires : salle/serveur, gérant, réception. Chaque mobile peut configurer ses notifications email.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    className="flex-1 border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30"
+                    placeholder="salle@monresto.fr"
+                    value={alertEmailDraft}
+                    onChange={(e) => setAlertEmailDraft(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="btn-secondary text-sm"
+                    onClick={() => {
+                      const email = alertEmailDraft.trim().toLowerCase();
+                      if (!email) return;
+                      if (!/^\S+@\S+\.\S+$/.test(email)) { setError("Email d'alerte invalide."); return; }
+                      setForm((p) => ({
+                        ...p,
+                        reservationAlertEmails: Array.from(new Set([...(p.reservationAlertEmails ?? []), email])),
+                        reservationAlertEmail: p.reservationAlertEmail ?? email,
+                      }));
+                      setAlertEmailDraft("");
+                    }}
+                  >
+                    + Ajouter
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {(form.reservationAlertEmails ?? []).length === 0 ? (
+                    <span className="text-xs text-white/25">Aucun destinataire configuré.</span>
+                  ) : (form.reservationAlertEmails ?? []).map((email) => (
+                    <span key={email} className="inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-xs text-orange-200">
+                      {email}
+                      <button
+                        type="button"
+                        className="text-orange-200/50 hover:text-red-300"
+                        onClick={() => setForm((p) => ({
+                          ...p,
+                          reservationAlertEmails: (p.reservationAlertEmails ?? []).filter(e => e !== email),
+                          reservationAlertEmail: (p.reservationAlertEmails ?? []).filter(e => e !== email)[0] ?? null,
+                        }))}
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                </div>
               </div>
             </>
           )}

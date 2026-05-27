@@ -34,11 +34,33 @@ function groupByDate(reservations: Reservation[]) {
   return map;
 }
 
+function isoDay(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+function startOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+function buildCalendarDays(month: Date) {
+  const first = startOfMonth(month);
+  const start = new Date(first);
+  const mondayOffset = (first.getDay() + 6) % 7;
+  start.setDate(first.getDate() - mondayOffset);
+  return Array.from({ length: 42 }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    return d;
+  });
+}
+
 export default function ReservationsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"upcoming" | "all" | "today">("upcoming");
   const [updating, setUpdating] = useState<string | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()));
+  const [selectedDay, setSelectedDay] = useState<string | null>(isoDay(new Date()));
 
   const load = () => {
     setLoading(true);
@@ -70,12 +92,21 @@ export default function ReservationsPage() {
 
   const filtered = reservations.filter((r) => {
     const d = new Date(r.startsAt);
+    if (selectedDay) return isoDay(d) === selectedDay;
     if (filter === "today") return d.toDateString() === todayStr;
     if (filter === "upcoming") return d >= new Date(now.getFullYear(), now.getMonth(), now.getDate());
     return true;
   });
 
   const grouped = groupByDate(filtered);
+  const calendarDays = buildCalendarDays(calendarMonth);
+  const calendarCounts = reservations.reduce<Record<string, { count: number; covers: number }>>((acc, r) => {
+    const key = isoDay(new Date(r.startsAt));
+    acc[key] ??= { count: 0, covers: 0 };
+    acc[key].count += 1;
+    acc[key].covers += r.partySize;
+    return acc;
+  }, {});
 
   const counts = {
     upcoming: reservations.filter((r) => new Date(r.startsAt) >= new Date(now.getFullYear(), now.getMonth(), now.getDate())).length,
@@ -104,7 +135,7 @@ export default function ReservationsPage() {
         {(["today", "upcoming", "all"] as const).map((f) => (
           <button
             key={f}
-            onClick={() => setFilter(f)}
+            onClick={() => { setFilter(f); setSelectedDay(f === "today" ? isoDay(new Date()) : null); }}
             className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
               filter === f
                 ? "bg-orange-500/20 border-orange-500/30 text-orange-300"
@@ -114,6 +145,61 @@ export default function ReservationsPage() {
             {f === "today" ? `Aujourd'hui (${counts.today})` : f === "upcoming" ? `À venir (${counts.upcoming})` : `Tout (${counts.all})`}
           </button>
         ))}
+      </div>
+
+      {/* Calendar */}
+      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] p-4 space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-black text-white">Calendrier des réservations</h2>
+            <p className="text-xs text-white/35">Cliquez un jour pour filtrer la liste sans masquer les fonctions existantes.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" className="px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/10 text-white/60 hover:text-white" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}>←</button>
+            <span className="w-36 text-center text-sm font-bold text-white/80 capitalize">
+              {calendarMonth.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
+            </span>
+            <button type="button" className="px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/10 text-white/60 hover:text-white" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}>→</button>
+          </div>
+        </div>
+        <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold uppercase tracking-wider text-white/30">
+          {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map(d => <div key={d}>{d}</div>)}
+        </div>
+        <div className="grid grid-cols-7 gap-1.5">
+          {calendarDays.map((day) => {
+            const key = isoDay(day);
+            const stat = calendarCounts[key];
+            const inMonth = day.getMonth() === calendarMonth.getMonth();
+            const selected = selectedDay === key;
+            const isToday = key === isoDay(new Date());
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => { setSelectedDay(selected ? null : key); setFilter("all"); }}
+                className={`min-h-20 rounded-xl border p-2 text-left transition-all ${
+                  selected ? "bg-orange-500/20 border-orange-500/40" : "bg-white/[0.025] border-white/[0.06] hover:bg-white/[0.05]"
+                } ${!inMonth ? "opacity-35" : ""}`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className={`text-sm font-black ${isToday ? "text-orange-300" : "text-white/70"}`}>{day.getDate()}</span>
+                  {stat && <span className="w-2 h-2 rounded-full bg-orange-400" />}
+                </div>
+                {stat && (
+                  <div className="mt-2 text-[10px] text-white/45 leading-tight">
+                    <p className="font-bold text-white/70">{stat.count} résa</p>
+                    <p>{stat.covers} couverts</p>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        {selectedDay && (
+          <button type="button" className="text-xs text-orange-300 hover:text-orange-200" onClick={() => setSelectedDay(null)}>
+            Voir toutes les réservations du filtre actif
+          </button>
+        )}
       </div>
 
       {/* Content */}
