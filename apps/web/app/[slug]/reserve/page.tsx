@@ -18,6 +18,7 @@ export default function ReservePage() {
   const slug = params.slug;
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [zones, setZones] = useState<string[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [step, setStep] = useState<"form" | "done">("form");
@@ -26,6 +27,7 @@ export default function ReservePage() {
   const today = new Date().toISOString().split("T")[0];
   const [date, setDate] = useState(today);
   const [guests, setGuests] = useState(2);
+  const [zone, setZone] = useState<string>("");
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -33,6 +35,7 @@ export default function ReservePage() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Load restaurant info
   useEffect(() => {
     fetch(`${API_URL}/api/r/${slug}`)
       .then((r) => r.json())
@@ -43,16 +46,31 @@ export default function ReservePage() {
       .catch(() => router.replace(`/${slug}`));
   }, [slug]);
 
+  // Load available zones
+  useEffect(() => {
+    if (!restaurant) return;
+    fetch(`${API_URL}/api/r/${slug}/zones`)
+      .then((r) => r.json())
+      .then((d) => {
+        setZones(d.zones ?? []);
+        // Pre-select first zone if only one
+        if ((d.zones ?? []).length === 1) setZone(d.zones[0]);
+      })
+      .catch(() => {});
+  }, [restaurant]);
+
+  // Load availability slots
   useEffect(() => {
     if (!restaurant) return;
     setLoadingSlots(true);
     setSelectedSlot(null);
-    fetch(`${API_URL}/api/r/${slug}/availability?date=${date}&guests=${guests}`)
+    const zoneParam = zone ? `&zone=${encodeURIComponent(zone)}` : "";
+    fetch(`${API_URL}/api/r/${slug}/availability?date=${date}&guests=${guests}${zoneParam}`)
       .then((r) => r.json())
       .then((d) => setSlots(d.slots ?? []))
       .catch(() => setSlots([]))
       .finally(() => setLoadingSlots(false));
-  }, [date, guests, restaurant]);
+  }, [date, guests, zone, restaurant]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,10 +81,22 @@ export default function ReservePage() {
       const res = await fetch(`${API_URL}/api/r/${slug}/reservations`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, time: selectedSlot, guests, name, email, phone, notes }),
+        body: JSON.stringify({
+          date, time: selectedSlot, guests, name, email, phone, notes,
+          zone: zone || null,
+        }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Erreur lors de la réservation");
+      if (!res.ok) {
+        if (json.error === "no_table_available") {
+          throw new Error(
+            zone
+              ? `Plus de table disponible en zone "${zone}" pour ce créneau. Essayez une autre zone ou un autre horaire.`
+              : "Plus de table disponible pour ce créneau. Essayez un autre horaire ou une autre date."
+          );
+        }
+        throw new Error(json.error || "Erreur lors de la réservation");
+      }
       if (json.checkoutUrl) {
         window.location.href = json.checkoutUrl;
       } else {
@@ -122,7 +152,7 @@ export default function ReservePage() {
           <h1 className="text-2xl font-black">Réserver chez <span className="text-orange-400">{restaurant.name}</span></h1>
           {restaurant.depositPerGuestCents > 0 && (
             <p className="text-sm text-white/40 mt-1">
-              {depositEur} € d'arrhes par couvert · annulation gratuite 24h avant
+              {depositEur} € d&apos;arrhes par couvert · annulation gratuite 24h avant
             </p>
           )}
         </div>
@@ -155,6 +185,42 @@ export default function ReservePage() {
             </div>
           </div>
 
+          {/* Sélection de zone — affiché uniquement si plusieurs zones existent */}
+          {zones.length > 1 && (
+            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] p-4">
+              <label className="text-xs text-white/50 uppercase tracking-wider font-bold block mb-3">
+                Zone / Espace
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setZone("")}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
+                    zone === ""
+                      ? "bg-orange-500/20 border-orange-500/30 text-orange-300"
+                      : "bg-white/[0.05] border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.1]"
+                  }`}
+                >
+                  🗺️ Peu importe
+                </button>
+                {zones.map((z) => (
+                  <button
+                    key={z}
+                    type="button"
+                    onClick={() => setZone(z)}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
+                      zone === z
+                        ? "bg-orange-500/20 border-orange-500/30 text-orange-300"
+                        : "bg-white/[0.05] border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.1]"
+                    }`}
+                  >
+                    {z}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Créneaux */}
           <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] p-4">
             <label className="text-xs text-white/50 uppercase tracking-wider font-bold block mb-3">Créneau horaire</label>
@@ -164,7 +230,7 @@ export default function ReservePage() {
                 Chargement des disponibilités…
               </div>
             ) : slots.length === 0 ? (
-              <p className="text-sm text-white/40">Aucun créneau disponible pour cette date. Essayez un autre jour.</p>
+              <p className="text-sm text-white/40">Aucun créneau disponible pour cette date{zone ? ` en zone "${zone}"` : ""}. Essayez un autre jour{zone ? " ou une autre zone" : ""}.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {slots.map((s) => (
