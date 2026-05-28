@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { API_URL, api, getProToken, redirectOn401 } from "@/lib/api";
 import { chatWithNova } from "@/lib/ai";
 import PhotoUploader from "@/components/PhotoUploader";
+import { PageHeader } from "@/components/ui";
 
 const ALLERGENS = [
   "GLUTEN","CRUSTACEANS","EGGS","FISH","PEANUTS","SOYBEANS","MILK","NUTS",
@@ -245,38 +246,38 @@ export default function MenuPage() {
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
-        <h1 className="text-2xl font-bold text-white">Menu <span className="text-sm font-normal text-white/30">({items.length} plats)</span></h1>
-
-        {/* Search + Category filter */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <input
-            type="text"
-            placeholder="Rechercher un plat..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-56 bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-orange-500/50"
-          />
-          <select
-            value={catFilter}
-            onChange={e => setCatFilter(e.target.value)}
-            className="bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500/50"
-          >
-            <option value="all">Toutes les categories</option>
-            {allCategories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-          {(search || catFilter !== "all") && (
-            <button
-              onClick={() => { setSearch(""); setCatFilter("all"); }}
-              className="text-xs text-white/30 hover:text-white/60 transition-colors"
+      <PageHeader
+        title={<>Menu <span className="text-sm font-normal text-white/30">({items.length} plats)</span></>}
+        actions={
+          <>
+            <input
+              type="text"
+              placeholder="Rechercher un plat..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-44 sm:w-56 bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-orange-500/50 shrink-0"
+            />
+            <select
+              value={catFilter}
+              onChange={e => setCatFilter(e.target.value)}
+              className="bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500/50 shrink-0"
             >
-              Effacer filtres
-            </button>
-          )}
-        </div>
-      </div>
+              <option value="all">Toutes les categories</option>
+              {allCategories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+            {(search || catFilter !== "all") && (
+              <button
+                onClick={() => { setSearch(""); setCatFilter("all"); }}
+                className="text-xs text-white/30 hover:text-white/60 transition-colors shrink-0 whitespace-nowrap"
+              >
+                Effacer filtres
+              </button>
+            )}
+          </>
+        }
+      />
 
       {/* ── Formulaire ajout / édition ── */}
       <form onSubmit={save} className="card mb-6 space-y-3">

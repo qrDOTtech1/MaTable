@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { PageHeader } from "@/components/ui";
 
 // ── CSV export ────────────────────────────────────────────────────────────────
 function exportCsv(reservations: Reservation[]) {
@@ -150,33 +151,33 @@ export default function ReservationsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-black text-white">Réservations</h1>
-          <p className="text-sm text-white/40 mt-0.5">{counts.upcoming} à venir · {counts.today} aujourd&apos;hui</p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => exportCsv(reservations)}
-            className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/[0.08] text-white/60 hover:text-white rounded-xl text-sm transition-colors"
-            title="Exporter en CSV"
-          >
-            ⬇ CSV
-          </button>
-          <button
-            onClick={load}
-            className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/[0.08] text-white/70 hover:text-white rounded-xl text-sm transition-colors"
-          >
-            🔄 Actualiser
-          </button>
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="px-4 py-2 bg-orange-500 hover:bg-orange-400 text-white font-bold rounded-xl text-sm transition-colors flex items-center gap-1.5"
-          >
-            ＋ Réservation
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Réservations"
+        subtitle={`${counts.upcoming} à venir · ${counts.today} aujourd'hui`}
+        actions={
+          <>
+            <button
+              onClick={() => exportCsv(reservations)}
+              className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/[0.08] text-white/60 hover:text-white rounded-xl text-sm transition-colors whitespace-nowrap shrink-0"
+              title="Exporter en CSV"
+            >
+              ⬇ CSV
+            </button>
+            <button
+              onClick={load}
+              className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/[0.08] text-white/70 hover:text-white rounded-xl text-sm transition-colors whitespace-nowrap shrink-0"
+            >
+              🔄 Actualiser
+            </button>
+            <button
+              onClick={() => setCreateOpen(true)}
+              className="px-4 py-2 bg-orange-500 hover:bg-orange-400 text-white font-bold rounded-xl text-sm transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0"
+            >
+              ＋ Réservation
+            </button>
+          </>
+        }
+      />
 
       {/* Filters */}
       <div className="flex gap-2 flex-wrap">

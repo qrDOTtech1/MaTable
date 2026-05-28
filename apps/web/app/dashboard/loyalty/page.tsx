@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { api } from "@/lib/api";
+import { PageHeader } from "@/components/ui";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -252,39 +253,37 @@ export default function LoyaltyPage() {
     <div className="space-y-6 max-w-6xl">
 
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-black flex items-center gap-2">
-            <span>💎</span> Programme Fidélité
-          </h1>
-          <p className="text-sm text-white/40 mt-0.5">
-            Gérez vos clients fidèles, leurs points et vos offres exclusives
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-white/45">
-            <span className="rounded-full bg-white/[0.04] border border-white/[0.06] px-3 py-1">1. Ajoutez/importez vos clients</span>
-            <span className="rounded-full bg-white/[0.04] border border-white/[0.06] px-3 py-1">2. Créez une offre</span>
-            <span className="rounded-full bg-white/[0.04] border border-white/[0.06] px-3 py-1">3. Utilisez-la depuis une fiche client</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={repairLoyalty} disabled={repairing}
-            className="px-3 py-2 text-sm bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-xl text-emerald-300 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-            title="Vérifier et réparer les tables fidélité si une migration est incomplète">
-            {repairing ? "Synchronisation…" : "🛠 Vérifier"}
-          </button>
-          <button onClick={() => { setImportOpen(true); }}
-            className="px-3 py-2 text-sm bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/70 transition-colors flex items-center gap-1.5">
-            📥 Importer
-          </button>
-          <a href="/dashboard/loyalty/scan"
-            className="px-3 py-2 text-sm bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/70 transition-colors flex items-center gap-1.5">
-            📷 Scanner carte
-          </a>
-          <button onClick={() => setAddCustOpen(true)}
-            className="px-4 py-2 text-sm bg-orange-500 hover:bg-orange-400 text-white font-bold rounded-xl transition-colors flex items-center gap-1.5">
-            ＋ Client
-          </button>
-        </div>
+      <PageHeader
+        title={<span className="flex items-center gap-2"><span>💎</span> Programme Fidélité</span>}
+        subtitle="Gérez vos clients fidèles, leurs points et vos offres exclusives"
+        actions={
+          <>
+            <button onClick={repairLoyalty} disabled={repairing}
+              className="px-3 py-2 text-sm bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-xl text-emerald-300 transition-colors flex items-center gap-1.5 disabled:opacity-50 whitespace-nowrap shrink-0"
+              title="Vérifier et réparer les tables fidélité si une migration est incomplète">
+              {repairing ? "Synchronisation…" : "🛠 Vérifier"}
+            </button>
+            <button onClick={() => { setImportOpen(true); }}
+              className="px-3 py-2 text-sm bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/70 transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0">
+              📥 Importer
+            </button>
+            <a href="/dashboard/loyalty/scan"
+              className="px-3 py-2 text-sm bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/70 transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0">
+              📷 Scanner carte
+            </a>
+            <button onClick={() => setAddCustOpen(true)}
+              className="px-4 py-2 text-sm bg-orange-500 hover:bg-orange-400 text-white font-bold rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0">
+              ＋ Client
+            </button>
+          </>
+        }
+      />
+
+      {/* Étapes */}
+      <div className="-mt-2 flex flex-wrap gap-2 text-[11px] text-white/45">
+        <span className="rounded-full bg-white/[0.04] border border-white/[0.06] px-3 py-1">1. Ajoutez/importez vos clients</span>
+        <span className="rounded-full bg-white/[0.04] border border-white/[0.06] px-3 py-1">2. Créez une offre</span>
+        <span className="rounded-full bg-white/[0.04] border border-white/[0.06] px-3 py-1">3. Utilisez-la depuis une fiche client</span>
       </div>
 
       {/* Toast */}

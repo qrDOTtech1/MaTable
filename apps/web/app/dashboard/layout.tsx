@@ -1,8 +1,10 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { clearProToken, api, API_URL, getProToken } from "@/lib/api";
+import { MobileBottomNav, type BottomNavItem } from "@/components/dashboard/MobileBottomNav";
+import { CommandPalette, type PaletteDestination } from "@/components/dashboard/CommandPalette";
 
 export default function DashboardLayoutWrapper({ children }: { children: React.ReactNode }) {
   const [slug, setSlug] = useState<string | null>(null);
@@ -10,6 +12,8 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   const [enabledApps, setEnabledApps] = useState<string[]>(["reviews"]);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [quickActionHrefs, setQuickActionHrefs] = useState<string[]>([]);
   const pathname = usePathname();
 
   // Notifications réservations temps réel
@@ -82,13 +86,27 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   };
 
   useEffect(() => {
-    api<{ restaurant: { slug?: string | null; name?: string }; enabledApps?: string[] }>("/api/pro/me")
+    api<{ restaurant: { slug?: string | null; name?: string; dashboardQuickActions?: string[] }; enabledApps?: string[] }>("/api/pro/me")
       .then((r) => {
         setSlug(r.restaurant.slug ?? null);
         setRestaurantName(r.restaurant.name ?? "");
         setEnabledApps(r.enabledApps ?? ["reviews"]);
+        setQuickActionHrefs(Array.isArray(r.restaurant.dashboardQuickActions) ? r.restaurant.dashboardQuickActions : []);
       })
       .catch(() => {});
+  }, []);
+
+  // Raccourci clavier ⌘K / Ctrl+K — ouvre la palette de recherche
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setMobileNavOpen(false);
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   function logout() {
@@ -159,6 +177,52 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
     ...(has("nova_ia") ? [{ href: "/dashboard/ia/planning", icon: "🗓️", label: "Planning IA" }] : []),
     ...(has("nova_ia") ? [{ href: "/dashboard/ia/descriptions", icon: "✍️", label: "Descriptions IA" }] : []),
   ];
+
+  // Toutes les destinations à plat (pour la palette + l'épinglage)
+  const allDestinations: PaletteDestination[] = useMemo(() => {
+    const out: PaletteDestination[] = [];
+    for (const section of navSections) {
+      for (const item of section.items) {
+        out.push({ href: item.href, icon: item.icon, label: item.label, section: section.label });
+      }
+    }
+    for (const item of iaItems) {
+      out.push({ href: item.href, icon: item.icon, label: item.label, section: "NOVA IA" });
+    }
+    // dédoublonnage par href (Fidélité/Menu apparaissent dans plusieurs sections)
+    const seen = new Set<string>();
+    return out.filter((d) => (seen.has(d.href) ? false : (seen.add(d.href), true)));
+  }, [enabledApps, resvNotifCount]);
+
+  const destByHref = useMemo(
+    () => new Map(allDestinations.map((d) => [d.href, d])),
+    [allDestinations]
+  );
+
+  // Raccourcis rapides résolus : choix du resto si présent, sinon défaut ; filtrés sur l'activé
+  const DEFAULT_QUICK = quickActions.map((q) => q.href);
+  const resolvedQuickActions = (quickActionHrefs.length > 0 ? quickActionHrefs : DEFAULT_QUICK)
+    .filter((href) => destByHref.has(href))
+    .slice(0, 8);
+
+  // Barre mobile : 4 destinations prioritaires
+  const bottomCandidates: BottomNavItem[] = [
+    ...(has("orders") ? [{ href: "/dashboard", icon: "🔴", label: "Live" }] : []),
+    ...(has("reservations") ? [{ href: "/dashboard/reservations", icon: "📅", label: "Résa", badge: resvNotifCount }] : []),
+    ...(has("orders") ? [{ href: "/dashboard/menu", icon: "🍽️", label: "Menu" }] : []),
+    { href: "/dashboard/loyalty", icon: "💎", label: "Fidélité" },
+    ...(has("orders") ? [{ href: "/dashboard/print", icon: "🖨️", label: "QR" }] : []),
+    ...(has("reviews") ? [{ href: "/dashboard/reviews", icon: "⭐", label: "Avis" }] : []),
+  ];
+  const bottomNavItems = bottomCandidates.slice(0, 4);
+
+  // Épingler / désépingler un raccourci → persiste en base
+  const togglePin = (href: string) => {
+    const base = quickActionHrefs.length > 0 ? quickActionHrefs : DEFAULT_QUICK;
+    const next = base.includes(href) ? base.filter((h) => h !== href) : [...base, href].slice(0, 8);
+    setQuickActionHrefs(next);
+    api("/api/pro/restaurant", { method: "PATCH", body: JSON.stringify({ dashboardQuickActions: next }) }).catch(() => {});
+  };
 
   // Sidebar content — réutilisé dans desktop ET mobile drawer
   const sidebarContent = (
@@ -276,31 +340,58 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
           )}
         </div>
 
-        <div className="flex items-center gap-2 lg:gap-4 shrink-0">
-          {quickActions.length > 0 && (
-            <div className="hidden xl:flex items-center gap-1 rounded-xl bg-white/[0.035] border border-white/[0.06] p-1">
-              {quickActions.map((action) => (
-                <Link
-                  key={action.href}
-                  href={action.href}
-                  className="px-2.5 py-1.5 rounded-lg text-xs text-white/45 hover:text-white hover:bg-white/[0.06] transition-colors"
-                  title={action.label}
-                >
-                  <span className="mr-1">{action.icon}</span>{action.label}
-                </Link>
-              ))}
+        <div className="flex items-center gap-2 lg:gap-3 shrink-0">
+          {/* Raccourcis rapides programmables — visibles dès md */}
+          {resolvedQuickActions.length > 0 && (
+            <div className="hidden md:flex items-center gap-1 rounded-xl bg-white/[0.035] border border-white/[0.06] p-1">
+              {resolvedQuickActions.map((href) => {
+                const action = destByHref.get(href);
+                if (!action) return null;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className="px-2.5 py-1.5 rounded-lg text-xs text-white/45 hover:text-white hover:bg-white/[0.06] transition-colors whitespace-nowrap"
+                    title={action.label}
+                  >
+                    <span className="mr-1">{action.icon}</span>
+                    <span className="hidden lg:inline">{action.label}</span>
+                  </Link>
+                );
+              })}
+              <button
+                onClick={() => setPaletteOpen(true)}
+                className="px-2 py-1.5 rounded-lg text-xs text-white/35 hover:text-orange-400 hover:bg-white/[0.06] transition-colors"
+                title="Personnaliser mes raccourcis"
+                aria-label="Personnaliser mes raccourcis"
+              >
+                ✎
+              </button>
             </div>
           )}
+
+          {/* Recherche rapide (⌘K) — fonctionne aussi au tap mobile */}
+          <button
+            onClick={() => { setMobileNavOpen(false); setPaletteOpen(true); }}
+            className="flex items-center gap-2 h-9 lg:h-10 px-2.5 lg:px-3 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors shrink-0"
+            title="Rechercher (Ctrl/⌘ K)"
+            aria-label="Rechercher"
+          >
+            <span className="text-base">🔍</span>
+            <kbd className="hidden lg:inline-block text-[10px] text-white/30 border border-white/10 rounded px-1.5 py-0.5">⌘K</kbd>
+          </button>
+
           {hasAnyIa && (
             <span className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-xs text-purple-300 font-semibold">
               ✨ Nova IA actif
             </span>
           )}
+          {/* Bouton thème masqué (aucun mode clair implémenté) — logique conservée pour réactivation future */}
           <button
             onClick={toggleTheme}
-            className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center transition-all bg-white/5 hover:bg-white/10 text-white/50 hover:text-white shrink-0"
-            title={theme === "dark" ? "Mode clair" : "Mode sombre"}
-            aria-label={theme === "dark" ? "Mode clair" : "Mode sombre"}
+            className="hidden"
+            aria-hidden="true"
+            tabIndex={-1}
           >
             {theme === "dark" ? "🌙" : "☀️"}
           </button>
@@ -383,13 +474,29 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
         )}
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto bg-[#0a0a0a] p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-auto bg-[#0a0a0a] p-4 sm:p-6 lg:p-8 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-8">
           {children}
         </main>
       </div>
 
+      {/* Barre de navigation mobile (< lg) */}
+      <MobileBottomNav
+        items={bottomNavItems}
+        pathname={pathname}
+        onMore={() => setMobileNavOpen(true)}
+      />
+
+      {/* Palette de recherche / commandes (⌘K) */}
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        destinations={allDestinations}
+        pinned={resolvedQuickActions}
+        onTogglePin={togglePin}
+      />
+
       {/* Toast notifications */}
-      <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-2 pointer-events-none">
+      <div className="fixed bottom-20 lg:bottom-6 right-6 z-[100] flex flex-col gap-2 pointer-events-none pb-[env(safe-area-inset-bottom)]">
         {toasts.map((t) => (
           <div
             key={t.id}
