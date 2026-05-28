@@ -104,7 +104,7 @@ export default function AnalyticsPage() {
         <div className="flex items-start justify-between gap-6 flex-wrap relative z-10">
           <div>
             <p className="text-xs uppercase tracking-[0.35em] text-orange-300 font-black mb-3">Command Center</p>
-            <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight">Analytics Massif</h1>
+            <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight">Toutes vos stats</h1>
             <p className="text-white/50 mt-3 max-w-2xl">Vue complète : chiffre, marges, achats, réservations, fidélité, avis, serveurs, plats et zones.</p>
           </div>
           <div className="flex items-center gap-2 bg-black/30 border border-white/10 rounded-2xl p-2">
