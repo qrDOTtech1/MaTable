@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 type OrderItem = { menuItemId?: string; name: string; quantity: number; priceCents: number };
 type Order = {
   id: string;
-  status: "PENDING" | "COOKING" | "SERVED" | "PAID" | "CANCELLED";
+  status: "PENDING" | "COOKING" | "READY" | "SERVED" | "PAID" | "CANCELLED";
   items: OrderItem[];
   totalCents: number;
   createdAt: string;
@@ -87,6 +87,7 @@ export default function DashboardPage() {
   // ── Tab title + pending count ──────────────────────────────────────────────
   const pendingOrders = orders.filter((o) => o.status === "PENDING");
   const cookingOrders = orders.filter((o) => o.status === "COOKING");
+  const readyOrders   = orders.filter((o) => o.status === "READY");
   const servedOrders  = orders.filter((o) => o.status === "SERVED");
 
   useEffect(() => {
@@ -125,7 +126,10 @@ export default function DashboardPage() {
 
   // ─── Actions ──────────────────────────────────────────────────────────────
   async function advance(o: Order) {
-    const next = o.status === "PENDING" ? "COOKING" : o.status === "COOKING" ? "SERVED" : "PAID";
+    const next =
+      o.status === "PENDING" ? "COOKING" :
+      o.status === "COOKING" ? "READY"   :
+      o.status === "READY"   ? "SERVED"  : "PAID";
     await api(`/api/pro/orders/${o.id}/status`, { method: "POST", body: JSON.stringify({ status: next }) });
     loadOrders();
   }
@@ -196,13 +200,17 @@ export default function DashboardPage() {
   const addCartCount = Object.values(addCart).reduce((s, q) => s + q, 0);
 
   // ─── Order card shared ────────────────────────────────────────────────────
-  function OrderCard({ order, color }: { order: Order; color: "yellow" | "orange" | "emerald" }) {
-    const btnLabel = color === "yellow" ? "👨‍🍳 Cuire" : color === "orange" ? "✅ Servir" : "💳 Encaisser";
+  function OrderCard({ order, color }: { order: Order; color: "yellow" | "orange" | "sky" | "emerald" }) {
+    const btnLabel =
+      order.status === "PENDING" ? "👨‍🍳 Cuire" :
+      order.status === "COOKING" ? "🛎️ Prêt"   :
+      order.status === "READY"   ? "✅ Servir"  : "💳 Encaisser";
     const editable = order.status === "PENDING" || order.status === "COOKING";
 
     const cls = {
       yellow:  { border: "border-yellow-500/20",  bg: "bg-yellow-500/5",  hover: "hover:bg-yellow-500/10",  name: "text-yellow-400",  btn: "bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300" },
       orange:  { border: "border-orange-500/20",  bg: "bg-orange-500/5",  hover: "hover:bg-orange-500/10",  name: "text-orange-400",  btn: "bg-orange-500/20 hover:bg-orange-500/30 text-orange-300" },
+      sky:     { border: "border-sky-500/20",     bg: "bg-sky-500/5",     hover: "hover:bg-sky-500/10",     name: "text-sky-400",     btn: "bg-sky-500/20 hover:bg-sky-500/30 text-sky-300" },
       emerald: { border: "border-emerald-500/20", bg: "bg-emerald-500/5", hover: "hover:bg-emerald-500/10", name: "text-emerald-400", btn: "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300" },
     }[color];
 
@@ -301,7 +309,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Kanban */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[500px]">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 min-h-[500px]">
         {/* À préparer */}
         <div className="space-y-1">
           <div className="flex items-center gap-2 mb-3">
@@ -338,11 +346,29 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* À servir */}
+        {/* Prêt — à apporter */}
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-lg">🛎️</span>
+            <h3 className="font-bold text-white/80">À apporter</h3>
+            {readyOrders.length > 0 && (
+              <span className="ml-auto w-6 h-6 rounded-full bg-sky-500/20 text-sky-300 text-xs font-bold flex items-center justify-center">{readyOrders.length}</span>
+            )}
+          </div>
+          {readyOrders.length === 0 ? (
+            <div className="rounded-xl border border-white/[0.05] bg-white/[0.01] p-8 text-center text-white/20 text-sm">Aucune commande</div>
+          ) : (
+            <div className="space-y-3">
+              {readyOrders.map((o) => <OrderCard key={o.id} order={o} color="sky" />)}
+            </div>
+          )}
+        </div>
+
+        {/* Servi — à encaisser */}
         <div className="space-y-1">
           <div className="flex items-center gap-2 mb-3">
             <span className="text-lg">✅</span>
-            <h3 className="font-bold text-white/80">À servir</h3>
+            <h3 className="font-bold text-white/80">Servi · à encaisser</h3>
             {servedOrders.length > 0 && (
               <span className="ml-auto w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold flex items-center justify-center">{servedOrders.length}</span>
             )}

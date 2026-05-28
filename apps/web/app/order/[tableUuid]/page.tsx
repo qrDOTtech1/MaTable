@@ -40,7 +40,7 @@ type TableInfo = {
 };
 type MyOrder = {
   id: string;
-  status: "PENDING" | "COOKING" | "SERVED" | "PAID" | "CANCELLED";
+  status: "PENDING" | "COOKING" | "READY" | "SERVED" | "PAID" | "CANCELLED";
   totalCents: number;
   items?: { menuItemId: string; name: string; quantity: number; priceCents: number }[];
   expectedReadyAt?: string | null;
@@ -74,6 +74,7 @@ const DIET_LABELS: Record<string, string> = {
 const STATUS_INFO: Record<MyOrder["status"], { label: string; icon: string; bg: string; text: string }> = {
   PENDING:   { label: "Reçue",           icon: "📩", bg: "bg-amber-500/10",   text: "text-amber-400"  },
   COOKING:   { label: "En préparation",  icon: "🍳", bg: "bg-orange-500/10",  text: "text-orange-400" },
+  READY:     { label: "Prête 🛎️",        icon: "🛎️", bg: "bg-sky-500/10",     text: "text-sky-400"    },
   SERVED:    { label: "Servie",          icon: "✅", bg: "bg-emerald-500/10", text: "text-emerald-400"},
   PAID:      { label: "Payée",           icon: "💳", bg: "bg-blue-500/10",    text: "text-blue-400"   },
   CANCELLED: { label: "Annulée",         icon: "❌", bg: "bg-red-500/10",     text: "text-red-400"    },

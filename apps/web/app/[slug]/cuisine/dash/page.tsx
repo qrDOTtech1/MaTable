@@ -113,10 +113,10 @@ export default function CuisineDashPage() {
     } finally { setActing(null); }
   };
 
-  const markServed = async (orderId: string) => {
+  const markReady = async (orderId: string) => {
     setActing(orderId);
     try {
-      await cuisineFetch(`/api/cuisine/orders/${orderId}/served`, { method: "POST" });
+      await cuisineFetch(`/api/cuisine/orders/${orderId}/ready`, { method: "POST" });
       await loadData();
     } finally { setActing(null); }
   };
@@ -354,11 +354,11 @@ export default function CuisineDashPage() {
                 </div>
                 <div className="px-4 pb-3">
                   <button
-                    onClick={() => markServed(order.id)}
+                    onClick={() => markReady(order.id)}
                     disabled={acting === order.id}
                     className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-sm transition-all"
                   >
-                    {acting === order.id ? "..." : "✓ Pret — Envoyer en salle"}
+                    {acting === order.id ? "..." : "🛎️ Pret — Envoyer en salle"}
                   </button>
                 </div>
               </div>

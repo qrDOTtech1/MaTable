@@ -89,8 +89,8 @@ function PartPayButton({ part, session, paying, onPay }: {
 }
 
 const DAYS = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
-const STATUS_LABEL: Record<string, string> = { PENDING: "À préparer", COOKING: "En cuisine", SERVED: "À servir" };
-const STATUS_COLOR: Record<string, string> = { PENDING: "text-yellow-400", COOKING: "text-orange-400", SERVED: "text-emerald-400" };
+const STATUS_LABEL: Record<string, string> = { PENDING: "À préparer", COOKING: "En cuisine", READY: "🛎️ À apporter", SERVED: "Servie" };
+const STATUS_COLOR: Record<string, string> = { PENDING: "text-yellow-400", COOKING: "text-orange-400", READY: "text-emerald-400", SERVED: "text-white/40" };
 
 function minToHhmm(m: number) {
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
@@ -146,6 +146,7 @@ export default function ServeurDashPage() {
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [closing, setClosing] = useState<string | null>(null);
+  const [servingId, setServingId] = useState<string | null>(null);
   const [closeMode, setCloseMode] = useState<"CARD"|"CASH"|"COUNTER">("CARD");
 
   // Split state
@@ -273,6 +274,14 @@ export default function ServeurDashPage() {
     socket.on("order:overdue", (data: any) => {
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification("⚠️ Commande en retard !", { body: `Table ${data.tableNumber} — la cuisine dépasse le temps estimé` });
+      }
+      try { new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3").play(); } catch(e){}
+      refreshData();
+    });
+
+    socket.on("order:ready", (data: any) => {
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("🛎️ Commande prête !", { body: `Table ${data.tableNumber} — à apporter en salle` });
       }
       try { new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3").play(); } catch(e){}
       refreshData();
@@ -506,6 +515,16 @@ export default function ServeurDashPage() {
     }
   }
 
+  async function markServed(orderId: string) {
+    setServingId(orderId);
+    try {
+      await serverFetch(`/api/server/orders/${orderId}/served`, { method: "POST" });
+      loadAll();
+    } catch { } finally {
+      setServingId(null);
+    }
+  }
+
   function logout() {
     localStorage.removeItem("server_token");
     localStorage.removeItem("server_info");
@@ -523,6 +542,10 @@ export default function ServeurDashPage() {
 
   const pendingOrders = sessions.flatMap((s) => s.orders.filter((o) => o.status === "PENDING"));
   const servedOrders = sessions.flatMap((s) => s.orders.filter((o) => o.status === "SERVED"));
+  const readySessions = sessions
+    .map((s) => ({ session: s, ready: s.orders.filter((o) => o.status === "READY") }))
+    .filter((x) => x.ready.length > 0);
+  const readyCount = readySessions.reduce((n, x) => n + x.ready.length, 0);
   const myTables = sessions.length + myEmptyTables.length;
   const todayDow = new Date().getDay();
   const todaySchedule = schedules.filter((s) => s.dayOfWeek === todayDow);
@@ -589,6 +612,39 @@ export default function ServeurDashPage() {
         {/* ── TABLES ─────────────────────────────────────────────── */}
         {tab === "tables" && (
           <div className="space-y-4">
+
+            {/* ── À apporter (commandes prêtes en cuisine) ─────────── */}
+            {readyCount > 0 && (
+              <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/30 overflow-hidden">
+                <div className="px-5 py-3 border-b border-emerald-500/20 flex items-center gap-2">
+                  <span className="text-xl">🛎️</span>
+                  <p className="text-sm font-bold text-emerald-300">À apporter en salle · {readyCount}</p>
+                </div>
+                <div className="divide-y divide-emerald-500/10">
+                  {readySessions.map(({ session, ready }) => (
+                    <div key={session.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <span className="text-lg font-black text-emerald-400">T{session.table.number}</span>
+                        <div className="flex-1 min-w-0">
+                          {ready.map((o) => (
+                            <p key={o.id} className="text-xs text-white/70 truncate">
+                              {(o.items as any[]).map((it: any) => `${it.quantity}× ${it.name}`).join(", ")}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => ready.forEach((o) => markServed(o.id))}
+                        disabled={ready.some((o) => servingId === o.id)}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold transition-all whitespace-nowrap shrink-0"
+                      >
+                        ✓ Tout servi
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* ── Service Calls Alert ──────────────────────────────── */}
             {serviceCalls.length > 0 && (
@@ -847,7 +903,7 @@ export default function ServeurDashPage() {
                     {session.orders.length > 0 && (
                       <div className={`divide-y divide-white/[0.04] ${billRequested ? "opacity-40" : ""}`}>
                         {session.orders.map((order) => (
-                          <div key={order.id} className="px-5 py-3 flex items-start justify-between gap-4">
+                          <div key={order.id} className={`px-5 py-3 flex items-start justify-between gap-4 ${order.status === "READY" ? "bg-emerald-500/[0.06]" : ""}`}>
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
                                 <span className={`text-xs font-semibold ${STATUS_COLOR[order.status] ?? "text-white/60"}`}>
@@ -861,7 +917,18 @@ export default function ServeurDashPage() {
                                 ))}
                               </div>
                             </div>
-                            <span className="text-sm font-bold text-white/60 shrink-0">{fmt(order.totalCents)}</span>
+                            <div className="flex flex-col items-end gap-2 shrink-0">
+                              <span className="text-sm font-bold text-white/60">{fmt(order.totalCents)}</span>
+                              {order.status === "READY" && (
+                                <button
+                                  onClick={() => markServed(order.id)}
+                                  disabled={servingId === order.id}
+                                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold transition-all whitespace-nowrap"
+                                >
+                                  {servingId === order.id ? "..." : "✓ Servi"}
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
