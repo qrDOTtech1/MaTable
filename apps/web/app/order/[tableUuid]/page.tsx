@@ -910,7 +910,10 @@ export default function OrderPage() {
       )}
 
       {/* ── Nova AI assistant ────────────────────────────────────────────── */}
-      <NovaAssistant tableUuid={tableUuid} menu={info.menu} restaurantName={info.restaurant.name} />
+      <NovaAssistant
+        restaurantName={info.restaurant.name}
+        menuContext={info.menu.map(m => `${m.name} (${(m.priceCents / 100).toFixed(2)}€)${m.description ? " — " + m.description : ""}`).join(" · ")}
+      />
     </main>
   );
 }
