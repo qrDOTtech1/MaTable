@@ -171,7 +171,9 @@ export default function LoyaltyPage() {
     try {
       const r = await api<Stats>("/api/pro/loyalty/stats");
       setStats(r);
-    } catch {}
+    } catch {
+      await api("/api/pro/loyalty/ensure-schema", { method: "POST" }).catch(() => {});
+    }
   }, []);
 
   const loadCustomers = useCallback(async (page = 1, s = search, t = tierFilter) => {
@@ -182,14 +184,21 @@ export default function LoyaltyPage() {
       setCustomers(r.customers);
       setCustTotal(r.total);
       setCustPage(page);
-    } catch {} finally { setLoading(false); }
+    } catch {
+      await api("/api/pro/loyalty/ensure-schema", { method: "POST" }).catch(() => {});
+      setCustomers([]);
+      setCustTotal(0);
+    } finally { setLoading(false); }
   }, [search, tierFilter]);
 
   const loadOffers = useCallback(async () => {
     try {
       const r = await api<{ offers: Offer[] }>("/api/pro/loyalty/offers");
       setOffers(r.offers);
-    } catch {}
+    } catch {
+      await api("/api/pro/loyalty/ensure-schema", { method: "POST" }).catch(() => {});
+      setOffers([]);
+    }
   }, []);
 
   useEffect(() => { loadStats(); }, [loadStats]);
@@ -591,11 +600,16 @@ export default function LoyaltyPage() {
         <Modal title="Nouvelle offre fidélité" onClose={() => setAddOfferOpen(false)}>
           <AddOfferForm
             onSubmit={async (data) => {
-              await api("/api/pro/loyalty/offers", { method: "POST", body: JSON.stringify(data) });
-              setAddOfferOpen(false);
-              loadOffers();
-              loadStats();
-              toast("Offre créée !");
+              try {
+                await api("/api/pro/loyalty/offers", { method: "POST", body: JSON.stringify(data) });
+                setAddOfferOpen(false);
+                loadOffers();
+                loadStats();
+                toast("Offre créée !");
+              } catch (e: any) {
+                await api("/api/pro/loyalty/ensure-schema", { method: "POST" }).catch(() => {});
+                toast(`Impossible de créer l'offre : ${e?.message ?? "erreur"}. Migration fidélité relancée, réessayez.`, "err");
+              }
             }}
           />
         </Modal>
@@ -871,7 +885,7 @@ function AddOfferForm({ onSubmit }: { onSubmit: (d: Record<string,unknown>) => P
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     name: "", description: "", type: "discount_pct" as string,
-    value: 10, pointsCost: 200, minTier: "" as string,
+    value: "10", pointsCost: "200", minTier: "" as string,
     expiresAt: "", usageLimit: "" as string,
   });
   const set = (k: string, v: unknown) => setForm(f => ({ ...f, [k]: v }));
@@ -883,8 +897,8 @@ function AddOfferForm({ onSubmit }: { onSubmit: (d: Record<string,unknown>) => P
       try {
         await onSubmit({
           ...form,
-          value: Number(form.value),
-          pointsCost: Number(form.pointsCost),
+          value: Number(form.value) || 0,
+          pointsCost: Math.max(0, Math.floor(Number(form.pointsCost) || 0)),
           minTier: form.minTier || undefined,
           expiresAt: form.expiresAt || undefined,
           usageLimit: form.usageLimit ? Number(form.usageLimit) : undefined,
