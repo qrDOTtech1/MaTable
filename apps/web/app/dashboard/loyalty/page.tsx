@@ -629,11 +629,16 @@ export default function LoyaltyPage() {
         <Modal title="Nouveau client fidélité" onClose={() => setAddCustOpen(false)}>
           <AddCustomerForm
             onSubmit={async (data) => {
-              await api("/api/pro/loyalty/customers", { method: "POST", body: JSON.stringify(data) });
-              setAddCustOpen(false);
-              loadCustomers(1);
-              loadStats();
-              toast("Client ajouté !");
+              try {
+                await api("/api/pro/loyalty/customers", { method: "POST", body: JSON.stringify(data) });
+                setAddCustOpen(false);
+                loadCustomers(1);
+                loadStats();
+                toast("Client ajouté !");
+              } catch (e: any) {
+                await api("/api/pro/loyalty/ensure-schema", { method: "POST" }).catch(() => {});
+                throw e; // re-throw so AddCustomerForm can display the error
+              }
             }}
           />
         </Modal>
@@ -893,14 +898,24 @@ function Modal({ title, onClose, children, wide = false }: {
 
 function AddCustomerForm({ onSubmit }: { onSubmit: (d: Record<string,unknown>) => Promise<void> }) {
   const [saving, setSaving] = useState(false);
+  const [error, setError]   = useState("");
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", points: 0, birthDate: "", notes: "" });
   const set = (k: string, v: unknown) => setForm(f => ({ ...f, [k]: v }));
 
   return (
     <form onSubmit={async e => {
-      e.preventDefault(); setSaving(true);
-      try { await onSubmit({ ...form, points: Number(form.points) || 0, email: form.email || undefined, phone: form.phone || undefined, birthDate: form.birthDate || undefined, notes: form.notes || undefined }); }
-      finally { setSaving(false); }
+      e.preventDefault();
+      setError("");
+      if (!form.firstName.trim() && !form.lastName.trim() && !form.email.trim() && !form.phone.trim()) {
+        setError("Renseignez au moins un prénom, nom, email ou téléphone.");
+        return;
+      }
+      setSaving(true);
+      try {
+        await onSubmit({ ...form, points: Number(form.points) || 0, email: form.email || undefined, phone: form.phone || undefined, birthDate: form.birthDate || undefined, notes: form.notes || undefined });
+      } catch (e: any) {
+        setError(humanApiError(e?.message));
+      } finally { setSaving(false); }
     }} className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <Field label="Prénom" value={form.firstName} onChange={v => set("firstName", v)} />
@@ -917,6 +932,11 @@ function AddCustomerForm({ onSubmit }: { onSubmit: (d: Record<string,unknown>) =
         <textarea value={form.notes} onChange={e => set("notes", e.target.value)} rows={2}
           className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-orange-500/50 resize-none" />
       </div>
+      {error && (
+        <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+          {error}
+        </div>
+      )}
       <button type="submit" disabled={saving}
         className="w-full py-3 bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-bold rounded-xl transition-colors">
         {saving ? "Enregistrement…" : "Ajouter le client"}
