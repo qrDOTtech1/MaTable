@@ -84,6 +84,18 @@ function formatPts(n: number) {
   return n.toLocaleString("fr-FR");
 }
 
+function humanApiError(message?: string) {
+  const raw = message ?? "erreur inconnue";
+  const match = raw.match(/"error"\s*:\s*"([^"]+)"/) || raw.match(/"([a-z_]+)"/);
+  const code = match?.[1];
+  const labels: Record<string, string> = {
+    unauthorized: "session expirée, reconnectez-vous",
+    discount_pct_too_high: "une remise en pourcentage ne peut pas dépasser 100%",
+    missing_customer_identity: "ajoutez au moins un nom, email ou téléphone",
+  };
+  return code ? (labels[code] ?? code.replace(/_/g, " ")) : raw;
+}
+
 function nextTierInfo(tier: Tier, points: number) {
   const order: Tier[] = ["bronze", "silver", "gold", "platinum"];
   const idx = order.indexOf(tier);
@@ -149,6 +161,7 @@ export default function LoyaltyPage() {
   const [offers, setOffers]       = useState<Offer[]>([]);
   const [loading, setLoading]     = useState(false);
   const [msg, setMsg]             = useState<{ type: "ok"|"err"; text: string } | null>(null);
+  const [repairing, setRepairing] = useState(false);
 
   // Loyalty config (auto-points)
   const [loyaltyConfig, setLoyaltyConfig] = useState({ enabled: false, ptsPerEuro: 10, minSpendCents: 0 });
@@ -201,6 +214,19 @@ export default function LoyaltyPage() {
     }
   }, []);
 
+  const repairLoyalty = useCallback(async () => {
+    setRepairing(true);
+    try {
+      await api("/api/pro/loyalty/ensure-schema", { method: "POST" });
+      await Promise.all([loadStats(), loadOffers(), loadCustomers(custPage)]);
+      toast("Module fidélité vérifié et synchronisé.");
+    } catch (e: any) {
+      toast(`Réparation impossible : ${e?.message ?? "erreur"}`, "err");
+    } finally {
+      setRepairing(false);
+    }
+  }, [custPage, loadCustomers, loadOffers, loadStats]);
+
   useEffect(() => { loadStats(); }, [loadStats]);
   useEffect(() => { if (tab === "customers") loadCustomers(1, search, tierFilter); }, [tab]);
   useEffect(() => { if (tab === "offers") loadOffers(); }, [tab]);
@@ -234,8 +260,18 @@ export default function LoyaltyPage() {
           <p className="text-sm text-white/40 mt-0.5">
             Gérez vos clients fidèles, leurs points et vos offres exclusives
           </p>
+          <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-white/45">
+            <span className="rounded-full bg-white/[0.04] border border-white/[0.06] px-3 py-1">1. Ajoutez/importez vos clients</span>
+            <span className="rounded-full bg-white/[0.04] border border-white/[0.06] px-3 py-1">2. Créez une offre</span>
+            <span className="rounded-full bg-white/[0.04] border border-white/[0.06] px-3 py-1">3. Utilisez-la depuis une fiche client</span>
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={repairLoyalty} disabled={repairing}
+            className="px-3 py-2 text-sm bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-xl text-emerald-300 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            title="Vérifier et réparer les tables fidélité si une migration est incomplète">
+            {repairing ? "Synchronisation…" : "🛠 Vérifier"}
+          </button>
           <button onClick={() => { setImportOpen(true); }}
             className="px-3 py-2 text-sm bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/70 transition-colors flex items-center gap-1.5">
             📥 Importer
@@ -573,6 +609,10 @@ export default function LoyaltyPage() {
               })}
             </div>
           )}
+          <div className="rounded-2xl border border-orange-500/15 bg-orange-500/5 p-4 text-xs text-orange-100/70">
+            <p className="font-bold text-orange-300 mb-1">Utilisation des offres</p>
+            <p>Une offre s'utilise depuis une fiche client : onglet Clients → Détail → Utiliser une offre. Le coût en points est déduit automatiquement.</p>
+          </div>
         </div>
       )}
 
@@ -608,7 +648,7 @@ export default function LoyaltyPage() {
                 toast("Offre créée !");
               } catch (e: any) {
                 await api("/api/pro/loyalty/ensure-schema", { method: "POST" }).catch(() => {});
-                toast(`Impossible de créer l'offre : ${e?.message ?? "erreur"}. Migration fidélité relancée, réessayez.`, "err");
+                toast(`Impossible de créer l'offre : ${humanApiError(e?.message)}. Tables vérifiées, réessayez.`, "err");
               }
             }}
           />
@@ -883,6 +923,7 @@ function AddCustomerForm({ onSubmit }: { onSubmit: (d: Record<string,unknown>) =
 
 function AddOfferForm({ onSubmit }: { onSubmit: (d: Record<string,unknown>) => Promise<void> }) {
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({
     name: "", description: "", type: "discount_pct" as string,
     value: "10", pointsCost: "200", minTier: "" as string,
@@ -893,7 +934,11 @@ function AddOfferForm({ onSubmit }: { onSubmit: (d: Record<string,unknown>) => P
 
   return (
     <form onSubmit={async e => {
-      e.preventDefault(); setSaving(true);
+      e.preventDefault();
+      setError("");
+      if (!form.name.trim()) { setError("Donnez un nom à l'offre."); return; }
+      if (form.type === "discount_pct" && Number(form.value) > 100) { setError("La remise en pourcentage ne peut pas dépasser 100%."); return; }
+      setSaving(true);
       try {
         await onSubmit({
           ...form,
@@ -903,6 +948,8 @@ function AddOfferForm({ onSubmit }: { onSubmit: (d: Record<string,unknown>) => P
           expiresAt: form.expiresAt || undefined,
           usageLimit: form.usageLimit ? Number(form.usageLimit) : undefined,
         });
+      } catch (e: any) {
+        setError(humanApiError(e?.message));
       } finally { setSaving(false); }
     }} className="space-y-4">
       <Field label="Nom de l'offre" value={form.name} onChange={v => set("name", v)} placeholder="Ex : Café offert, Remise anniversaire…" required />
@@ -945,6 +992,17 @@ function AddOfferForm({ onSubmit }: { onSubmit: (d: Record<string,unknown>) => P
       <div className="grid grid-cols-2 gap-3">
         <Field label="Date d'expiration" value={form.expiresAt} onChange={v => set("expiresAt", v)} type="date" />
         <Field label="Limite d'utilisations" value={form.usageLimit} onChange={v => set("usageLimit", v)} type="number" placeholder="Illimitée" />
+      </div>
+
+      {error && <p className="text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</p>}
+
+      <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 text-[11px] text-white/40 leading-relaxed">
+        Aperçu : cette offre coûtera <span className="text-orange-300 font-bold">{Number(form.pointsCost) || 0} points</span>
+        {form.type === "discount_pct" && <> pour une remise de <span className="text-white/70 font-bold">{Number(form.value) || 0}%</span></>}
+        {form.type === "discount_fixed" && <> pour une remise de <span className="text-white/70 font-bold">{Number(form.value) || 0}€</span></>}
+        {form.type === "double_points" && <> et doublera les points sur la prochaine visite</>}
+        {form.type === "free_item" && <> pour un article offert</>}
+        {form.minTier && <> · réservé aux clients {TIERS[form.minTier as Tier].label}+</>}.
       </div>
 
       <button type="submit" disabled={saving || !form.name}

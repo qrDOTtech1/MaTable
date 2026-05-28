@@ -63,6 +63,13 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   const has = (app: string) => enabledApps.includes(app);
   const hasAnyIa = has("nova_ia") || has("nova_stock") || has("nova_contab") || has("nova_finance");
 
+  const quickActions = [
+    ...(has("orders") ? [{ href: "/dashboard/menu", icon: "🍽️", label: "Ajouter un plat" }] : []),
+    ...(has("reservations") ? [{ href: "/dashboard/reservations", icon: "📅", label: "Voir réservations" }] : []),
+    { href: "/dashboard/loyalty", icon: "💎", label: "Fidélité" },
+    ...(has("orders") ? [{ href: "/dashboard/print", icon: "🖨️", label: "QR codes" }] : []),
+  ].slice(0, 4);
+
   // Navigation menu — sections are shown/hidden based on enabledApps
   const navSections = [
     {
@@ -77,7 +84,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
       label: "CONTENU",
       items: [
         ...(has("orders") ? [{ href: "/dashboard/menu", icon: "🍽️", label: "Menu" }] : []),
-        ...(has("nova_stock") ? [{ href: "/dashboard/stock", icon: "📦", label: "Stock & Ingredients" }] : []),
+        ...(has("nova_stock") ? [{ href: "/dashboard/stock", icon: "📦", label: "Stock & Ingrédients" }] : []),
         ...(has("nova_stock") ? [{ href: "/dashboard/shopping", icon: "🛒", label: "Listes de courses" }] : []),
         { href: "/dashboard/servers", icon: "👤", label: "Serveurs" },
         ...(has("orders") ? [{ href: "/dashboard/print", icon: "🖨️", label: "QR Codes" }] : []),
@@ -89,7 +96,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
         ...(has("orders") ? [{ href: "/dashboard/analytics", icon: "📊", label: "Statistiques" }] : []),
         ...(has("nova_contab") ? [{ href: "/dashboard/novacontab", icon: "🧮", label: "URSSAF & TVA" }] : []),
         ...(has("reviews") ? [{ href: "/dashboard/reviews", icon: "⭐", label: "Avis des clients" }] : []),
-        ...(has("reservations") ? [{ href: "/dashboard/reservations", icon: "📅", label: "Reservations" }] : []),
+        ...(has("reservations") ? [{ href: "/dashboard/reservations", icon: "📅", label: "Réservations" }] : []),
         { href: "/dashboard/loyalty", icon: "💎", label: "Fidélité" },
         ...(has("orders") ? [{ href: "/dashboard/invoices", icon: "🧾", label: "Factures" }] : []),
       ],
@@ -97,9 +104,9 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
     {
       label: "CONFIG",
       items: [
-        { href: "/dashboard/settings", icon: "⚙️", label: "Parametres" },
+        { href: "/dashboard/settings", icon: "⚙️", label: "Paramètres" },
         { href: "/dashboard/support", icon: "🎧", label: "Support / SAV" },
-        { href: "/dashboard/testimonial", icon: "💬", label: "Temoignage" },
+        { href: "/dashboard/testimonial", icon: "💬", label: "Témoignage" },
       ],
     },
   ].filter(section => section.items.length > 0);
@@ -125,7 +132,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
             {section.label}
           </p>
           {section.items.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
             return (
               <Link
                 key={item.href}
@@ -135,6 +142,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
                     ? "bg-orange-500/20 border border-orange-500/30 text-orange-400 font-semibold"
                     : "text-white/50 hover:text-white/70 hover:bg-white/5"
                 }`}
+                aria-current={isActive ? "page" : undefined}
               >
                 <span className="mr-2">{item.icon}</span>
                 {item.label}
@@ -226,6 +234,20 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
         </div>
 
         <div className="flex items-center gap-2 lg:gap-4 shrink-0">
+          {quickActions.length > 0 && (
+            <div className="hidden xl:flex items-center gap-1 rounded-xl bg-white/[0.035] border border-white/[0.06] p-1">
+              {quickActions.map((action) => (
+                <Link
+                  key={action.href}
+                  href={action.href}
+                  className="px-2.5 py-1.5 rounded-lg text-xs text-white/45 hover:text-white hover:bg-white/[0.06] transition-colors"
+                  title={action.label}
+                >
+                  <span className="mr-1">{action.icon}</span>{action.label}
+                </Link>
+              ))}
+            </div>
+          )}
           {hasAnyIa && (
             <span className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-xs text-purple-300 font-semibold">
               ✨ Nova IA actif

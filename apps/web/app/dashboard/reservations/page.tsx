@@ -113,6 +113,9 @@ export default function ReservationsPage() {
     today: reservations.filter((r) => new Date(r.startsAt).toDateString() === todayStr).length,
     all: reservations.length,
   };
+  const selectedLabel = selectedDay
+    ? new Date(`${selectedDay}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })
+    : null;
 
   return (
     <div className="space-y-6">
@@ -146,6 +149,15 @@ export default function ReservationsPage() {
           </button>
         ))}
       </div>
+
+      {selectedDay && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-orange-500/20 bg-orange-500/10 px-4 py-3 text-sm text-orange-100/80">
+          <span>Filtre calendrier actif : <b className="text-orange-200 capitalize">{selectedLabel}</b> · {filtered.length} réservation{filtered.length > 1 ? "s" : ""}</span>
+          <button type="button" onClick={() => setSelectedDay(null)} className="text-xs font-bold text-orange-300 hover:text-orange-200">
+            Retirer le filtre
+          </button>
+        </div>
+      )}
 
       {/* Calendar */}
       <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] p-4 space-y-4">
