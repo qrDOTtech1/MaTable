@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { clearProToken, api } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import { clearProToken, api, API_URL, getProToken } from "@/lib/api";
 
 export default function DashboardLayoutWrapper({ children }: { children: React.ReactNode }) {
   const [slug, setSlug] = useState<string | null>(null);
@@ -11,6 +11,17 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const pathname = usePathname();
+
+  // Notifications réservations temps réel
+  const [resvNotifCount, setResvNotifCount] = useState(0);
+  const [toasts, setToasts] = useState<Array<{ id: number; text: string }>>([]);
+  const toastId = useRef(0);
+
+  const pushToast = (text: string) => {
+    const id = ++toastId.current;
+    setToasts((t) => [...t, { id, text }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 5000);
+  };
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as "dark" | "light" | null;
@@ -24,6 +35,32 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   useEffect(() => {
     setMobileNavOpen(false);
   }, [pathname]);
+
+  // Reset badge quand on visite la page réservations
+  useEffect(() => {
+    if (pathname === "/dashboard/reservations") setResvNotifCount(0);
+  }, [pathname]);
+
+  // SSE — écouter les nouvelles réservations
+  useEffect(() => {
+    const token = getProToken();
+    if (!token) return;
+    const es = new EventSource(`${API_URL}/api/pro/events/stream?token=${encodeURIComponent(token)}`);
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.type === "reservation:new") {
+          const name = data.customerName ?? "Client";
+          const covers = data.partySize ?? "";
+          pushToast(`🔔 Nouvelle réservation — ${name}${covers ? ` · ${covers} cvt` : ""}`);
+          if (pathname !== "/dashboard/reservations") {
+            setResvNotifCount((n) => n + 1);
+          }
+        }
+      } catch { /* ignore */ }
+    };
+    return () => es.close();
+  }, []);
 
   // Lock body scroll when mobile nav is open
   useEffect(() => {
@@ -65,7 +102,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
 
   const quickActions = [
     ...(has("orders") ? [{ href: "/dashboard/menu", icon: "🍽️", label: "Ajouter un plat" }] : []),
-    ...(has("reservations") ? [{ href: "/dashboard/reservations", icon: "📅", label: "Voir réservations" }] : []),
+    ...(has("reservations") ? [{ href: "/dashboard/reservations", icon: "📅", label: "Voir réservations", badge: resvNotifCount }] : []),
     { href: "/dashboard/loyalty", icon: "💎", label: "Fidélité" },
     ...(has("orders") ? [{ href: "/dashboard/print", icon: "🖨️", label: "QR codes" }] : []),
   ].slice(0, 4);
@@ -96,7 +133,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
         ...(has("orders") ? [{ href: "/dashboard/analytics", icon: "📊", label: "Statistiques" }] : []),
         ...(has("nova_contab") ? [{ href: "/dashboard/novacontab", icon: "🧮", label: "URSSAF & TVA" }] : []),
         ...(has("reviews") ? [{ href: "/dashboard/reviews", icon: "⭐", label: "Avis des clients" }] : []),
-        ...(has("reservations") ? [{ href: "/dashboard/reservations", icon: "📅", label: "Réservations" }] : []),
+        ...(has("reservations") ? [{ href: "/dashboard/reservations", icon: "📅", label: "Réservations", badge: resvNotifCount }] : []),
         { href: "/dashboard/loyalty", icon: "💎", label: "Fidélité" },
         ...(has("orders") ? [{ href: "/dashboard/invoices", icon: "🧾", label: "Factures" }] : []),
       ],
@@ -144,8 +181,14 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
                 }`}
                 aria-current={isActive ? "page" : undefined}
               >
-                <span className="mr-2">{item.icon}</span>
-                {item.label}
+                <span className="flex items-center justify-between">
+                  <span><span className="mr-2">{item.icon}</span>{item.label}</span>
+                  {"badge" in item && (item as any).badge > 0 && (
+                    <span className="ml-1 min-w-[18px] h-[18px] px-1 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center">
+                      {(item as any).badge > 9 ? "9+" : (item as any).badge}
+                    </span>
+                  )}
+                </span>
               </Link>
             );
           })}
@@ -343,6 +386,22 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
         <main className="flex-1 overflow-auto bg-[#0a0a0a] p-4 sm:p-6 lg:p-8">
           {children}
         </main>
+      </div>
+
+      {/* Toast notifications */}
+      <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-2 pointer-events-none">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className="pointer-events-auto bg-[#1a1a1a] border border-orange-500/40 text-white text-sm px-4 py-3 rounded-xl shadow-xl shadow-black/40 flex items-center gap-3 animate-slide-in-right"
+          >
+            <span>{t.text}</span>
+            <button
+              onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
+              className="text-white/40 hover:text-white text-xs"
+            >✕</button>
+          </div>
+        ))}
       </div>
     </div>
   );

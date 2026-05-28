@@ -2,6 +2,33 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
+// ── CSV export ────────────────────────────────────────────────────────────────
+function exportCsv(reservations: Reservation[]) {
+  const header = ["Date", "Heure", "Couverts", "Nom", "Email", "Téléphone", "Table", "Zone", "Statut"];
+  const rows = reservations.map((r) => {
+    const d = new Date(r.startsAt);
+    return [
+      d.toLocaleDateString("fr-FR"),
+      d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+      r.partySize,
+      r.customerName,
+      r.customerEmail ?? "",
+      r.customerPhone ?? "",
+      r.table?.number ?? "",
+      r.table?.zone ?? "",
+      r.status,
+    ];
+  });
+  const csv = [header, ...rows].map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(";")).join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `reservations-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 type Reservation = {
   id: string;
   startsAt: string;
@@ -59,6 +86,9 @@ export default function ReservationsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"upcoming" | "all" | "today">("upcoming");
   const [updating, setUpdating] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: "", email: "", phone: "", date: new Date().toISOString().slice(0, 10), time: "19:00", guests: 2, notes: "" });
+  const [creating, setCreating] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()));
   const [selectedDay, setSelectedDay] = useState<string | null>(isoDay(new Date()));
 
@@ -125,12 +155,27 @@ export default function ReservationsPage() {
           <h1 className="text-2xl font-black text-white">Réservations</h1>
           <p className="text-sm text-white/40 mt-0.5">{counts.upcoming} à venir · {counts.today} aujourd&apos;hui</p>
         </div>
-        <button
-          onClick={load}
-          className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/[0.08] text-white/70 hover:text-white rounded-xl text-sm transition-colors"
-        >
-          🔄 Actualiser
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => exportCsv(reservations)}
+            className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/[0.08] text-white/60 hover:text-white rounded-xl text-sm transition-colors"
+            title="Exporter en CSV"
+          >
+            ⬇ CSV
+          </button>
+          <button
+            onClick={load}
+            className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/[0.08] text-white/70 hover:text-white rounded-xl text-sm transition-colors"
+          >
+            🔄 Actualiser
+          </button>
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="px-4 py-2 bg-orange-500 hover:bg-orange-400 text-white font-bold rounded-xl text-sm transition-colors flex items-center gap-1.5"
+          >
+            ＋ Réservation
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -299,6 +344,82 @@ export default function ReservationsPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {/* Modal création manuelle */}
+      {createOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setCreateOpen(false)} />
+          <div className="relative bg-[#111] border border-white/[0.08] rounded-2xl p-6 shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-white">Nouvelle réservation</h2>
+              <button onClick={() => setCreateOpen(false)} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white">✕</button>
+            </div>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setCreating(true);
+                try {
+                  await api("/api/pro/reservations", {
+                    method: "POST",
+                    body: JSON.stringify({ ...createForm, partySize: createForm.guests }),
+                  });
+                  setCreateOpen(false);
+                  setCreateForm({ name: "", email: "", phone: "", date: new Date().toISOString().slice(0, 10), time: "19:00", guests: 2, notes: "" });
+                  load();
+                } finally {
+                  setCreating(false);
+                }
+              }}
+              className="space-y-3"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="text-xs text-white/40 block mb-1">Nom du client *</label>
+                  <input required className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-orange-500/50"
+                    value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} placeholder="Jean Dupont" />
+                </div>
+                <div>
+                  <label className="text-xs text-white/40 block mb-1">Téléphone</label>
+                  <input type="tel" className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-orange-500/50"
+                    value={createForm.phone} onChange={(e) => setCreateForm((f) => ({ ...f, phone: e.target.value }))} placeholder="+33 6 …" />
+                </div>
+                <div>
+                  <label className="text-xs text-white/40 block mb-1">Email</label>
+                  <input type="email" className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-orange-500/50"
+                    value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} placeholder="jean@…" />
+                </div>
+                <div>
+                  <label className="text-xs text-white/40 block mb-1">Date *</label>
+                  <input required type="date" className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-500/50"
+                    value={createForm.date} onChange={(e) => setCreateForm((f) => ({ ...f, date: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="text-xs text-white/40 block mb-1">Heure *</label>
+                  <input required type="time" className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-500/50"
+                    value={createForm.time} onChange={(e) => setCreateForm((f) => ({ ...f, time: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="text-xs text-white/40 block mb-1">Couverts *</label>
+                  <select className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-500/50"
+                    value={createForm.guests} onChange={(e) => setCreateForm((f) => ({ ...f, guests: Number(e.target.value) }))}>
+                    {[1,2,3,4,5,6,7,8,9,10,12,15,20].map((n) => (
+                      <option key={n} value={n} className="bg-[#1a1a1a]">{n} personne{n > 1 ? "s" : ""}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-white/40 block mb-1">Notes</label>
+                  <textarea rows={2} className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-orange-500/50 resize-none"
+                    value={createForm.notes} onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Allergie, occasion spéciale…" />
+                </div>
+              </div>
+              <button type="submit" disabled={creating}
+                className="w-full py-3 bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-bold rounded-xl transition-colors mt-2">
+                {creating ? "Création…" : "Créer la réservation"}
+              </button>
+            </form>
+          </div>
         </div>
       )}
     </div>

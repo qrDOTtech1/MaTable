@@ -121,14 +121,22 @@ export default async function RestaurantPublicPage({ params }: { params: Promise
           <Link href="/" className="text-orange-500 font-black text-lg tracking-tight">
             MA <span className="text-white">TABLE</span>
           </Link>
-          {restaurant.acceptReservations && (
+          <div className="flex items-center gap-2">
             <Link
-              href={`/${restaurant.slug}/reserve`}
-              className="bg-orange-600 hover:bg-orange-500 transition-colors text-white text-sm font-bold px-4 py-2 rounded-xl"
+              href={`/${restaurant.slug}/fidelite`}
+              className="hidden sm:flex items-center gap-1.5 text-sm text-white/50 hover:text-white/80 transition-colors px-3 py-2 rounded-xl hover:bg-white/5"
             >
-              📅 Réserver
+              💎 Fidélité
             </Link>
-          )}
+            {restaurant.acceptReservations && (
+              <Link
+                href={`/${restaurant.slug}/reserve`}
+                className="bg-orange-600 hover:bg-orange-500 transition-colors text-white text-sm font-bold px-4 py-2 rounded-xl"
+              >
+                📅 Réserver
+              </Link>
+            )}
+          </div>
         </div>
       </nav>
 

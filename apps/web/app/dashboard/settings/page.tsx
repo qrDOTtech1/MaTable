@@ -13,6 +13,7 @@ type Restaurant = {
   acceptReservations: boolean; depositPerGuestCents: number;
   avgPrepMinutes: number; reservationPolicy?: string | null;
   reservationAlertEmail?: string | null;
+  maxCoversPerSlot?: number | null;
   reservationAlertEmails?: string[];
   tipsEnabled: boolean; serviceCallEnabled: boolean; reviewsEnabled: boolean;
   isPartner: boolean;
@@ -440,6 +441,18 @@ export default function SettingsPage() {
               <div>
                 <label className="label">Politique d'annulation</label>
                 <textarea className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30" rows={2} value={form.reservationPolicy ?? ""} onChange={f("reservationPolicy")} />
+              </div>
+              <div>
+                <label className="label">Couverts maximum par créneau</label>
+                <input
+                  type="number"
+                  min={0}
+                  className="w-full border border-white/10 rounded px-3 py-2 bg-white/5 text-white placeholder-white/30"
+                  placeholder="Illimité (laisser vide)"
+                  value={form.maxCoversPerSlot ?? ""}
+                  onChange={(e) => setForm((p) => ({ ...p, maxCoversPerSlot: e.target.value === "" ? null : parseInt(e.target.value) }))}
+                />
+                <p className="text-xs text-white/30 mt-1">Bloque les réservations en ligne si le total de couverts sur un créneau dépasse ce seuil. Laisser vide = pas de limite.</p>
               </div>
               <div>
                 <label className="label">Emails d'alerte réservation</label>
