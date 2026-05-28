@@ -160,6 +160,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
       label: "CONFIG",
       items: [
         { href: "/dashboard/settings", icon: "⚙️", label: "Paramètres" },
+        { href: "/dashboard/abonnement", icon: "💳", label: "Mon abonnement" },
         { href: "/dashboard/support", icon: "🎧", label: "Support / SAV" },
         { href: "/dashboard/testimonial", icon: "💬", label: "Témoignage" },
       ],
