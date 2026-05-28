@@ -14,6 +14,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [quickActionHrefs, setQuickActionHrefs] = useState<string[]>([]);
+  const [billingPastDue, setBillingPastDue] = useState(false);
   const pathname = usePathname();
 
   // Notifications réservations temps réel
@@ -93,6 +94,13 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
         setEnabledApps(r.enabledApps ?? ["reviews"]);
         setQuickActionHrefs(Array.isArray(r.restaurant.dashboardQuickActions) ? r.restaurant.dashboardQuickActions : []);
       })
+      .catch(() => {});
+  }, []);
+
+  // État facturation (bandeau de relance si paiement échoué)
+  useEffect(() => {
+    api<{ pastDue?: boolean }>("/api/platform-billing/status")
+      .then((s) => setBillingPastDue(!!s.pastDue))
       .catch(() => {});
   }, []);
 
@@ -476,6 +484,18 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
 
         {/* Main Content */}
         <main className="flex-1 overflow-auto bg-[#0a0a0a] p-4 sm:p-6 lg:p-8 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-8">
+          {billingPastDue && (
+            <Link
+              href="/dashboard/abonnement"
+              className="flex items-center gap-3 mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300 hover:bg-red-500/15 transition-colors"
+            >
+              <span className="text-lg">⚠️</span>
+              <span className="flex-1 font-semibold">
+                Paiement de votre abonnement échoué — mettez à jour votre moyen de paiement pour éviter toute coupure.
+              </span>
+              <span className="text-red-200 font-bold whitespace-nowrap">Régulariser →</span>
+            </Link>
+          )}
           {children}
         </main>
       </div>
