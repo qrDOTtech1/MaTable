@@ -428,13 +428,25 @@ export default function ServeurDashPage() {
     }
   }
 
-  async function closeSession(sessionId: string, mode: string) {
+  async function closeSession(sessionId: string, mode: string, force = false) {
     setClosing(sessionId);
     try {
       const session = sessions.find((s) => s.id === sessionId);
-      await serverFetch(`/api/server/tables/${sessionId}/close`, {
-        method: "POST", body: JSON.stringify({ paymentMode: mode }),
-      });
+      try {
+        await serverFetch(`/api/server/tables/${sessionId}/close`, {
+          method: "POST", body: JSON.stringify({ paymentMode: mode, force }),
+        });
+      } catch (e: any) {
+        if (String(e?.message) === "orders_not_served") {
+          if (confirm("Des plats ne sont pas encore servis. Encaisser quand même ?")) {
+            await serverFetch(`/api/server/tables/${sessionId}/close`, {
+              method: "POST", body: JSON.stringify({ paymentMode: mode, force: true }),
+            });
+          } else {
+            return;
+          }
+        } else { throw e; }
+      }
       // Show receipt link for the closed session
       if (session) {
         setClosedSessionReceipt({ sessionId, tableNumber: session.table.number });

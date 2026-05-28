@@ -123,10 +123,21 @@ export default function CaisseDashPage() {
   async function closeSession(sessionId: string) {
     setClosing(sessionId);
     try {
-      await caisseFetch(`/api/caisse/sessions/${sessionId}/close`, {
+      const token = localStorage.getItem("caisse_token");
+      const doClose = (force: boolean) => fetch(`${API_URL}/api/caisse/sessions/${sessionId}/close`, {
         method: "POST",
-        body: JSON.stringify({ paymentMode }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ paymentMode, force }),
       });
+      let res = await doClose(false);
+      if (res.status === 409) {
+        const body = await res.json().catch(() => ({}));
+        if (body?.error === "orders_not_served") {
+          if (!confirm("Des plats ne sont pas encore servis. Encaisser quand même ?")) { setClosing(null); return; }
+          res = await doClose(true);
+        }
+      }
+      if (!res.ok && res.status !== 409) throw new Error(`HTTP ${res.status}`);
       await loadData();
     } catch (err) {
       console.error(err);

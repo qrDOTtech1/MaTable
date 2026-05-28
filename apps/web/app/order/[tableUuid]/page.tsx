@@ -363,6 +363,24 @@ export default function OrderPage() {
   }
 
   /** Submit loyalty info, then request bill */
+  /** Demande l'addition ; si aucun plat servi (409), propose de confirmer (force). */
+  async function requestBill(token: string, mode: "CARD"|"CASH"|"COUNTER") {
+    try {
+      await api(`/api/bill/request`, { method: "POST", token, pro: false, body: JSON.stringify({ mode }) });
+    } catch (e: any) {
+      const msg = String(e?.message ?? "");
+      if (msg.includes("no_order_served")) {
+        if (confirm("Vos plats ne sont pas encore servis. Demander l'addition quand même ?")) {
+          await api(`/api/bill/request`, { method: "POST", token, pro: false, body: JSON.stringify({ mode, force: true }) });
+        } else {
+          throw new Error("__cancelled__");
+        }
+      } else {
+        throw e;
+      }
+    }
+  }
+
   async function submitLoyaltyAndBill() {
     if (!pendingBillMode) return;
     setLoyaltyLoading(true);
@@ -375,11 +393,11 @@ export default function OrderPage() {
         });
         if (res.loyalty) setLoyaltyData(res.loyalty);
       }
-      await api(`/api/bill/request`, { method: "POST", token, pro: false, body: JSON.stringify({ mode: pendingBillMode }) });
+      await requestBill(token, pendingBillMode);
       setBillMode(pendingBillMode);
       setLoyaltyModal(false);
     } catch (e: any) {
-      alert("Erreur : " + e.message);
+      if (e?.message !== "__cancelled__") alert("Erreur : " + e.message);
     } finally {
       setLoyaltyLoading(false);
     }
@@ -546,12 +564,14 @@ export default function OrderPage() {
 
             <div className="flex gap-3">
               <button
-                onClick={() => {
+                onClick={async () => {
+                  if (!pendingBillMode) return;
                   setLoyaltyModal(false);
-                  // request bill without loyalty
-                  ensureToken().then(token =>
-                    api(`/api/bill/request`, { method: "POST", token, pro: false, body: JSON.stringify({ mode: pendingBillMode }) })
-                  ).then(() => setBillMode(pendingBillMode)).catch(() => {});
+                  try {
+                    const token = await ensureToken();
+                    await requestBill(token, pendingBillMode);
+                    setBillMode(pendingBillMode);
+                  } catch { /* annulé ou erreur */ }
                 }}
                 className="flex-1 py-3 rounded-xl border border-white/10 text-white/50 text-sm hover:text-white/80 transition-colors"
               >
