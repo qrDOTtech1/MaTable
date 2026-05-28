@@ -276,6 +276,10 @@ export default function LoyaltyPage() {
             className="px-3 py-2 text-sm bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/70 transition-colors flex items-center gap-1.5">
             📥 Importer
           </button>
+          <a href="/dashboard/loyalty/scan"
+            className="px-3 py-2 text-sm bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/70 transition-colors flex items-center gap-1.5">
+            📷 Scanner carte
+          </a>
           <button onClick={() => setAddCustOpen(true)}
             className="px-4 py-2 text-sm bg-orange-500 hover:bg-orange-400 text-white font-bold rounded-xl transition-colors flex items-center gap-1.5">
             ＋ Client
