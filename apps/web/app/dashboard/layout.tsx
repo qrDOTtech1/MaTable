@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { clearProToken, api, API_URL, getProToken } from "@/lib/api";
 import { MobileBottomNav, type BottomNavItem } from "@/components/dashboard/MobileBottomNav";
 import { CommandPalette, type PaletteDestination } from "@/components/dashboard/CommandPalette";
+import { OnboardingDrawer } from "@/components/dashboard/OnboardingDrawer";
 
 export default function DashboardLayoutWrapper({ children }: { children: React.ReactNode }) {
   const [slug, setSlug] = useState<string | null>(null);
@@ -15,6 +16,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [quickActionHrefs, setQuickActionHrefs] = useState<string[]>([]);
   const [billingPastDue, setBillingPastDue] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const pathname = usePathname();
 
   // Notifications réservations temps réel
@@ -87,12 +89,14 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   };
 
   useEffect(() => {
-    api<{ restaurant: { slug?: string | null; name?: string; dashboardQuickActions?: string[] }; enabledApps?: string[] }>("/api/pro/me")
+    api<{ restaurant: { slug?: string | null; name?: string; dashboardQuickActions?: string[]; onboardingCompleted?: boolean }; enabledApps?: string[] }>("/api/pro/me")
       .then((r) => {
         setSlug(r.restaurant.slug ?? null);
         setRestaurantName(r.restaurant.name ?? "");
         setEnabledApps(r.enabledApps ?? ["reviews"]);
         setQuickActionHrefs(Array.isArray(r.restaurant.dashboardQuickActions) ? r.restaurant.dashboardQuickActions : []);
+        // 1er login → ouvrir l'onboarding guidé (flag faux uniquement si la colonne existe ET vaut false)
+        if (r.restaurant.onboardingCompleted === false) setOnboardingOpen(true);
       })
       .catch(() => {});
   }, []);
@@ -224,6 +228,12 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
     ...(has("reviews") ? [{ href: "/dashboard/reviews", icon: "⭐", label: "Avis" }] : []),
   ];
   const bottomNavItems = bottomCandidates.slice(0, 4);
+
+  // Onboarding terminé/passé → persiste en base et ferme (optimiste : on ferme tout de suite)
+  const completeOnboarding = () => {
+    setOnboardingOpen(false);
+    api("/api/pro/restaurant", { method: "PATCH", body: JSON.stringify({ onboardingCompleted: true }) }).catch(() => {});
+  };
 
   // Épingler / désépingler un raccourci → persiste en base
   const togglePin = (href: string) => {
@@ -514,6 +524,15 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
         destinations={allDestinations}
         pinned={resolvedQuickActions}
         onTogglePin={togglePin}
+      />
+
+      {/* Onboarding guidé 1er login */}
+      <OnboardingDrawer
+        open={onboardingOpen}
+        onComplete={completeOnboarding}
+        enabledApps={enabledApps}
+        restaurantName={restaurantName}
+        hasAnyIa={hasAnyIa}
       />
 
       {/* Toast notifications */}
