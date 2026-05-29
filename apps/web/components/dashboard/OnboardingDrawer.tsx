@@ -10,19 +10,6 @@ import { useRouter } from "next/navigation";
  * via le callback onComplete fourni par le layout.
  */
 
-type AppInfo = { icon: string; label: string; desc: string };
-
-// Description courte de chaque app pour l'étape "Vos applications"
-const APP_INFO: Record<string, AppInfo> = {
-  reviews:      { icon: "⭐", label: "Avis clients",   desc: "Collectez des avis Google via QR code et boostez votre e-réputation." },
-  reservations: { icon: "📅", label: "Réservations",   desc: "Recevez et gérez les réservations en ligne, avec alertes en temps réel." },
-  orders:       { icon: "🍽️", label: "Commandes & QR", desc: "Menu digital, commande à table par QR code et suivi cuisine en direct." },
-  nova_ia:      { icon: "🤖", label: "Nova IA",        desc: "Génération de menus, chatbot, scan de documents et planning assistés par IA." },
-  nova_stock:   { icon: "📦", label: "Nova Stock",     desc: "Pilotez vos stocks, ingrédients et listes de courses automatiquement." },
-  nova_contab:  { icon: "🧮", label: "Nova Contab",    desc: "Suivi URSSAF & TVA simplifié pour votre comptabilité." },
-  nova_finance: { icon: "💹", label: "Nova Finance",   desc: "Analyse financière et offres marketing pilotées par l'IA." },
-};
-
 type Step = { key: string; render: () => React.ReactNode };
 
 export function OnboardingDrawer({
@@ -49,12 +36,22 @@ export function OnboardingDrawer({
 
   const has = (app: string) => enabledApps.includes(app);
 
-  // Apps à présenter (ordre logique), filtrées sur l'activé
-  const appsToShow = useMemo(
-    () => ["orders", "reservations", "reviews", "nova_ia", "nova_stock", "nova_contab", "nova_finance"]
-      .filter((a) => has(a) && APP_INFO[a]),
-    [enabledApps]
-  );
+  // Capacités à présenter — apps activées + fonctions transverses (fidélité,
+  // stats, portails serveur/cuisine/caisse). Filtrées selon le forfait.
+  const capabilities = useMemo(() => {
+    const c: Array<{ icon: string; label: string; desc: string; ia?: boolean }> = [];
+    if (has("orders")) c.push({ icon: "🍽️", label: "Commandes & QR", desc: "Menu digital, commande à table par QR code et suivi cuisine en direct." });
+    if (has("reservations")) c.push({ icon: "📅", label: "Réservations", desc: "Recevez et gérez les réservations en ligne, avec alertes en temps réel." });
+    if (has("reviews")) c.push({ icon: "⭐", label: "Avis clients", desc: "Collectez des avis Google via QR code et boostez votre e-réputation." });
+    c.push({ icon: "💎", label: "Fidélité", desc: "Points, offres et récompenses pour faire revenir vos clients." });
+    if (has("orders") || has("reviews")) c.push({ icon: "📊", label: "Statistiques", desc: "CA, tendances, plats stars, heatmap d'affluence et recommandations." });
+    if (has("orders")) c.push({ icon: "👨‍🍳", label: "Portails Serveur, Cuisine & Caisse", desc: "Chaque équipe a son écran dédié : prise de commande, cuisine en direct, encaissement." });
+    if (has("nova_ia")) c.push({ icon: "🤖", label: "Nova IA", desc: "Chatbot, Magic Scan, générateur de menus et planning assistés par IA.", ia: true });
+    if (has("nova_stock")) c.push({ icon: "📦", label: "Nova Stock", desc: "Stocks, ingrédients et listes de courses automatisés.", ia: true });
+    if (has("nova_contab")) c.push({ icon: "🧮", label: "Nova Contab", desc: "Suivi URSSAF & TVA simplifié.", ia: true });
+    if (has("nova_finance")) c.push({ icon: "💹", label: "Nova Finance", desc: "Analyses financières et offres marketing pilotées par l'IA.", ia: true });
+    return c;
+  }, [enabledApps]);
 
   // Actions de démarrage suggérées (selon apps activées)
   const startActions = useMemo(() => {
@@ -81,10 +78,12 @@ export function OnboardingDrawer({
       render: () => (
         <div className="text-center px-2">
           <div className="text-5xl mb-4">👋</div>
-          <h2 className="text-2xl font-black mb-2">
-            Bienvenue{restaurantName ? ` chez ` : ""}
-            {restaurantName && <span className="text-orange-500"> {restaurantName}</span>} !
+          <h2 className="text-2xl font-black mb-1">
+            Bienvenue chez <span className="whitespace-nowrap">Ma<span className="text-orange-500">Table</span>.Pro</span> !
           </h2>
+          {restaurantName && (
+            <p className="text-sm text-white/40 mb-2">Votre espace : <span className="text-white/70 font-semibold">{restaurantName}</span></p>
+          )}
           {isTrial && (
             <div className="inline-flex items-center gap-2 mb-3 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 text-xs font-bold">
               🎁 Version d'essai gratuite
@@ -107,29 +106,25 @@ export function OnboardingDrawer({
       key: "apps",
       render: () => (
         <div className="px-1">
-          <h2 className="text-xl font-black mb-1 text-center">Vos applications activées</h2>
-          <p className="text-xs text-white/40 text-center mb-5">Voici ce qui est inclus dans votre formule.</p>
-          <div className="space-y-2.5">
-            {appsToShow.map((a) => {
-              const info = APP_INFO[a];
-              const isIa = a.startsWith("nova");
-              return (
-                <div
-                  key={a}
-                  className={`flex items-start gap-3 p-3 rounded-xl border ${
-                    isIa
-                      ? "bg-purple-500/[0.07] border-purple-500/20"
-                      : "bg-white/[0.035] border-white/[0.06]"
-                  }`}
-                >
-                  <span className="text-2xl shrink-0 leading-none mt-0.5">{info.icon}</span>
-                  <div className="min-w-0">
-                    <p className={`text-sm font-bold ${isIa ? "text-purple-300" : "text-white"}`}>{info.label}</p>
-                    <p className="text-[12px] text-white/45 leading-snug">{info.desc}</p>
-                  </div>
+          <h2 className="text-xl font-black mb-1 text-center">Vos applications & fonctions</h2>
+          <p className="text-xs text-white/40 text-center mb-5">Tout ce qui est inclus dans votre formule.</p>
+          <div className="space-y-2.5 max-h-[46vh] overflow-y-auto pr-1">
+            {capabilities.map((cap) => (
+              <div
+                key={cap.label}
+                className={`flex items-start gap-3 p-3 rounded-xl border ${
+                  cap.ia
+                    ? "bg-purple-500/[0.07] border-purple-500/20"
+                    : "bg-white/[0.035] border-white/[0.06]"
+                }`}
+              >
+                <span className="text-2xl shrink-0 leading-none mt-0.5">{cap.icon}</span>
+                <div className="min-w-0">
+                  <p className={`text-sm font-bold ${cap.ia ? "text-purple-300" : "text-white"}`}>{cap.label}</p>
+                  <p className="text-[12px] text-white/45 leading-snug">{cap.desc}</p>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
       ),
@@ -217,9 +212,26 @@ export function OnboardingDrawer({
         <div className="px-1 text-center">
           <div className="text-4xl mb-3">🚀</div>
           <h2 className="text-xl font-black mb-2">Prêt à démarrer ?</h2>
-          <p className="text-sm text-white/50 leading-relaxed max-w-sm mx-auto mb-5">
-            Voici quelques premières étapes recommandées. Vous pourrez y revenir à tout moment.
+          <p className="text-sm text-white/50 leading-relaxed max-w-sm mx-auto mb-4">
+            Choisissez comment vous lancer :
           </p>
+
+          {/* Choix 1 : visite guidée (si dispo) */}
+          {onStartTour && (
+            <button
+              onClick={() => { onComplete(); onStartTour(); }}
+              className="w-full max-w-sm mx-auto flex items-center gap-3 p-4 rounded-xl bg-orange-500 hover:bg-orange-400 text-white text-left transition-colors shadow-lg shadow-orange-500/20 mb-4"
+            >
+              <span className="text-2xl">🎬</span>
+              <span>
+                <span className="block text-sm font-black">Faire la visite guidée</span>
+                <span className="block text-[12px] text-white/80">On vous présente chaque écran en 1 min.</span>
+              </span>
+            </button>
+          )}
+
+          {/* Choix 2 : commencer directement par une app */}
+          <p className="text-[11px] uppercase tracking-wider text-white/30 font-bold mb-2.5">ou commencez directement</p>
           <div className="grid grid-cols-2 gap-2.5 max-w-sm mx-auto">
             {startActions.map((a) => (
               <button
@@ -241,7 +253,7 @@ export function OnboardingDrawer({
     });
 
     return list;
-  }, [appsToShow, startActions, restaurantName, hasAnyIa, enabledApps, isTrial, daysRemaining]);
+  }, [capabilities, startActions, restaurantName, hasAnyIa, enabledApps, isTrial, daysRemaining]);
 
   // Reset à l'ouverture
   useEffect(() => {
@@ -291,7 +303,7 @@ export function OnboardingDrawer({
           </div>
           <button
             onClick={onComplete}
-            className="text-[12px] text-white/35 hover:text-white/70 transition-colors"
+            className={`text-[12px] transition-colors ${isLast ? "text-orange-400 hover:text-orange-300 font-bold" : "text-white/35 hover:text-white/70"}`}
           >
             Passer
           </button>
@@ -311,12 +323,14 @@ export function OnboardingDrawer({
           >
             ← Précédent
           </button>
-          <button
-            onClick={next}
-            className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-white text-sm font-bold transition-colors shadow-lg shadow-orange-500/20"
-          >
-            {isLast ? (onStartTour ? "Visite guidée →" : "C'est parti ! 🎉") : "Suivant →"}
-          </button>
+          {(!isLast || !onStartTour) && (
+            <button
+              onClick={next}
+              className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-white text-sm font-bold transition-colors shadow-lg shadow-orange-500/20"
+            >
+              {isLast ? "C'est parti ! 🎉" : "Suivant →"}
+            </button>
+          )}
         </div>
       </div>
     </div>
