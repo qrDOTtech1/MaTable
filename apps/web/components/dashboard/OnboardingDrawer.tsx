@@ -189,7 +189,8 @@ export function OnboardingDrawer({
             <div className="flex items-center gap-3 p-2.5 rounded-lg bg-white/[0.035] border border-white/[0.06]">
               <span className="text-lg">★</span>
               <p className="text-[12px] text-white/55">
-                Épinglez vos pages favorites pour les retrouver en haut sur tous vos appareils.
+                Depuis la recherche, épinglez vos pages : <span className="text-orange-300 font-semibold">★</span> = raccourcis
+                en haut (ordinateur), <span className="font-semibold">📱</span> = barre du bas (mobile, 5 max). Tout se règle au même endroit.
               </p>
             </div>
             {hasAnyIa && (

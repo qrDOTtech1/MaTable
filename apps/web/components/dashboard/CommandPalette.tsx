@@ -20,12 +20,18 @@ export function CommandPalette({
   destinations,
   pinned,
   onTogglePin,
+  pinnedBottom,
+  onTogglePinBottom,
+  bottomFull = false,
 }: {
   open: boolean;
   onClose: () => void;
   destinations: PaletteDestination[];
   pinned: string[];
   onTogglePin: (href: string) => void;
+  pinnedBottom: string[];
+  onTogglePinBottom: (href: string) => void;
+  bottomFull?: boolean;   // true si la barre du bas a déjà 5 favoris
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -114,11 +120,13 @@ export function CommandPalette({
           )}
           {results.map((d, i) => {
             const isPinned = pinned.includes(d.href);
+            const isBottom = pinnedBottom.includes(d.href);
+            const bottomLocked = bottomFull && !isBottom; // 5 favoris atteints
             return (
               <div
                 key={d.href}
                 onMouseEnter={() => setActiveIdx(i)}
-                className={`flex items-center gap-3 px-3 py-2.5 mx-1 rounded-lg cursor-pointer transition-colors ${
+                className={`flex items-center gap-2 px-3 py-2.5 mx-1 rounded-lg cursor-pointer transition-colors ${
                   i === activeIdx ? "bg-white/[0.06]" : ""
                 }`}
                 onClick={() => go(d.href)}
@@ -134,19 +142,35 @@ export function CommandPalette({
                   className={`shrink-0 w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
                     isPinned ? "text-orange-400 hover:bg-orange-500/10" : "text-white/25 hover:text-white/60 hover:bg-white/5"
                   }`}
-                  title={isPinned ? "Retirer des raccourcis" : "Épingler aux raccourcis"}
-                  aria-label={isPinned ? "Retirer des raccourcis" : "Épingler aux raccourcis"}
+                  title={isPinned ? "Retirer du haut (desktop)" : "Épingler en haut (desktop)"}
+                  aria-label={isPinned ? "Retirer du haut" : "Épingler en haut"}
                 >
                   {isPinned ? "★" : "☆"}
+                </button>
+                <button
+                  type="button"
+                  disabled={bottomLocked}
+                  onClick={(e) => { e.stopPropagation(); if (!bottomLocked) onTogglePinBottom(d.href); }}
+                  className={`shrink-0 w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
+                    isBottom
+                      ? "bg-orange-500/15"
+                      : bottomLocked
+                      ? "opacity-25 cursor-not-allowed"
+                      : "grayscale opacity-40 hover:opacity-100 hover:bg-white/5"
+                  }`}
+                  title={isBottom ? "Retirer de la barre du bas (mobile)" : bottomLocked ? "Barre du bas pleine (5 max)" : "Ajouter à la barre du bas (mobile)"}
+                  aria-label={isBottom ? "Retirer de la barre du bas" : "Ajouter à la barre du bas"}
+                >
+                  📱
                 </button>
               </div>
             );
           })}
         </div>
 
-        <div className="px-4 py-2 border-t border-white/[0.06] flex items-center justify-between text-[10px] text-white/25">
+        <div className="px-4 py-2 border-t border-white/[0.06] flex items-center justify-between gap-2 text-[10px] text-white/25">
           <span>↑↓ naviguer · ↵ ouvrir</span>
-          <span>★ épingler aux raccourcis</span>
+          <span className="text-right">★ raccourcis du haut · 📱 barre du bas (mobile)</span>
         </div>
       </div>
     </div>

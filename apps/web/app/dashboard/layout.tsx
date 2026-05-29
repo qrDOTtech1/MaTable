@@ -46,6 +46,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [quickActionHrefs, setQuickActionHrefs] = useState<string[]>([]);
+  const [bottomNavHrefs, setBottomNavHrefs] = useState<string[]>([]);
   const [billingPastDue, setBillingPastDue] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [trial, setTrial] = useState<{ isTrial: boolean; daysRemaining: number | null }>({ isTrial: false, daysRemaining: null });
@@ -122,12 +123,13 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   };
 
   useEffect(() => {
-    api<{ restaurant: { slug?: string | null; name?: string; dashboardQuickActions?: string[]; onboardingCompleted?: boolean }; enabledApps?: string[] }>("/api/pro/me")
+    api<{ restaurant: { slug?: string | null; name?: string; dashboardQuickActions?: string[]; dashboardBottomNav?: string[]; onboardingCompleted?: boolean }; enabledApps?: string[] }>("/api/pro/me")
       .then((r) => {
         setSlug(r.restaurant.slug ?? null);
         setRestaurantName(r.restaurant.name ?? "");
         setEnabledApps(r.enabledApps ?? ["reviews"]);
         setQuickActionHrefs(Array.isArray(r.restaurant.dashboardQuickActions) ? r.restaurant.dashboardQuickActions : []);
+        setBottomNavHrefs(Array.isArray(r.restaurant.dashboardBottomNav) ? r.restaurant.dashboardBottomNav : []);
         // 1er login → ouvrir l'onboarding guidé (flag faux uniquement si la colonne existe ET vaut false)
         if (r.restaurant.onboardingCompleted === false) setOnboardingOpen(true);
       })
@@ -264,7 +266,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
       });
     }
     steps.push(
-      { selector: '[data-tour="quick"]', title: "Vos raccourcis", text: "Épinglez vos pages favorites ici — elles vous suivent sur tous vos appareils." },
+      { selector: '[data-tour="quick"]', title: "Vos raccourcis", text: "Depuis la recherche : ★ épingle en haut (ordinateur), 📱 ajoute à la barre du bas (mobile, 5 max). Tout au même endroit." },
       { selector: '[data-tour="trial"]', title: "Votre essai", text: "Suivez vos jours d'essai restants. Cliquez pour choisir un forfait quand vous serez prêt." },
       { selector: '[data-tour="help"]', title: "Revoir le guide", text: "Besoin d'un rappel ? Rouvrez ce guide à tout moment depuis ce bouton." },
     );
@@ -286,7 +288,25 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
     ...(has("orders") ? [{ href: "/dashboard/print", icon: "🖨️", label: "QR" }] : []),
     ...(has("reviews") ? [{ href: "/dashboard/reviews", icon: "⭐", label: "Avis" }] : []),
   ];
-  const bottomNavItems = bottomCandidates.slice(0, 4);
+  // Barre du bas configurable : choix du resto sinon défaut (4 prioritaires) ; max 5, filtré sur l'activé
+  const DEFAULT_BOTTOM = bottomCandidates.slice(0, 4).map((b) => b.href);
+  const BOTTOM_SHORT: Record<string, string> = {
+    "/dashboard": "Live", "/dashboard/reservations": "Résa", "/dashboard/menu": "Menu",
+    "/dashboard/loyalty": "Fidélité", "/dashboard/print": "QR", "/dashboard/reviews": "Avis",
+    "/dashboard/analytics": "Stats", "/dashboard/tables": "Tables", "/dashboard/settings": "Réglages",
+  };
+  const resolvedBottomHrefs = (bottomNavHrefs.length > 0 ? bottomNavHrefs : DEFAULT_BOTTOM)
+    .filter((href) => destByHref.has(href))
+    .slice(0, 5);
+  const bottomNavItems: BottomNavItem[] = resolvedBottomHrefs.map((href) => {
+    const d = destByHref.get(href)!;
+    return {
+      href,
+      icon: d.icon,
+      label: BOTTOM_SHORT[href] ?? d.label,
+      badge: href === "/dashboard/reservations" ? resvNotifCount : undefined,
+    };
+  });
 
   // Onboarding terminé/passé → persiste en base et ferme (optimiste : on ferme tout de suite)
   const completeOnboarding = () => {
@@ -294,12 +314,20 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
     api("/api/pro/restaurant", { method: "PATCH", body: JSON.stringify({ onboardingCompleted: true }) }).catch(() => {});
   };
 
-  // Épingler / désépingler un raccourci → persiste en base
+  // Épingler / désépingler un raccourci du HAUT (desktop) → persiste en base
   const togglePin = (href: string) => {
     const base = quickActionHrefs.length > 0 ? quickActionHrefs : DEFAULT_QUICK;
     const next = base.includes(href) ? base.filter((h) => h !== href) : [...base, href].slice(0, 8);
     setQuickActionHrefs(next);
     api("/api/pro/restaurant", { method: "PATCH", body: JSON.stringify({ dashboardQuickActions: next }) }).catch(() => {});
+  };
+
+  // Épingler / désépingler un raccourci de la BARRE DU BAS (mobile) → persiste en base (max 5)
+  const togglePinBottom = (href: string) => {
+    const base = bottomNavHrefs.length > 0 ? bottomNavHrefs : DEFAULT_BOTTOM;
+    const next = base.includes(href) ? base.filter((h) => h !== href) : [...base, href].slice(0, 5);
+    setBottomNavHrefs(next);
+    api("/api/pro/restaurant", { method: "PATCH", body: JSON.stringify({ dashboardBottomNav: next }) }).catch(() => {});
   };
 
   // Sidebar content — réutilisé dans desktop ET mobile drawer
@@ -614,6 +642,9 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
         destinations={allDestinations}
         pinned={resolvedQuickActions}
         onTogglePin={togglePin}
+        pinnedBottom={resolvedBottomHrefs}
+        onTogglePinBottom={togglePinBottom}
+        bottomFull={resolvedBottomHrefs.length >= 5}
       />
 
       {/* Onboarding guidé 1er login */}
