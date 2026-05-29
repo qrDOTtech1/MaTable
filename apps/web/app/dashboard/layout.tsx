@@ -6,6 +6,7 @@ import { clearProToken, api, API_URL, getProToken } from "@/lib/api";
 import { MobileBottomNav, type BottomNavItem } from "@/components/dashboard/MobileBottomNav";
 import { CommandPalette, type PaletteDestination } from "@/components/dashboard/CommandPalette";
 import { OnboardingDrawer } from "@/components/dashboard/OnboardingDrawer";
+import { GuidedTour, type TourStep } from "@/components/dashboard/GuidedTour";
 
 export default function DashboardLayoutWrapper({ children }: { children: React.ReactNode }) {
   const [slug, setSlug] = useState<string | null>(null);
@@ -18,6 +19,17 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   const [billingPastDue, setBillingPastDue] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [trial, setTrial] = useState<{ isTrial: boolean; daysRemaining: number | null }>({ isTrial: false, daysRemaining: null });
+  const [tourOpen, setTourOpen] = useState(false);
+
+  // Étapes du tour guidé — surlignent de vrais éléments (les absents sont ignorés)
+  const tourSteps: TourStep[] = [
+    { selector: '[data-tour="nav-desktop"]', title: "Votre navigation", text: "Toutes vos pages sont rangées ici par thème : service, contenu, analyse, config." },
+    { selector: '[data-tour="nav-mobile"]', title: "Le menu", text: "Touchez ici pour ouvrir toutes vos pages, rangées par thème." },
+    { selector: '[data-tour="search"]', title: "Recherche rapide", text: "Trouvez n'importe quelle page en un instant (raccourci ⌘K / Ctrl+K)." },
+    { selector: '[data-tour="quick"]', title: "Vos raccourcis", text: "Épinglez vos pages favorites ici — elles vous suivent sur tous vos appareils." },
+    { selector: '[data-tour="trial"]', title: "Votre essai", text: "Suivez vos jours d'essai restants. Cliquez pour choisir un forfait quand vous serez prêt." },
+    { selector: '[data-tour="help"]', title: "Revoir le guide", text: "Besoin d'un rappel ? Rouvrez ce guide à tout moment depuis ce bouton." },
+  ];
   const pathname = usePathname();
 
   // Notifications réservations temps réel
@@ -332,6 +344,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
       <div className="h-14 lg:h-16 border-b border-white/[0.06] bg-[#0a0a0a]/90 backdrop-blur-xl px-3 lg:px-8 flex items-center justify-between sticky top-0 z-50 gap-2">
         {/* Burger menu — mobile only */}
         <button
+          data-tour="nav-mobile"
           onClick={() => setMobileNavOpen(true)}
           className="lg:hidden w-10 h-10 -ml-2 rounded-lg flex items-center justify-center text-white/70 hover:text-white hover:bg-white/5 transition-colors shrink-0"
           aria-label="Ouvrir le menu"
@@ -366,7 +379,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
         <div className="flex items-center gap-2 lg:gap-3 shrink-0">
           {/* Raccourcis rapides programmables — visibles dès md */}
           {resolvedQuickActions.length > 0 && (
-            <div className="hidden md:flex items-center gap-1 rounded-xl bg-white/[0.035] border border-white/[0.06] p-1">
+            <div data-tour="quick" className="hidden md:flex items-center gap-1 rounded-xl bg-white/[0.035] border border-white/[0.06] p-1">
               {resolvedQuickActions.map((href) => {
                 const action = destByHref.get(href);
                 if (!action) return null;
@@ -395,6 +408,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
 
           {/* Recherche rapide (⌘K) — fonctionne aussi au tap mobile */}
           <button
+            data-tour="search"
             onClick={() => { setMobileNavOpen(false); setPaletteOpen(true); }}
             className="flex items-center gap-2 h-9 lg:h-10 px-2.5 lg:px-3 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors shrink-0"
             title="Rechercher (Ctrl/⌘ K)"
@@ -407,6 +421,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
           {/* Chip version d'essai — visible sur toute la navigation pour suivre les jours restants */}
           {trial.isTrial && (
             <Link
+              data-tour="trial"
               href="/dashboard/abonnement"
               className="flex items-center gap-1.5 h-9 lg:h-10 px-2.5 lg:px-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 transition-colors text-xs font-bold shrink-0"
               title="Vous êtes en version d'essai — gérer mon abonnement"
@@ -421,6 +436,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
 
           {/* Rouvrir le guide de démarrage à tout moment */}
           <button
+            data-tour="help"
             onClick={() => { setMobileNavOpen(false); setOnboardingOpen(true); }}
             className="hidden sm:flex w-9 h-9 lg:w-10 lg:h-10 items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors shrink-0"
             title="Revoir le guide de démarrage"
@@ -468,7 +484,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
       {/* Sidebar + Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}
-        <aside className="hidden lg:block w-60 border-r border-white/[0.06] bg-[#0a0a0a] p-4 space-y-0.5 overflow-y-auto shrink-0">
+        <aside data-tour="nav-desktop" className="hidden lg:block w-60 border-r border-white/[0.06] bg-[#0a0a0a] p-4 space-y-0.5 overflow-y-auto shrink-0">
           {sidebarContent}
         </aside>
 
@@ -559,11 +575,19 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
       <OnboardingDrawer
         open={onboardingOpen}
         onComplete={completeOnboarding}
+        onStartTour={() => setTourOpen(true)}
         enabledApps={enabledApps}
         restaurantName={restaurantName}
         hasAnyIa={hasAnyIa}
         isTrial={trial.isTrial}
         daysRemaining={trial.daysRemaining}
+      />
+
+      {/* Tour guidé interactif — surligne les vrais éléments à la 1re visite */}
+      <GuidedTour
+        open={tourOpen}
+        steps={tourSteps}
+        onClose={() => setTourOpen(false)}
       />
 
       {/* Toast notifications */}

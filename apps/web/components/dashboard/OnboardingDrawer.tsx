@@ -28,6 +28,7 @@ type Step = { key: string; render: () => React.ReactNode };
 export function OnboardingDrawer({
   open,
   onComplete,
+  onStartTour,
   enabledApps,
   restaurantName,
   hasAnyIa,
@@ -36,6 +37,7 @@ export function OnboardingDrawer({
 }: {
   open: boolean;
   onComplete: () => void;        // persiste onboardingCompleted=true puis ferme
+  onStartTour?: () => void;      // lance le tour guidé interactif après l'intro
   enabledApps: string[];
   restaurantName: string;
   hasAnyIa: boolean;
@@ -260,8 +262,12 @@ export function OnboardingDrawer({
   const current = steps[Math.min(stepIdx, steps.length - 1)];
 
   const next = () => {
-    if (isLast) onComplete();
-    else setStepIdx((i) => Math.min(i + 1, steps.length - 1));
+    if (isLast) {
+      onComplete();
+      onStartTour?.(); // enchaîne sur le tour guidé interactif
+    } else {
+      setStepIdx((i) => Math.min(i + 1, steps.length - 1));
+    }
   };
   const prev = () => setStepIdx((i) => Math.max(i - 1, 0));
 
@@ -309,7 +315,7 @@ export function OnboardingDrawer({
             onClick={next}
             className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-white text-sm font-bold transition-colors shadow-lg shadow-orange-500/20"
           >
-            {isLast ? "C'est parti ! 🎉" : "Suivant →"}
+            {isLast ? (onStartTour ? "Visite guidée →" : "C'est parti ! 🎉") : "Suivant →"}
           </button>
         </div>
       </div>
