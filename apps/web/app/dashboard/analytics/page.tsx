@@ -24,6 +24,9 @@ type Analytics = {
   reservationsByZone: Array<{ zone: string; reservations: number; covers: number }>;
   reviews: { count: number; avgRating: number };
   loyalty: { customers: number; points: number; visits: number; activeOffers: number; redemptions: number };
+  salesHeatmap: Array<{ dow: number; hour: number; orders: number; revenueCents: number }>;
+  deadItems: Array<{ name: string; priceCents: number; category: string }>;
+  previous: { revenueCents: number; ordersCount: number; avgTicketCents: number; reservationsCount: number };
 };
 
 type ShoppingEntry = { id: string; estimatedBudget: number; realCost: number | null; completedAt: string | null; createdAt: string };
@@ -71,6 +74,54 @@ export default function AnalyticsPage() {
   const noShowRate = analytics?.reservations.count ? (analytics.reservations.noShows / analytics.reservations.count) * 100 : 0;
   const reservationConversion = analytics?.reservations.count ? ((analytics.reservations.seated + analytics.reservations.honored) / analytics.reservations.count) * 100 : 0;
   const visitsPerCustomer = analytics?.loyalty.customers ? analytics.loyalty.visits / analytics.loyalty.customers : 0;
+
+  // Variation % vs période précédente (null si pas de base de comparaison)
+  const delta = (cur: number, prev: number): number | null => (prev > 0 ? ((cur - prev) / prev) * 100 : null);
+  const revDelta = analytics ? delta(analytics.revenueCents, analytics.previous.revenueCents) : null;
+  const ordDelta = analytics ? delta(analytics.ordersCount, analytics.previous.ordersCount) : null;
+  const ticketDelta = analytics ? delta(analytics.avgTicketCents, analytics.previous.avgTicketCents) : null;
+  const resaDelta = analytics ? delta(analytics.reservations.count, analytics.previous.reservationsCount) : null;
+
+  // Heatmap : grille jour×heure + repérage pic / creux d'affluence
+  const DOW_LABELS = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
+  const heatHours = useMemo(() => {
+    const cells = analytics?.salesHeatmap ?? [];
+    if (cells.length === 0) return { hours: [] as number[], grid: new Map<string, { orders: number; revenueCents: number }>(), max: 0, peak: null as null | { dow: number; hour: number; revenueCents: number }, quiet: null as null | { dow: number; hour: number } };
+    const hoursSet = new Set<number>();
+    const grid = new Map<string, { orders: number; revenueCents: number }>();
+    let max = 0; let peak = cells[0];
+    for (const c of cells) {
+      hoursSet.add(c.hour);
+      grid.set(`${c.dow}-${c.hour}`, { orders: c.orders, revenueCents: c.revenueCents });
+      if (c.revenueCents > max) max = c.revenueCents;
+      if (c.revenueCents > peak.revenueCents) peak = c;
+    }
+    const hours = Array.from(hoursSet).sort((a, b) => a - b);
+    return { hours, grid, max, peak, quiet: null };
+  }, [analytics]);
+
+  // Insights actionnables (langage naturel, règles métier sur les données réelles)
+  const insights = useMemo(() => {
+    if (!analytics) return [] as Array<{ icon: string; text: string; tone: "good" | "warn" | "info" }>;
+    const out: Array<{ icon: string; text: string; tone: "good" | "warn" | "info" }> = [];
+    if (revDelta !== null) {
+      if (revDelta >= 5) out.push({ icon: "📈", tone: "good", text: `Ton chiffre d'affaires progresse de ${revDelta.toFixed(0)} % vs la période précédente. Continue sur ta lancée !` });
+      else if (revDelta <= -10) out.push({ icon: "📉", tone: "warn", text: `Ton CA recule de ${Math.abs(revDelta).toFixed(0)} %. Pense à relancer tes clients fidèles ou à pousser une offre.` });
+    }
+    if (heatHours.peak) {
+      const p = heatHours.peak;
+      out.push({ icon: "🔥", tone: "info", text: `Ton pic d'activité est le ${DOW_LABELS[p.dow].toLowerCase()} vers ${p.hour}h. Assure-toi d'avoir assez de staff sur ce créneau.` });
+    }
+    const deadCount = analytics.deadItems.length;
+    if (deadCount >= 3) out.push({ icon: "🪦", tone: "warn", text: `${deadCount} plats disponibles n'ont jamais été commandés sur la période. Envisage de les retirer ou de les repositionner sur la carte.` });
+    if (analytics.topItems[0]) out.push({ icon: "⭐", tone: "good", text: `« ${analytics.topItems[0].name} » est ta star (${analytics.topItems[0].qty} ventes). Mets-le en avant et propose-le en suggestion.` });
+    if (noShowRate > 10) out.push({ icon: "🚫", tone: "warn", text: `Ton taux de no-show est de ${noShowRate.toFixed(0)} %. Active des rappels ou demande une empreinte/acompte pour les réservations.` });
+    if (realFoodCostPct !== null && realFoodCostPct > 35) out.push({ icon: "🥩", tone: "warn", text: `Ton food cost réel est de ${realFoodCostPct.toFixed(0)} % (objectif ≤ 30-35 %). Renégocie tes achats ou ajuste tes portions/prix.` });
+    if (analytics.reviews.avgRating && analytics.reviews.avgRating < 4) out.push({ icon: "💬", tone: "warn", text: `Ta note moyenne est de ${analytics.reviews.avgRating.toFixed(1)}/5. Réponds aux avis et relance les clients satisfaits pour remonter.` });
+    if (visitsPerCustomer >= 2) out.push({ icon: "💎", tone: "good", text: `Tes clients fidèles reviennent ${visitsPerCustomer.toFixed(1)}× en moyenne — ton programme de fidélité fonctionne.` });
+    if (out.length === 0) out.push({ icon: "✅", tone: "info", text: "Pas d'alerte majeure sur cette période. Continue de surveiller tes tendances." });
+    return out;
+  }, [analytics, revDelta, heatHours, noShowRate, realFoodCostPct, visitsPerCustomer]);
 
   const revenueChartData = useMemo(() => {
     const revenue = new Map((analytics?.revenueByDay ?? []).map(d => [d.date, d.cents]));
@@ -120,15 +171,35 @@ export default function AnalyticsPage() {
       {!loading && analytics && (
         <>
           <section className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
-            <Kpi label="CA" value={fmtEur(analytics.revenueCents)} sub={`${days} jours`} tone="emerald" />
-            <Kpi label="Commandes" value={analytics.ordersCount} sub={`${analytics.itemsSold} articles`} />
-            <Kpi label="Ticket moyen" value={fmtEur(analytics.avgTicketCents)} sub="par commande" tone="orange" />
+            <Kpi label="CA" value={fmtEur(analytics.revenueCents)} sub={`${days} jours`} tone="emerald" delta={revDelta} />
+            <Kpi label="Commandes" value={analytics.ordersCount} sub={`${analytics.itemsSold} articles`} delta={ordDelta} />
+            <Kpi label="Ticket moyen" value={fmtEur(analytics.avgTicketCents)} sub="par commande" tone="orange" delta={ticketDelta} />
             <Kpi label="Pourboires" value={fmtEur(analytics.tipsCents)} sub="tips inclus CA" tone="sky" />
             <Kpi label="Food cost" value={realFoodCostPct === null ? "—" : pct(realFoodCostPct)} sub="achats réels" tone={realFoodCostPct && realFoodCostPct > 35 ? "red" : "emerald"} />
             <Kpi label="Marge brute" value={fmtMoney(grossMargin)} sub={pct(grossMarginPct)} tone="emerald" />
-            <Kpi label="Réservations" value={analytics.reservations.count} sub={`${analytics.reservations.covers} couverts`} tone="violet" />
+            <Kpi label="Réservations" value={analytics.reservations.count} sub={`${analytics.reservations.covers} couverts`} tone="violet" delta={resaDelta} />
             <Kpi label="Fidélité" value={analytics.loyalty.customers} sub={`${analytics.loyalty.points.toLocaleString("fr-FR")} pts`} tone="rose" />
           </section>
+
+          <Panel title="🧠 Recommandations — à actionner maintenant">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {insights.map((ins, i) => (
+                <div
+                  key={i}
+                  className={`flex items-start gap-3 rounded-xl border p-3.5 ${
+                    ins.tone === "good"
+                      ? "bg-emerald-500/[0.07] border-emerald-500/20"
+                      : ins.tone === "warn"
+                      ? "bg-orange-500/[0.07] border-orange-500/20"
+                      : "bg-sky-500/[0.06] border-sky-500/20"
+                  }`}
+                >
+                  <span className="text-xl shrink-0 leading-none mt-0.5">{ins.icon}</span>
+                  <p className="text-sm text-white/75 leading-snug">{ins.text}</p>
+                </div>
+              ))}
+            </div>
+          </Panel>
 
           <section className="grid grid-cols-1 xl:grid-cols-[1.35fr_0.65fr] gap-6">
             <Panel title={`📈 CA + Réservations (${days} jours)`}>
@@ -197,6 +268,64 @@ export default function AnalyticsPage() {
             </Panel>
           </section>
 
+          <section className="grid grid-cols-1 xl:grid-cols-[1.4fr_0.6fr] gap-6">
+            <Panel title="🔥 Affluence — jours × heures (CA)">
+              {heatHours.hours.length === 0 ? (
+                <Empty text="Pas encore assez de ventes pour dessiner la heatmap." />
+              ) : (
+                <div className="overflow-x-auto">
+                  <div className="min-w-[520px]">
+                    <div className="flex">
+                      <div className="w-10 shrink-0" />
+                      {heatHours.hours.map((h) => (
+                        <div key={h} className="flex-1 text-center text-[9px] text-white/30 font-mono">{h}h</div>
+                      ))}
+                    </div>
+                    {[1, 2, 3, 4, 5, 6, 0].map((dow) => (
+                      <div key={dow} className="flex items-center mt-1">
+                        <div className="w-10 shrink-0 text-[10px] text-white/40 font-bold">{DOW_LABELS[dow]}</div>
+                        {heatHours.hours.map((h) => {
+                          const cell = heatHours.grid.get(`${dow}-${h}`);
+                          const intensity = cell && heatHours.max > 0 ? cell.revenueCents / heatHours.max : 0;
+                          return (
+                            <div key={h} className="flex-1 px-0.5">
+                              <div
+                                className="h-7 rounded-md border border-white/[0.04]"
+                                style={{ backgroundColor: intensity > 0 ? `rgba(249,115,22,${0.12 + intensity * 0.78})` : "rgba(255,255,255,0.02)" }}
+                                title={cell ? `${DOW_LABELS[dow]} ${h}h — ${fmtEur(cell.revenueCents)} · ${cell.orders} cmd` : `${DOW_LABELS[dow]} ${h}h — aucune vente`}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                    <p className="text-[10px] text-white/25 mt-3">Plus c'est orange, plus le créneau génère de CA. Survole une case pour le détail.</p>
+                  </div>
+                </div>
+              )}
+            </Panel>
+
+            <Panel title="🪦 Poids morts — plats jamais commandés">
+              {analytics.deadItems.length === 0 ? (
+                <Empty text="Aucun plat mort : toute ta carte tourne. Bravo !" />
+              ) : (
+                <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                  <p className="text-[11px] text-white/35 mb-2">{analytics.deadItems.length} plat(s) disponible(s) sans aucune vente sur {days} j. À retirer ou repositionner.</p>
+                  {analytics.deadItems.map((d, i) => (
+                    <div key={`${d.name}-${i}`} className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-2.5">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-white/80 truncate">{d.name}</p>
+                        <p className="text-[10px] text-white/30 uppercase tracking-wider">{d.category}</p>
+                      </div>
+                      <span className="text-xs text-white/40 shrink-0">{fmtEur(d.priceCents)}</span>
+                    </div>
+                  ))}
+                  <Link href="/dashboard/menu" className="inline-block mt-2 text-xs text-orange-300 hover:text-orange-200">Modifier la carte →</Link>
+                </div>
+              )}
+            </Panel>
+          </section>
+
           <section>
             <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
               <h2 className="text-sm font-bold text-white/60 uppercase tracking-widest">Coûts d'achats HT · {shoppingInPeriod.length} liste{shoppingInPeriod.length !== 1 ? "s" : ""} confirmée{shoppingInPeriod.length !== 1 ? "s" : ""}</h2>
@@ -222,9 +351,24 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   return <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-6"><h2 className="text-sm font-bold text-white/60 uppercase tracking-widest mb-4">{title}</h2>{children}</div>;
 }
 
-function Kpi({ label, value, sub, tone = "white" }: { label: string; value: React.ReactNode; sub?: string; tone?: "white" | "emerald" | "orange" | "sky" | "red" | "violet" | "rose" }) {
+function Kpi({ label, value, sub, tone = "white", delta }: { label: string; value: React.ReactNode; sub?: string; tone?: "white" | "emerald" | "orange" | "sky" | "red" | "violet" | "rose"; delta?: number | null }) {
   const colors: Record<string, string> = { white: "text-white", emerald: "text-emerald-400", orange: "text-orange-400", sky: "text-sky-400", red: "text-red-400", violet: "text-violet-400", rose: "text-rose-400" };
-  return <div className="bg-white/[0.03] border border-white/[0.07] rounded-xl p-4"><p className="text-xs text-white/40 mb-1">{label}</p><p className={`text-2xl font-black ${colors[tone]}`}>{value}</p>{sub && <p className="text-[10px] text-white/25 mt-0.5">{sub}</p>}</div>;
+  const showDelta = delta !== undefined && delta !== null && Number.isFinite(delta);
+  const up = (delta ?? 0) >= 0;
+  return (
+    <div className="bg-white/[0.03] border border-white/[0.07] rounded-xl p-4">
+      <div className="flex items-center justify-between gap-1 mb-1">
+        <p className="text-xs text-white/40">{label}</p>
+        {showDelta && (
+          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${up ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"}`}>
+            {up ? "▲" : "▼"} {Math.abs(delta as number).toFixed(0)}%
+          </span>
+        )}
+      </div>
+      <p className={`text-2xl font-black ${colors[tone]}`}>{value}</p>
+      {sub && <p className="text-[10px] text-white/25 mt-0.5">{sub}</p>}
+    </div>
+  );
 }
 
 function Mini({ label, value }: { label: string; value: React.ReactNode }) {
