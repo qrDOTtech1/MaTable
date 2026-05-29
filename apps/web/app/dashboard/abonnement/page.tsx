@@ -7,6 +7,9 @@ type Status = {
   plan: string;
   expiresAt: string | null;
   subscribed: boolean;
+  isTrial?: boolean;
+  hasInvoice?: boolean;
+  daysRemaining?: number | null;
 };
 
 const PLANS = [
@@ -71,6 +74,29 @@ export default function AbonnementPage() {
         <p className="text-sm text-white/40 mt-0.5">Gérez votre forfait MaTable.Pro et votre moyen de paiement.</p>
       </div>
 
+      {/* Bannière version d'essai */}
+      {status?.isTrial && (
+        <div className="rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-500/[0.10] to-orange-500/[0.05] p-5">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">🎁</span>
+            <div className="flex-1">
+              <p className="font-black text-white">
+                Vous êtes en version d'essai gratuite
+                {typeof status.daysRemaining === "number" && (
+                  <span className="ml-2 text-sm font-bold text-emerald-400">
+                    {status.daysRemaining > 0 ? `${status.daysRemaining} jour${status.daysRemaining > 1 ? "s" : ""} restant${status.daysRemaining > 1 ? "s" : ""}` : "dernier jour"}
+                  </span>
+                )}
+              </p>
+              <p className="text-sm text-white/55 mt-1">
+                Profitez de toutes les fonctionnalités <strong className="text-white/80">Pro</strong> sans engagement.
+                Aucun paiement ne vous sera demandé tant que vous n'aurez pas choisi un forfait ci-dessous.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* État actuel */}
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -80,8 +106,13 @@ export default function AbonnementPage() {
           </p>
           {status?.expiresAt && (
             <p className="text-xs text-white/40 mt-0.5">
-              {status.subscribed ? "Renouvellement" : "Expire"} le {new Date(status.expiresAt).toLocaleDateString("fr-FR")}
+              {status.subscribed ? "Renouvellement" : status.isTrial ? "Essai jusqu'au" : "Expire"} le {new Date(status.expiresAt).toLocaleDateString("fr-FR")}
             </p>
+          )}
+          {status?.isTrial && (
+            <span className="inline-block mt-1.5 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400">
+              🎁 Version d'essai
+            </span>
           )}
         </div>
         {status?.subscribed && status.billingEnabled && (

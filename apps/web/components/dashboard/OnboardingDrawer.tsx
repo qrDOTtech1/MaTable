@@ -31,12 +31,16 @@ export function OnboardingDrawer({
   enabledApps,
   restaurantName,
   hasAnyIa,
+  isTrial = false,
+  daysRemaining = null,
 }: {
   open: boolean;
   onComplete: () => void;        // persiste onboardingCompleted=true puis ferme
   enabledApps: string[];
   restaurantName: string;
   hasAnyIa: boolean;
+  isTrial?: boolean;
+  daysRemaining?: number | null;
 }) {
   const router = useRouter();
   const [stepIdx, setStepIdx] = useState(0);
@@ -79,10 +83,18 @@ export function OnboardingDrawer({
             Bienvenue{restaurantName ? ` chez ` : ""}
             {restaurantName && <span className="text-orange-500"> {restaurantName}</span>} !
           </h2>
+          {isTrial && (
+            <div className="inline-flex items-center gap-2 mb-3 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 text-xs font-bold">
+              🎁 Version d'essai gratuite
+              {typeof daysRemaining === "number" && daysRemaining > 0 && (
+                <span className="text-emerald-400">· {daysRemaining} j restants</span>
+              )}
+            </div>
+          )}
           <p className="text-sm text-white/50 leading-relaxed max-w-sm mx-auto">
-            On vous accompagne en 30 secondes pour découvrir votre tableau de bord
-            <span className="text-white"> Ma<span className="text-orange-500">Table</span></span> et
-            tout ce qu'il peut faire pour votre établissement.
+            On vous accompagne en 1 minute pour découvrir votre tableau de bord
+            <span className="text-white"> Ma<span className="text-orange-500">Table</span></span>.
+            {isTrial && " Vous avez accès à toutes les fonctions Pro, sans engagement ni paiement."}
           </p>
         </div>
       ),
@@ -116,6 +128,43 @@ export function OnboardingDrawer({
                 </div>
               );
             })}
+          </div>
+        </div>
+      ),
+    });
+
+    // 2b. Comment ça marche — workflow concret (réduit le besoin de support)
+    const steps2b: Array<{ n: string; title: string; desc: string }> = [];
+    if (has("orders")) {
+      steps2b.push({ n: "1", title: "Créez votre menu", desc: "Ajoutez vos plats, prix et photos dans la page Menu." });
+      steps2b.push({ n: "2", title: "Imprimez vos QR codes", desc: "Page QR Codes : un QR par table, à poser sur place." });
+      steps2b.push({ n: "3", title: "Le client scanne & commande", desc: "Il commande et paie depuis son téléphone, sans appli." });
+      steps2b.push({ n: "4", title: "La cuisine reçoit en direct", desc: "Les commandes s'affichent sur l'écran cuisine en temps réel." });
+    } else if (has("reservations")) {
+      steps2b.push({ n: "1", title: "Configurez vos créneaux", desc: "Définissez horaires et capacité dans Paramètres." });
+      steps2b.push({ n: "2", title: "Partagez votre page", desc: "Vos clients réservent en ligne 24h/24." });
+      steps2b.push({ n: "3", title: "Recevez les alertes", desc: "Chaque réservation arrive en temps réel sur ce tableau de bord." });
+    } else {
+      steps2b.push({ n: "1", title: "Personnalisez votre page", desc: "Renseignez vos infos dans Paramètres." });
+      steps2b.push({ n: "2", title: "Affichez votre QR avis", desc: "Vos clients laissent un avis Google en un scan." });
+      steps2b.push({ n: "3", title: "Suivez votre réputation", desc: "Retrouvez tous vos avis dans la page Avis." });
+    }
+    list.push({
+      key: "howto",
+      render: () => (
+        <div className="px-1">
+          <h2 className="text-xl font-black mb-1 text-center">Comment ça marche</h2>
+          <p className="text-xs text-white/40 text-center mb-5">Le parcours en quelques étapes simples.</p>
+          <div className="space-y-2.5">
+            {steps2b.map((s) => (
+              <div key={s.n} className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.035] border border-white/[0.06]">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-orange-500/20 border border-orange-500/30 text-orange-400 text-sm font-black flex items-center justify-center">{s.n}</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white">{s.title}</p>
+                  <p className="text-[12px] text-white/45 leading-snug">{s.desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       ),
@@ -181,12 +230,16 @@ export function OnboardingDrawer({
               </button>
             ))}
           </div>
+          <p className="text-[12px] text-white/40 mt-5 max-w-sm mx-auto">
+            Une question ? La page <span className="text-white/70 font-semibold">Support / SAV</span> du menu
+            vous met en relation avec notre équipe — on répond vite. 🤝
+          </p>
         </div>
       ),
     });
 
     return list;
-  }, [appsToShow, startActions, restaurantName, hasAnyIa, enabledApps]);
+  }, [appsToShow, startActions, restaurantName, hasAnyIa, enabledApps, isTrial, daysRemaining]);
 
   // Reset à l'ouverture
   useEffect(() => {

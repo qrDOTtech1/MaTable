@@ -17,6 +17,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   const [quickActionHrefs, setQuickActionHrefs] = useState<string[]>([]);
   const [billingPastDue, setBillingPastDue] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [trial, setTrial] = useState<{ isTrial: boolean; daysRemaining: number | null }>({ isTrial: false, daysRemaining: null });
   const pathname = usePathname();
 
   // Notifications réservations temps réel
@@ -103,8 +104,11 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
 
   // État facturation (bandeau de relance si paiement échoué)
   useEffect(() => {
-    api<{ pastDue?: boolean }>("/api/platform-billing/status")
-      .then((s) => setBillingPastDue(!!s.pastDue))
+    api<{ pastDue?: boolean; isTrial?: boolean; daysRemaining?: number | null }>("/api/platform-billing/status")
+      .then((s) => {
+        setBillingPastDue(!!s.pastDue);
+        setTrial({ isTrial: !!s.isTrial, daysRemaining: s.daysRemaining ?? null });
+      })
       .catch(() => {});
   }, []);
 
@@ -400,6 +404,31 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
             <kbd className="hidden lg:inline-block text-[10px] text-white/30 border border-white/10 rounded px-1.5 py-0.5">⌘K</kbd>
           </button>
 
+          {/* Chip version d'essai — visible sur toute la navigation pour suivre les jours restants */}
+          {trial.isTrial && (
+            <Link
+              href="/dashboard/abonnement"
+              className="flex items-center gap-1.5 h-9 lg:h-10 px-2.5 lg:px-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 transition-colors text-xs font-bold shrink-0"
+              title="Vous êtes en version d'essai — gérer mon abonnement"
+            >
+              <span>🎁</span>
+              <span className="hidden sm:inline">Essai</span>
+              {typeof trial.daysRemaining === "number" && (
+                <span className="text-emerald-400">{trial.daysRemaining > 0 ? `${trial.daysRemaining} j` : "fin"}</span>
+              )}
+            </Link>
+          )}
+
+          {/* Rouvrir le guide de démarrage à tout moment */}
+          <button
+            onClick={() => { setMobileNavOpen(false); setOnboardingOpen(true); }}
+            className="hidden sm:flex w-9 h-9 lg:w-10 lg:h-10 items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors shrink-0"
+            title="Revoir le guide de démarrage"
+            aria-label="Revoir le guide de démarrage"
+          >
+            <span className="text-sm font-bold">?</span>
+          </button>
+
           {hasAnyIa && (
             <span className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-xs text-purple-300 font-semibold">
               ✨ Nova IA actif
@@ -533,6 +562,8 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
         enabledApps={enabledApps}
         restaurantName={restaurantName}
         hasAnyIa={hasAnyIa}
+        isTrial={trial.isTrial}
+        daysRemaining={trial.daysRemaining}
       />
 
       {/* Toast notifications */}
