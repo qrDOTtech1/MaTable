@@ -8,6 +8,36 @@ import { CommandPalette, type PaletteDestination } from "@/components/dashboard/
 import { OnboardingDrawer } from "@/components/dashboard/OnboardingDrawer";
 import { GuidedTour, type TourStep } from "@/components/dashboard/GuidedTour";
 
+// Descriptions par écran pour le tour guidé (clé = href)
+const TOUR_DESC: Record<string, string> = {
+  "/dashboard": "Le cœur du service : toutes les commandes en direct, table par table, à mesure qu'elles arrivent.",
+  "/dashboard/tables": "Gérez votre plan de salle, ouvrez/fermez les tables et suivez leur statut.",
+  "/dashboard/service-calls": "Les appels serveur de vos clients arrivent ici en temps réel.",
+  "/dashboard/menu": "Créez et organisez votre carte : plats, prix, photos, catégories et disponibilité.",
+  "/dashboard/stock": "Suivez vos ingrédients et niveaux de stock, avec alertes de rupture.",
+  "/dashboard/shopping": "Générez et suivez vos listes de courses automatiquement.",
+  "/dashboard/servers": "Gérez votre équipe de salle et leurs accès au portail serveur.",
+  "/dashboard/print": "Imprimez vos QR codes par table — vos clients scannent pour commander.",
+  "/dashboard/analytics": "Tout votre pilotage : CA, tendances, plats stars, heatmap d'affluence et recommandations.",
+  "/dashboard/novacontab": "Votre comptabilité simplifiée : URSSAF, TVA et exports.",
+  "/dashboard/reviews": "Centralisez les avis clients et boostez votre e-réputation.",
+  "/dashboard/reservations": "Recevez et gérez vos réservations en ligne, avec alertes instantanées.",
+  "/dashboard/loyalty": "Fidélisez vos clients : points, offres et récompenses.",
+  "/dashboard/invoices": "Retrouvez et exportez toutes vos factures.",
+  "/dashboard/settings": "Configurez votre établissement : infos, horaires, options de service.",
+  "/dashboard/abonnement": "Gérez votre forfait, votre essai et votre moyen de paiement.",
+  "/dashboard/support": "Une question ? Contactez notre équipe support depuis ici.",
+  "/dashboard/testimonial": "Partagez votre témoignage et aidez d'autres restaurateurs.",
+  "/dashboard/ia/stock": "Nova Stock : analyse intelligente de vos stocks et besoins.",
+  "/dashboard/ia/menu-generator": "Nova Menu : générez des fiches et descriptions de plats par IA.",
+  "/dashboard/ia/finance": "Nova Finance : analyses et conseils financiers automatisés.",
+  "/dashboard/ia/offers": "Pilotez vos offres marketing actives.",
+  "/dashboard/ia/chatbot": "Votre chatbot IA pour répondre aux clients.",
+  "/dashboard/ia/magic-scan": "Scannez un document ou une carte : l'IA fait le reste.",
+  "/dashboard/ia/planning": "Planning d'équipe assisté par IA.",
+  "/dashboard/ia/descriptions": "Générez des descriptions de plats percutantes par IA.",
+};
+
 export default function DashboardLayoutWrapper({ children }: { children: React.ReactNode }) {
   const [slug, setSlug] = useState<string | null>(null);
   const [restaurantName, setRestaurantName] = useState<string>("");
@@ -20,16 +50,6 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [trial, setTrial] = useState<{ isTrial: boolean; daysRemaining: number | null }>({ isTrial: false, daysRemaining: null });
   const [tourOpen, setTourOpen] = useState(false);
-
-  // Étapes du tour guidé — surlignent de vrais éléments (les absents sont ignorés)
-  const tourSteps: TourStep[] = [
-    { selector: '[data-tour="nav-desktop"]', title: "Votre navigation", text: "Toutes vos pages sont rangées ici par thème : service, contenu, analyse, config." },
-    { selector: '[data-tour="nav-mobile"]', title: "Le menu", text: "Touchez ici pour ouvrir toutes vos pages, rangées par thème." },
-    { selector: '[data-tour="search"]', title: "Recherche rapide", text: "Trouvez n'importe quelle page en un instant (raccourci ⌘K / Ctrl+K)." },
-    { selector: '[data-tour="quick"]', title: "Vos raccourcis", text: "Épinglez vos pages favorites ici — elles vous suivent sur tous vos appareils." },
-    { selector: '[data-tour="trial"]', title: "Votre essai", text: "Suivez vos jours d'essai restants. Cliquez pour choisir un forfait quand vous serez prêt." },
-    { selector: '[data-tour="help"]', title: "Revoir le guide", text: "Besoin d'un rappel ? Rouvrez ce guide à tout moment depuis ce bouton." },
-  ];
   const pathname = usePathname();
 
   // Notifications réservations temps réel
@@ -228,6 +248,29 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
     [allDestinations]
   );
 
+  // Étapes du tour guidé : intro + un arrêt par écran activé (les éléments
+  // absents/masqués sont ignorés par GuidedTour, ex. sidebar sur mobile).
+  const tourSteps: TourStep[] = useMemo(() => {
+    const steps: TourStep[] = [
+      { selector: '[data-tour="nav-desktop"]', title: "Votre navigation", text: "Toutes vos pages sont rangées ici par thème : service, contenu, analyse, config." },
+      { selector: '[data-tour="nav-mobile"]', title: "Le menu", text: "Touchez ici pour ouvrir toutes vos pages, rangées par thème." },
+      { selector: '[data-tour="search"]', title: "Recherche rapide", text: "Trouvez n'importe quelle page en un instant (⌘K / Ctrl+K)." },
+    ];
+    for (const d of allDestinations) {
+      steps.push({
+        selector: `[data-tour-item="${d.href}"]`,
+        title: `${d.icon} ${d.label}`,
+        text: TOUR_DESC[d.href] ?? `Accédez à « ${d.label} ».`,
+      });
+    }
+    steps.push(
+      { selector: '[data-tour="quick"]', title: "Vos raccourcis", text: "Épinglez vos pages favorites ici — elles vous suivent sur tous vos appareils." },
+      { selector: '[data-tour="trial"]', title: "Votre essai", text: "Suivez vos jours d'essai restants. Cliquez pour choisir un forfait quand vous serez prêt." },
+      { selector: '[data-tour="help"]', title: "Revoir le guide", text: "Besoin d'un rappel ? Rouvrez ce guide à tout moment depuis ce bouton." },
+    );
+    return steps;
+  }, [allDestinations]);
+
   // Raccourcis rapides résolus : choix du resto si présent, sinon défaut ; filtrés sur l'activé
   const DEFAULT_QUICK = quickActions.map((q) => q.href);
   const resolvedQuickActions = (quickActionHrefs.length > 0 ? quickActionHrefs : DEFAULT_QUICK)
@@ -273,6 +316,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
               <Link
                 key={item.href}
                 href={item.href}
+                data-tour-item={item.href}
                 className={`block px-3 py-2.5 rounded-lg text-sm transition-all ${
                   isActive
                     ? "bg-orange-500/20 border border-orange-500/30 text-orange-400 font-semibold"
@@ -306,6 +350,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
               <Link
                 key={item.href}
                 href={item.href}
+                data-tour-item={item.href}
                 className={`block px-3 py-2.5 rounded-lg text-sm transition-all ${
                   isActive
                     ? "bg-purple-500/20 border border-purple-500/30 text-purple-300 font-semibold"

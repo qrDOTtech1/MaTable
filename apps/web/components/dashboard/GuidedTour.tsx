@@ -113,11 +113,15 @@ export function GuidedTour({
         style={{ top: tipTop, left: tipLeft, width: tipWidth }}
       >
         <div className="flex items-center justify-between mb-1.5">
-          <div className="flex items-center gap-1">
-            {resolved.map((_, i) => (
-              <span key={i} className={`h-1.5 rounded-full transition-all ${i === idx ? "w-5 bg-orange-500" : "w-1.5 bg-white/20"}`} />
-            ))}
-          </div>
+          {resolved.length > 8 ? (
+            <span className="text-[11px] font-bold text-orange-400">Étape {idx + 1} / {resolved.length}</span>
+          ) : (
+            <div className="flex items-center gap-1">
+              {resolved.map((_, i) => (
+                <span key={i} className={`h-1.5 rounded-full transition-all ${i === idx ? "w-5 bg-orange-500" : "w-1.5 bg-white/20"}`} />
+              ))}
+            </div>
+          )}
           <button onClick={onClose} className="text-[11px] text-white/35 hover:text-white/70 transition-colors">Passer</button>
         </div>
         <p className="text-sm font-black text-white">{step.title}</p>
