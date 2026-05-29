@@ -1,16 +1,24 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError, API_URL } from "@/lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const search = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [restaurantName, setRestaurantName] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Pré-remplissage si un parrain partage son lien ?ref=CODE
+  useEffect(() => {
+    const r = search?.get("ref");
+    if (r) setReferralCode(r.toUpperCase());
+  }, [search]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -19,7 +27,7 @@ export default function RegisterPage() {
     try {
       await api(`/api/pro/register`, {
         method: "POST",
-        body: JSON.stringify({ email, password, restaurantName }),
+        body: JSON.stringify({ email, password, restaurantName, referralCode: referralCode || undefined }),
         pro: false,
       });
       router.push("/login?registered=1");
@@ -70,6 +78,14 @@ export default function RegisterPage() {
           placeholder="Mot de passe (min. 6 caractères)"
           minLength={6}
           required
+        />
+        <input
+          className={inputClass}
+          type="text"
+          value={referralCode}
+          onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+          placeholder="Code de parrainage (optionnel) 🎁"
+          maxLength={40}
         />
         {err && (
           <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 p-2 rounded break-all">{err}</div>

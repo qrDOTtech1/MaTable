@@ -20,18 +20,32 @@ const PLANS = [
 
 const ENUM_TO_KEY: Record<string, string> = { STARTER: "starter", PRO: "pro", PRO_IA: "business" };
 
+type Referral = { name: string; createdAt: string; converted: boolean; rewardGranted: boolean };
+type ReferralData = { code: string | null; referrals: Referral[]; totalConverted: number; totalRewardMonths: number };
+
 export default function AbonnementPage() {
   const [status, setStatus] = useState<Status | null>(null);
   const [loading, setLoading] = useState(true);
   const [interval, setInterval] = useState<"monthly" | "yearly">("monthly");
   const [busy, setBusy] = useState<string | null>(null);
+  const [ref, setRef] = useState<ReferralData | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     api<Status>("/api/platform-billing/status")
       .then(setStatus)
       .catch(() => setStatus(null))
       .finally(() => setLoading(false));
+    api<ReferralData>("/api/pro/referrals/me")
+      .then(setRef)
+      .catch(() => {});
   }, []);
+
+  const shareLink = ref?.code ? `${typeof window !== "undefined" ? window.location.origin : "https://matable.pro"}/register?ref=${ref.code}` : "";
+  async function copyLink() {
+    if (!shareLink) return;
+    try { await navigator.clipboard.writeText(shareLink); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch {}
+  }
 
   async function subscribe(plan: string) {
     setBusy(plan);
@@ -186,6 +200,74 @@ export default function AbonnementPage() {
             })}
           </div>
         </>
+      )}
+
+      {/* Programme parrainage */}
+      {ref?.code && (
+        <div className="rounded-2xl border border-purple-500/25 bg-gradient-to-br from-purple-500/[0.08] to-orange-500/[0.05] p-5 space-y-4">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">🎁</span>
+            <div className="flex-1">
+              <p className="font-black text-white">Parrainez un confrère = 1 mois offert</p>
+              <p className="text-sm text-white/55 mt-1">
+                Partagez votre code. Dès qu'un restaurateur s'inscrit avec et passe en payant,
+                <strong className="text-emerald-400"> on vous offre 30 jours d'abonnement.</strong>
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+            <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 font-mono text-sm text-orange-300 truncate">{shareLink}</div>
+            <button
+              onClick={copyLink}
+              className="px-4 py-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-white text-sm font-bold transition-colors"
+            >
+              {copied ? "✓ Copié" : "Copier le lien"}
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-3 text-xs">
+            <span className="px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-white/60">
+              Code : <strong className="text-orange-300 font-mono">{ref.code}</strong>
+            </span>
+            <span className="px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-white/60">
+              Filleuls : <strong className="text-white">{ref.referrals.length}</strong>
+            </span>
+            <span className="px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-emerald-300">
+              Convertis : <strong>{ref.totalConverted}</strong>
+            </span>
+            <span className="px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-emerald-300">
+              Mois offerts : <strong>{ref.totalRewardMonths}</strong>
+            </span>
+          </div>
+
+          {ref.referrals.length > 0 && (
+            <div className="rounded-xl border border-white/[0.06] overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-white/[0.04] text-[10px] uppercase tracking-wider text-white/40">
+                  <tr><th className="px-3 py-2 text-left">Filleul</th><th className="px-3 py-2 text-left">Date</th><th className="px-3 py-2 text-right">Statut</th></tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.04]">
+                  {ref.referrals.map((r, i) => (
+                    <tr key={i}>
+                      <td className="px-3 py-2 text-white/80">{r.name}</td>
+                      <td className="px-3 py-2 text-white/40 text-xs">{new Date(r.createdAt).toLocaleDateString("fr-FR")}</td>
+                      <td className="px-3 py-2 text-right">
+                        {r.rewardGranted ? (
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400">🎉 +30 j offerts</span>
+                        ) : r.converted ? (
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400">Converti</span>
+                        ) : (
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-white/[0.06] text-white/45">En essai</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

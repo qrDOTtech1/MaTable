@@ -46,6 +46,14 @@ export default function CaisseDashPage() {
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
+  // Vente au comptoir (cannette, café… sans table)
+  const [showCounter, setShowCounter] = useState(false);
+  const [counterMenu, setCounterMenu] = useState<Array<{ id: string; name: string; priceCents: number; category: string | null }>>([]);
+  const [counterCart, setCounterCart] = useState<Record<string, number>>({});
+  const [counterMode, setCounterMode] = useState<"CARD" | "CASH" | "COUNTER">("CARD");
+  const [counterBusy, setCounterBusy] = useState(false);
+  const [counterMsg, setCounterMsg] = useState<string | null>(null);
+
   const caisseFetch = useCallback(async <T,>(path: string, opts?: RequestInit): Promise<T> => {
     const token = localStorage.getItem("caisse_token");
     if (!token) { router.push(`/${slug}`); throw new Error("No token"); }
@@ -169,8 +177,109 @@ export default function CaisseDashPage() {
           </div>
           <h1 className="text-lg font-bold">Caisse</h1>
         </div>
-        <button onClick={logout} className="text-xs text-white/30 hover:text-white/60 transition-colors">Quitter</button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={async () => {
+              setShowCounter(true); setCounterMsg(null);
+              if (counterMenu.length === 0) {
+                try {
+                  const r = await caisseFetch<{ menu: typeof counterMenu }>("/api/caisse/menu");
+                  setCounterMenu(r.menu);
+                } catch {}
+              }
+            }}
+            className="px-3 py-1.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-400 text-xs font-bold hover:bg-orange-500/25 transition-colors"
+            title="Encaisser un client au comptoir (cannette, café…)"
+          >🥤 Vente comptoir</button>
+          <button onClick={logout} className="text-xs text-white/30 hover:text-white/60 transition-colors">Quitter</button>
+        </div>
       </div>
+
+      {/* Modal Vente comptoir */}
+      {showCounter && (() => {
+        const cartItems = counterMenu.filter((m) => (counterCart[m.id] ?? 0) > 0);
+        const total = cartItems.reduce((s, m) => s + m.priceCents * (counterCart[m.id] ?? 0), 0);
+        const categories = Array.from(new Set(counterMenu.map((m) => m.category || "Autres")));
+        async function submitSale() {
+          if (cartItems.length === 0) return;
+          setCounterBusy(true); setCounterMsg(null);
+          try {
+            await caisseFetch("/api/caisse/sales/counter", {
+              method: "POST",
+              body: JSON.stringify({
+                items: cartItems.map((m) => ({ menuItemId: m.id, name: m.name, priceCents: m.priceCents, quantity: counterCart[m.id] })),
+                paymentMode: counterMode,
+              }),
+            });
+            setCounterMsg(`✅ Encaissé ${(total/100).toFixed(2)} €`);
+            setCounterCart({});
+            await loadData();
+            setTimeout(() => { setShowCounter(false); setCounterMsg(null); }, 1200);
+          } catch (e: any) {
+            setCounterMsg(`Erreur : ${e?.message ?? "envoi"}`);
+          } finally { setCounterBusy(false); }
+        }
+        return (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowCounter(false)} />
+            <div className="relative w-full max-w-3xl max-h-[90vh] rounded-2xl border border-white/[0.08] bg-[#0f0f0f] shadow-2xl flex flex-col">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+                <h2 className="text-lg font-black">🥤 Vente au comptoir</h2>
+                <button onClick={() => setShowCounter(false)} className="text-white/40 hover:text-white text-xl">✕</button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                {counterMenu.length === 0 ? (
+                  <p className="text-center text-white/40 py-8">Chargement du menu…</p>
+                ) : categories.map((cat) => (
+                  <div key={cat}>
+                    <p className="text-[10px] uppercase tracking-wider text-white/30 font-bold mb-2">{cat}</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {counterMenu.filter((m) => (m.category || "Autres") === cat).map((m) => {
+                        const qty = counterCart[m.id] ?? 0;
+                        return (
+                          <div key={m.id} className={`rounded-xl border p-3 transition-colors ${qty > 0 ? "bg-orange-500/[0.08] border-orange-500/30" : "bg-white/[0.03] border-white/[0.06]"}`}>
+                            <p className="text-sm font-semibold text-white truncate">{m.name}</p>
+                            <p className="text-xs text-white/45">{(m.priceCents / 100).toFixed(2)} €</p>
+                            <div className="flex items-center justify-between mt-2">
+                              <button onClick={() => setCounterCart((c) => ({ ...c, [m.id]: Math.max(0, (c[m.id] ?? 0) - 1) }))}
+                                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-lg leading-none">−</button>
+                              <span className="text-base font-black tabular-nums">{qty}</span>
+                              <button onClick={() => setCounterCart((c) => ({ ...c, [m.id]: (c[m.id] ?? 0) + 1 }))}
+                                className="w-8 h-8 rounded-lg bg-orange-500 hover:bg-orange-400 text-lg leading-none">+</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-white/[0.06] p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-white/60">Total</span>
+                  <span className="text-2xl font-black text-emerald-400">{(total/100).toFixed(2)} €</span>
+                </div>
+                <div className="flex gap-2">
+                  {(["CARD","CASH","COUNTER"] as const).map((m) => (
+                    <button key={m} onClick={() => setCounterMode(m)}
+                      className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors border ${counterMode === m ? "bg-orange-500 border-orange-500 text-white" : "bg-white/[0.03] border-white/[0.06] text-white/60 hover:bg-white/[0.06]"}`}>
+                      {MODE_INFO[m].icon} {MODE_INFO[m].label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={submitSale}
+                  disabled={cartItems.length === 0 || counterBusy}
+                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-base disabled:opacity-40 transition-colors"
+                >
+                  {counterBusy ? "…" : `Encaisser ${(total/100).toFixed(2)} €`}
+                </button>
+                {counterMsg && <p className="text-sm text-center text-emerald-400 font-semibold">{counterMsg}</p>}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="flex-1 p-4 space-y-6 max-w-5xl mx-auto w-full">
         {/* Stats */}
