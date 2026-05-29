@@ -13,14 +13,19 @@ export function GuidedTour({
   open,
   steps,
   onClose,
+  autoPlay = true,
+  stepMs = 4500,
 }: {
   open: boolean;
   steps: TourStep[];
   onClose: () => void;
+  autoPlay?: boolean;     // défile automatiquement sans clic
+  stepMs?: number;        // durée d'affichage par étape
 }) {
   const [resolved, setResolved] = useState<TourStep[]>([]);
   const [idx, setIdx] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
+  const [playing, setPlaying] = useState(autoPlay);
 
   // Au lancement : ne garder que les étapes dont l'élément est réellement visible
   useEffect(() => {
@@ -32,6 +37,7 @@ export function GuidedTour({
       });
       setResolved(vis);
       setIdx(0);
+      setPlaying(autoPlay);
       if (vis.length === 0) onClose();
     }, 60);
     return () => clearTimeout(t);
@@ -58,6 +64,17 @@ export function GuidedTour({
       window.removeEventListener("scroll", onResize, true);
     };
   }, [open, resolved, idx, measure]);
+
+  // Auto-défilement : avance seul, sans clic (pausable)
+  useEffect(() => {
+    if (!open || !playing || resolved.length === 0) return;
+    const last = idx >= resolved.length - 1;
+    const t = setTimeout(() => {
+      if (last) onClose();
+      else setIdx((i) => i + 1);
+    }, stepMs);
+    return () => clearTimeout(t);
+  }, [open, playing, resolved, idx, stepMs, onClose]);
 
   // Lock scroll body pendant le tour
   useEffect(() => {
@@ -122,7 +139,17 @@ export function GuidedTour({
               ))}
             </div>
           )}
-          <button onClick={onClose} className="text-[11px] text-white/35 hover:text-white/70 transition-colors">Passer</button>
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => setPlaying((p) => !p)}
+              className="text-[11px] text-white/45 hover:text-white transition-colors flex items-center gap-1"
+              title={playing ? "Mettre en pause" : "Lecture auto"}
+              aria-label={playing ? "Mettre en pause" : "Lecture auto"}
+            >
+              {playing ? "⏸ Pause" : "▶ Auto"}
+            </button>
+            <button onClick={onClose} className="text-[11px] text-white/35 hover:text-white/70 transition-colors">Passer</button>
+          </div>
         </div>
         <p className="text-sm font-black text-white">{step.title}</p>
         <p className="text-[13px] text-white/55 leading-snug mt-1">{step.text}</p>
