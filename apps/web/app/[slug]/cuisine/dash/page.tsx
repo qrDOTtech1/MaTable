@@ -10,6 +10,7 @@ type Order = {
   items: OrderItem[];
   totalCents: number;
   createdAt: string;
+  expectedReadyAt?: string | null;
   table: { number: number; zone?: string };
   session?: { id: string; server?: { name: string } | null } | null;
 };
@@ -28,6 +29,13 @@ export default function CuisineDashPage() {
   const [showRupture, setShowRupture] = useState(false);
   const [ruptureSearch, setRuptureSearch] = useState("");
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [nowTick, setNowTick] = useState(() => Date.now());
+
+  // Tic d'horloge pour rafraîchir les compte-à-rebours (toutes les 15s)
+  useEffect(() => {
+    const iv = setInterval(() => setNowTick(Date.now()), 15000);
+    return () => clearInterval(iv);
+  }, []);
 
   const cuisineFetch = useCallback(async <T,>(path: string, opts?: RequestInit): Promise<T> => {
     const token = localStorage.getItem("cuisine_token");
@@ -121,6 +129,25 @@ export default function CuisineDashPage() {
     } finally { setActing(null); }
   };
 
+  // Le cuisto ajuste le temps restant affiché au client (± minutes)
+  const adjustEta = async (orderId: string, deltaMin: number) => {
+    // MAJ optimiste locale pour un retour immédiat
+    setOrders((prev) => prev.map((o) => {
+      if (o.id !== orderId) return o;
+      const base = Math.max(o.expectedReadyAt ? new Date(o.expectedReadyAt).getTime() : Date.now(), Date.now());
+      const next = new Date(Math.max(base + deltaMin * 60_000, Date.now() + 60_000));
+      return { ...o, expectedReadyAt: next.toISOString() };
+    }));
+    try {
+      await cuisineFetch(`/api/cuisine/orders/${orderId}/eta`, {
+        method: "POST",
+        body: JSON.stringify({ deltaMin }),
+      });
+    } catch {
+      await loadData(); // resync en cas d'échec
+    }
+  };
+
   const toggleRupture = async (itemId: string) => {
     setTogglingId(itemId);
     try {
@@ -153,6 +180,16 @@ export default function CuisineDashPage() {
     if (mins < 1) return "< 1 min";
     if (mins < 60) return `${mins} min`;
     return `${Math.floor(mins / 60)}h${String(mins % 60).padStart(2, "0")}`;
+  };
+
+  // Temps restant avant l'ETA promise au client + niveau d'urgence (couleur)
+  const remaining = (iso?: string | null) => {
+    if (!iso) return null;
+    const diffMs = new Date(iso).getTime() - nowTick;
+    const mins = Math.round(diffMs / 60000);
+    const label = mins <= 0 ? `Retard ${Math.abs(mins)} min` : `${mins} min`;
+    const tone = mins <= 0 ? "late" : mins <= 5 ? "urgent" : "ok";
+    return { mins, label, tone };
   };
 
   // Filter menu items for rupture panel
@@ -352,6 +389,45 @@ export default function CuisineDashPage() {
                     </div>
                   ))}
                 </div>
+
+                {/* Temps restant promis au client + ajustement par le cuisto */}
+                {(() => {
+                  const rem = remaining(order.expectedReadyAt);
+                  const toneCls = !rem
+                    ? "bg-white/[0.04] border-white/[0.08] text-white/40"
+                    : rem.tone === "late"
+                    ? "bg-red-500/15 border-red-500/30 text-red-300"
+                    : rem.tone === "urgent"
+                    ? "bg-orange-500/15 border-orange-500/30 text-orange-300"
+                    : "bg-emerald-500/12 border-emerald-500/25 text-emerald-300";
+                  return (
+                    <div className="px-4 pb-2">
+                      <div className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 ${toneCls}`}>
+                        <span className="text-xs font-semibold flex items-center gap-1.5">
+                          ⏱ <span>{rem ? `Client : ${rem.label}` : "Aucun temps annoncé"}</span>
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => adjustEta(order.id, -5)}
+                            className="w-8 h-7 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-white/80 text-xs font-bold transition-colors"
+                            title="Retirer 5 min au client"
+                          >−5</button>
+                          <button
+                            onClick={() => adjustEta(order.id, 5)}
+                            className="w-8 h-7 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-white/80 text-xs font-bold transition-colors"
+                            title="Ajouter 5 min"
+                          >+5</button>
+                          <button
+                            onClick={() => adjustEta(order.id, 10)}
+                            className="w-9 h-7 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-white/80 text-xs font-bold transition-colors"
+                            title="Ajouter 10 min"
+                          >+10</button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="px-4 pb-3">
                   <button
                     onClick={() => markReady(order.id)}

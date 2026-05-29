@@ -247,8 +247,13 @@ export default function OrderPage() {
     if (!sessionId) return;
     const socket: Socket = io(API_URL, { auth: { sessionId } });
 
-    socket.on("order:updated", (data: { id: string; status: string }) => {
-      setMyOrders(prev => prev.map(o => o.id === data.id ? { ...o, status: data.status as any } : o));
+    socket.on("order:updated", (data: { id: string; status: string; expectedReadyAt?: string | null }) => {
+      setMyOrders(prev => prev.map(o => o.id === data.id ? {
+        ...o,
+        status: data.status as any,
+        // Le cuisto peut ajuster l'ETA → on met à jour le countdown en live
+        ...(data.expectedReadyAt !== undefined ? { expectedReadyAt: data.expectedReadyAt } : {}),
+      } : o));
     });
 
     socket.on("order:new", () => {
