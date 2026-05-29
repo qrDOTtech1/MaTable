@@ -1,10 +1,19 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError, API_URL } from "@/lib/api";
 
 export default function RegisterPage() {
+  // useSearchParams() impose un <Suspense> côté Next 14 lors du prerender.
+  return (
+    <Suspense fallback={null}>
+      <RegisterForm />
+    </Suspense>
+  );
+}
+
+function RegisterForm() {
   const router = useRouter();
   const search = useSearchParams();
   const [email, setEmail] = useState("");
