@@ -31,9 +31,11 @@ export const PLANS = [
     popular: true,
     desc: "La solution complète pour piloter votre restaurant au quotidien.",
     features: [
-      "Tout le forfait Starter dont Avis Google, Commande & Paiement QR, Portail Serveur, Portail Cuisine et Portail Caisse",
+      "Tout le forfait Starter dont Avis Google, Commande & Paiement QR, Portail Serveur, Portail Cuisine (KDS bump + timer ajustable) et Portail Caisse (vente comptoir incluse)",
       "Réservations Intelligentes (créneaux dynamiques, arrhes Stripe, anti no-show)",
       "Programme Fidélité inclus (clients, points, offres et récompenses)",
+      "Statistiques actionnables avec recommandations IA en langage naturel",
+      "Programme parrainage MaTable (12 codes/an, +30 jours offerts par filleul converti)",
     ],
   },
   {
@@ -44,10 +46,10 @@ export const PLANS = [
     popular: false,
     desc: "Performance maximale — IA complète pour les restaurateurs ambitieux.",
     features: [
-      "Tout le forfait Pro dont Starter complet, Réservations Intelligentes et Programme Fidélité",
+      "Tout le forfait Pro dont Starter complet, Réservations Intelligentes, Programme Fidélité, Statistiques actionnables IA et Programme parrainage",
       "Nova Stock IA (liste de courses auto, alertes ruptures, food cost)",
       "Nova Finance IA (KPIs, marges, prévisions CA, recommandations rentabilité)",
-      "Nova Contab IA (exports comptables, TVA, rapports de fin de mois)",
+      "Nova Contab IA (URSSAF, TVA, exports comptables, rapports de fin de mois)",
     ],
   },
 ] as const;
