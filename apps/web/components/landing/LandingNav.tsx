@@ -45,13 +45,16 @@ export default function LandingNav() {
             ))}
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm text-white/60 hover:text-white transition-colors hidden sm:block">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              href="/login"
+              className="text-sm text-white/70 hover:text-white transition-colors px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg hover:bg-white/5 font-medium whitespace-nowrap"
+            >
               Se connecter
             </Link>
             <Link
               href="/register"
-              className="text-sm px-4 py-2 bg-orange-500 hover:bg-orange-400 text-white rounded-lg font-medium transition-colors shadow-lg shadow-orange-500/20"
+              className="text-xs sm:text-sm px-3 sm:px-4 py-2 bg-orange-500 hover:bg-orange-400 text-white rounded-lg font-medium transition-colors shadow-lg shadow-orange-500/20 whitespace-nowrap"
             >
               Essai gratuit
             </Link>
@@ -102,9 +105,16 @@ export default function LandingNav() {
               </Link>
             ))}
             <Link
+              href="/login"
+              onClick={() => setMobileOpen(false)}
+              className="mt-2 py-3 border border-white/15 text-white rounded-xl font-bold text-center hover:bg-white/5"
+            >
+              Se connecter
+            </Link>
+            <Link
               href="/register"
               onClick={() => setMobileOpen(false)}
-              className="mt-2 py-3 bg-orange-500 text-white rounded-xl font-bold text-center"
+              className="py-3 bg-orange-500 text-white rounded-xl font-bold text-center"
             >
               Essai gratuit →
             </Link>

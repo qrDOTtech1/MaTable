@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import LandingProductCarousel from "./LandingProductCarousel";
 import LandingFAQ from "@/components/landing/LandingFAQ";
 import LandingNav from "@/components/landing/LandingNav";
+import LandingFullStack from "@/components/landing/LandingFullStack";
 import { stats, languageLines, teaserCards } from "@/components/landing/landingData";
 
 const teaserColors: Record<string, { border: string; glow: string; text: string }> = {
@@ -122,6 +123,9 @@ export default function LandingPage() {
         <div id="demo">
           <LandingProductCarousel />
         </div>
+
+        {/* ── L'inventaire complet (vue d'ensemble exhaustive, ton Clarkson) ─── */}
+        <LandingFullStack />
 
         {/* ── Loyalty Included ───────────────────────────────────────────────── */}
         <section className="border-y border-white/5 bg-[#0d0b08] px-6 py-24 relative overflow-hidden">
