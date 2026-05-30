@@ -206,6 +206,34 @@ export function OnboardingDrawer({
       ),
     });
 
+    // 3b. Parrainage — promesse 1 mois offert par confrère converti
+    list.push({
+      key: "referral",
+      render: () => (
+        <div className="px-1 text-center">
+          <div className="text-4xl mb-3">🎁</div>
+          <h2 className="text-xl font-black mb-2">12 mois offerts si vous parrainez bien</h2>
+          <p className="text-sm text-white/55 leading-relaxed max-w-sm mx-auto mb-5">
+            Chaque mois, un <strong className="text-white">nouveau code parrainage</strong> apparaît dans votre dashboard.
+          </p>
+          <div className="space-y-2.5 max-w-sm mx-auto text-left">
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-purple-500/[0.07] border border-purple-500/20">
+              <span className="text-lg shrink-0">📅</span>
+              <p className="text-[12px] text-white/65 leading-snug"><strong className="text-white">1 code par mois</strong>, soit 12 codes par an. Non utilisé = non reportable.</p>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-purple-500/[0.07] border border-purple-500/20">
+              <span className="text-lg shrink-0">💰</span>
+              <p className="text-[12px] text-white/65 leading-snug">Un confrère s'inscrit avec et paie sa 1ère facture → <strong className="text-emerald-400">+30 jours offerts</strong> sur votre abonnement.</p>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-purple-500/[0.07] border border-purple-500/20">
+              <span className="text-lg shrink-0">🧮</span>
+              <p className="text-[12px] text-white/65 leading-snug">12 conversions = <strong className="text-orange-300">une année entière offerte</strong>. À retrouver dans Mon abonnement.</p>
+            </div>
+          </div>
+        </div>
+      ),
+    });
+
     // 4. Démarrage — actions concrètes
     list.push({
       key: "start",

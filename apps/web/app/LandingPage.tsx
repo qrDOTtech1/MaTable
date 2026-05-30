@@ -6,6 +6,7 @@ import LandingProductCarousel from "./LandingProductCarousel";
 import LandingFAQ from "@/components/landing/LandingFAQ";
 import LandingNav from "@/components/landing/LandingNav";
 import LandingFullStack from "@/components/landing/LandingFullStack";
+import LandingReferral from "@/components/landing/LandingReferral";
 import { stats, languageLines, teaserCards } from "@/components/landing/landingData";
 
 const teaserColors: Record<string, { border: string; glow: string; text: string }> = {
@@ -183,6 +184,9 @@ export default function LandingPage() {
             </motion.div>
           </div>
         </section>
+
+        {/* ── Parrainage — 12 codes/an, anti-abus assumé ──────────────────────── */}
+        <LandingReferral />
 
         {/* ── Language Campaign ─────────────────────────────────────────────── */}
         <section className="border-b border-white/5 bg-black px-6 py-24">

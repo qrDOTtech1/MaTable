@@ -26,7 +26,7 @@ const TOUR_DESC: Record<string, string> = {
   "/dashboard/loyalty": "Fidélisez vos clients : points, offres et récompenses.",
   "/dashboard/invoices": "Retrouvez et exportez toutes vos factures.",
   "/dashboard/settings": "Configurez votre établissement : infos, horaires, options de service.",
-  "/dashboard/abonnement": "Gérez votre forfait, votre essai et votre moyen de paiement.",
+  "/dashboard/abonnement": "Gérez votre forfait, votre essai, votre paiement — et votre code parrainage du mois (12 mois offerts max/an).",
   "/dashboard/support": "Une question ? Contactez notre équipe support depuis ici.",
   "/dashboard/testimonial": "Partagez votre témoignage et aidez d'autres restaurateurs.",
   "/dashboard/ia/stock": "Nova Stock : analyse intelligente de vos stocks et besoins.",
