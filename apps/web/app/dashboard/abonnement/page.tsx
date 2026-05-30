@@ -20,8 +20,25 @@ const PLANS = [
 
 const ENUM_TO_KEY: Record<string, string> = { STARTER: "starter", PRO: "pro", PRO_IA: "business" };
 
-type Referral = { name: string; createdAt: string; converted: boolean; rewardGranted: boolean };
-type ReferralData = { code: string | null; referrals: Referral[]; totalConverted: number; totalRewardMonths: number };
+type ReferralData = {
+  currentCode: string | null;
+  currentPeriod: string;
+  codes: Array<{
+    code: string; periodYearMonth: string; used: boolean; refereeName: string | null;
+    registeredAt: string | null; converted: boolean; rewarded: boolean; isCurrent: boolean;
+  }>;
+  legacyCode: string | null;
+  legacyReferees: Array<{ name: string; createdAt: string; converted: boolean; rewardGranted: boolean }>;
+  totalConverted: number;
+  totalRewardMonths: number;
+  remainingYearly: number;
+};
+
+function periodLabel(yyyymm: string): string {
+  if (!/^\d{6}$/.test(yyyymm)) return yyyymm;
+  const y = yyyymm.slice(0, 4); const m = parseInt(yyyymm.slice(4), 10) - 1;
+  return new Date(parseInt(y, 10), m, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+}
 
 export default function AbonnementPage() {
   const [status, setStatus] = useState<Status | null>(null);
@@ -41,7 +58,7 @@ export default function AbonnementPage() {
       .catch(() => {});
   }, []);
 
-  const shareLink = ref?.code ? `${typeof window !== "undefined" ? window.location.origin : "https://matable.pro"}/register?ref=${ref.code}` : "";
+  const shareLink = ref?.currentCode ? `${typeof window !== "undefined" ? window.location.origin : "https://matable.pro"}/register?ref=${ref.currentCode}` : "";
   async function copyLink() {
     if (!shareLink) return;
     try { await navigator.clipboard.writeText(shareLink); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch {}
@@ -202,71 +219,109 @@ export default function AbonnementPage() {
         </>
       )}
 
-      {/* Programme parrainage */}
-      {ref?.code && (
+      {/* Programme parrainage — code mensuel + historique + CGV */}
+      {ref?.currentCode && (
         <div className="rounded-2xl border border-purple-500/25 bg-gradient-to-br from-purple-500/[0.08] to-orange-500/[0.05] p-5 space-y-4">
           <div className="flex items-start gap-3">
             <span className="text-2xl">🎁</span>
             <div className="flex-1">
               <p className="font-black text-white">Parrainez un confrère = 1 mois offert</p>
               <p className="text-sm text-white/55 mt-1">
-                Partagez votre code. Dès qu'un restaurateur s'inscrit avec et passe en payant,
-                <strong className="text-emerald-400"> on vous offre 30 jours d'abonnement.</strong>
+                Vous recevez <strong className="text-white">1 nouveau code par mois</strong> (12 par an).
+                Chaque code peut faire venir <strong className="text-white">1 nouveau resto</strong> — et dès qu'il devient payant,
+                <strong className="text-emerald-400"> on vous offre 30 jours d'abonnement</strong>.
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
-            <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 font-mono text-sm text-orange-300 truncate">{shareLink}</div>
-            <button
-              onClick={copyLink}
-              className="px-4 py-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-white text-sm font-bold transition-colors"
-            >
-              {copied ? "✓ Copié" : "Copier le lien"}
-            </button>
+          {/* Code du mois en cours */}
+          <div className="rounded-xl border border-purple-500/30 bg-purple-500/[0.08] p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs uppercase tracking-wider text-purple-300 font-bold">
+                Code du mois — {periodLabel(ref.currentPeriod)}
+              </p>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Actif</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 font-mono text-sm text-orange-300 truncate">{shareLink}</div>
+              <button onClick={copyLink}
+                className="px-4 py-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-white text-sm font-bold transition-colors">
+                {copied ? "✓ Copié" : "Copier le lien"}
+              </button>
+            </div>
+            <p className="text-[11px] text-white/45">
+              Code à partager : <strong className="text-orange-300 font-mono">{ref.currentCode}</strong> · valable
+              jusqu'au {new Date(parseInt(ref.currentPeriod.slice(0, 4), 10), parseInt(ref.currentPeriod.slice(4), 10), 0).toLocaleDateString("fr-FR")}
+            </p>
           </div>
 
-          <div className="flex flex-wrap gap-3 text-xs">
+          {/* Compteurs */}
+          <div className="flex flex-wrap gap-2 text-xs">
             <span className="px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-white/60">
-              Code : <strong className="text-orange-300 font-mono">{ref.code}</strong>
+              Filleuls inscrits : <strong className="text-white">{ref.codes.filter(c => c.used).length + ref.legacyReferees.length}</strong>
             </span>
-            <span className="px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-white/60">
-              Filleuls : <strong className="text-white">{ref.referrals.length}</strong>
-            </span>
-            <span className="px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-emerald-300">
+            <span className="px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/25 text-amber-300">
               Convertis : <strong>{ref.totalConverted}</strong>
             </span>
             <span className="px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-emerald-300">
               Mois offerts : <strong>{ref.totalRewardMonths}</strong>
             </span>
+            <span className="px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-white/60">
+              Quota restant : <strong className="text-white">{ref.remainingYearly} / 12</strong>
+            </span>
           </div>
 
-          {ref.referrals.length > 0 && (
-            <div className="rounded-xl border border-white/[0.06] overflow-hidden">
+          {/* Historique des codes mensuels */}
+          {ref.codes.length > 1 && (
+            <details className="rounded-xl border border-white/[0.06] overflow-hidden">
+              <summary className="px-4 py-2.5 text-sm font-semibold text-white/70 cursor-pointer hover:bg-white/[0.03]">
+                Historique de vos codes ({ref.codes.length} mois)
+              </summary>
               <table className="w-full text-sm">
                 <thead className="bg-white/[0.04] text-[10px] uppercase tracking-wider text-white/40">
-                  <tr><th className="px-3 py-2 text-left">Filleul</th><th className="px-3 py-2 text-left">Date</th><th className="px-3 py-2 text-right">Statut</th></tr>
+                  <tr>
+                    <th className="px-3 py-2 text-left">Mois</th>
+                    <th className="px-3 py-2 text-left">Code</th>
+                    <th className="px-3 py-2 text-left">Filleul</th>
+                    <th className="px-3 py-2 text-right">Statut</th>
+                  </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.04]">
-                  {ref.referrals.map((r, i) => (
-                    <tr key={i}>
-                      <td className="px-3 py-2 text-white/80">{r.name}</td>
-                      <td className="px-3 py-2 text-white/40 text-xs">{new Date(r.createdAt).toLocaleDateString("fr-FR")}</td>
+                  {ref.codes.map((c) => (
+                    <tr key={c.code} className={c.isCurrent ? "bg-purple-500/[0.06]" : ""}>
+                      <td className="px-3 py-2 text-white/70 text-xs">{periodLabel(c.periodYearMonth)}</td>
+                      <td className="px-3 py-2 text-orange-300 font-mono text-xs">{c.code}</td>
+                      <td className="px-3 py-2 text-white/60 text-xs">{c.refereeName ?? "—"}</td>
                       <td className="px-3 py-2 text-right">
-                        {r.rewardGranted ? (
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400">🎉 +30 j offerts</span>
-                        ) : r.converted ? (
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400">Converti</span>
+                        {c.rewarded ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400">🎉 +30 j versés</span>
+                        ) : c.converted ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400">Converti</span>
+                        ) : c.used ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/[0.06] text-white/50">Essai en cours</span>
+                        ) : c.isCurrent ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-300">Dispo</span>
                         ) : (
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-white/[0.06] text-white/45">En essai</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/[0.04] text-white/35">Non utilisé</span>
                         )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
+            </details>
           )}
+
+          {/* Conditions */}
+          <div className="rounded-xl border border-white/[0.06] bg-black/30 p-3 text-[11px] text-white/45 leading-relaxed space-y-1.5">
+            <p className="font-bold text-white/65 mb-1">Conditions du programme</p>
+            <p>• 1 code par mois calendaire, soit 12 codes par an. Un code non utilisé n'est pas reportable.</p>
+            <p>• La récompense de 30 jours est versée <strong className="text-white/70">uniquement</strong> à la 1ère facture payée du filleul (Stripe ou paiement manuel confirmé).</p>
+            <p>• Si le filleul résilie ou est remboursé dans les 30 jours suivant son 1er paiement, la récompense peut être annulée.</p>
+            <p>• Les codes ne sont pas utilisables sur un compte créé par vous-même ou un proche déjà rattaché à votre établissement.</p>
+            <p>• Sans valeur monétaire, non cumulables avec d'autres promotions, non transférables.</p>
+            <p>• MaTable.Pro se réserve le droit de refuser ou annuler une récompense en cas d'abus avéré.</p>
+          </div>
         </div>
       )}
     </div>

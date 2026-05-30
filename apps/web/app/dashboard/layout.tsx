@@ -7,6 +7,7 @@ import { MobileBottomNav, type BottomNavItem } from "@/components/dashboard/Mobi
 import { CommandPalette, type PaletteDestination } from "@/components/dashboard/CommandPalette";
 import { OnboardingDrawer } from "@/components/dashboard/OnboardingDrawer";
 import { GuidedTour, type TourStep } from "@/components/dashboard/GuidedTour";
+import { ReferralReminderPopup } from "@/components/dashboard/ReferralReminderPopup";
 
 // Descriptions par écran pour le tour guidé (clé = href)
 const TOUR_DESC: Record<string, string> = {
@@ -664,6 +665,12 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
         open={tourOpen}
         steps={tourSteps}
         onClose={() => setTourOpen(false)}
+      />
+
+      {/* Rappel parrainage J-5 avant facturation */}
+      <ReferralReminderPopup
+        daysRemaining={trial.daysRemaining}
+        isTrial={trial.isTrial}
       />
 
       {/* Toast notifications */}
