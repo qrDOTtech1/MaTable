@@ -59,7 +59,7 @@ export function ReferralReminderPopup({ daysRemaining, isTrial }: { daysRemainin
               </h3>
               <p className="text-sm text-white/55 mt-2 leading-relaxed">
                 Votre code du mois n'a pas encore été utilisé. Un confrère qui s'inscrit avec et passe en payant
-                = <strong className="text-emerald-400">30 jours offerts pour vous</strong>.
+                = <strong className="text-emerald-400">30 jours à votre niveau d'abonnement</strong>.
                 Un code non utilisé n'est pas reportable.
               </p>
             </div>

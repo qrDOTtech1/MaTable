@@ -35,7 +35,7 @@ export const PLANS = [
       "Réservations Intelligentes (créneaux dynamiques, arrhes Stripe, anti no-show)",
       "Programme Fidélité inclus (clients, points, offres et récompenses)",
       "Statistiques actionnables avec recommandations IA en langage naturel",
-      "Programme parrainage MaTable (12 codes/an, +30 jours offerts par filleul converti)",
+      "Programme parrainage MaTable (12 codes/an, +30 jours à votre niveau par filleul converti, bonus Nova IA pour les parrains Starter)",
     ],
   },
   {

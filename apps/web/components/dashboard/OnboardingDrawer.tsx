@@ -223,7 +223,11 @@ export function OnboardingDrawer({
             </div>
             <div className="flex items-start gap-3 p-3 rounded-xl bg-purple-500/[0.07] border border-purple-500/20">
               <span className="text-lg shrink-0">💰</span>
-              <p className="text-[12px] text-white/65 leading-snug">Un confrère s'inscrit avec et paie sa 1ère facture → <strong className="text-emerald-400">+30 jours offerts</strong> sur votre abonnement.</p>
+              <p className="text-[12px] text-white/65 leading-snug">Un confrère s'inscrit avec et paie sa 1ère facture → <strong className="text-emerald-400">+30 jours à votre niveau d'abonnement</strong> (pas un mois générique).</p>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-purple-500/[0.07] border border-purple-500/20">
+              <span className="text-lg shrink-0">🧪</span>
+              <p className="text-[12px] text-white/65 leading-snug"><strong className="text-purple-300">Bonus Starter</strong> : à votre 1<sup>re</sup> conversion, vous débloquez en plus 30 jours d'accès Nova IA — pour goûter à la Business.</p>
             </div>
             <div className="flex items-start gap-3 p-3 rounded-xl bg-purple-500/[0.07] border border-purple-500/20">
               <span className="text-lg shrink-0">🧮</span>

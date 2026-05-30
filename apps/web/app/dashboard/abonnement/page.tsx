@@ -229,7 +229,13 @@ export default function AbonnementPage() {
               <p className="text-sm text-white/55 mt-1">
                 Vous recevez <strong className="text-white">1 nouveau code par mois</strong> (12 par an).
                 Chaque code peut faire venir <strong className="text-white">1 nouveau resto</strong> — et dès qu'il devient payant,
-                <strong className="text-emerald-400"> on vous offre 30 jours d'abonnement</strong>.
+                <strong className="text-emerald-400"> on vous offre 30 jours à votre niveau d'abonnement actuel</strong>
+                {status?.plan === "STARTER" && (
+                  <>
+                    {" "}<strong className="text-purple-300">+ 30 jours d'accès Nova IA</strong> en bonus
+                    à votre 1<sup>re</sup> conversion
+                  </>
+                )}.
               </p>
             </div>
           </div>
@@ -316,8 +322,10 @@ export default function AbonnementPage() {
           <div className="rounded-xl border border-white/[0.06] bg-black/30 p-3 text-[11px] text-white/45 leading-relaxed space-y-1.5">
             <p className="font-bold text-white/65 mb-1">Conditions du programme</p>
             <p>• 1 code par mois calendaire, soit 12 codes par an. Un code non utilisé n'est pas reportable.</p>
-            <p>• La récompense de 30 jours est versée <strong className="text-white/70">uniquement</strong> à la 1ère facture payée du filleul (Stripe ou paiement manuel confirmé).</p>
-            <p>• Si le filleul résilie ou est remboursé dans les 30 jours suivant son 1er paiement, la récompense peut être annulée.</p>
+            <p>• La récompense est de <strong className="text-white/70">30 jours équivalents à votre forfait actuel</strong> au moment du versement (Starter, Pro ou Business), et non un mois générique.</p>
+            <p>• <strong className="text-white/70">Bonus Starter</strong> : à votre 1<sup>re</sup> conversion de filleul, vous bénéficiez en plus de 30 jours d'accès Nova IA — non renouvelables automatiquement et limités à 1 fois par compte.</p>
+            <p>• La récompense est versée <strong className="text-white/70">uniquement</strong> à la 1<sup>re</sup> facture payée du filleul (Stripe ou paiement manuel confirmé).</p>
+            <p>• Si le filleul résilie ou est remboursé dans les 30 jours suivant son 1<sup>er</sup> paiement, la récompense peut être annulée.</p>
             <p>• Les codes ne sont pas utilisables sur un compte créé par vous-même ou un proche déjà rattaché à votre établissement.</p>
             <p>• Sans valeur monétaire, non cumulables avec d'autres promotions, non transférables.</p>
             <p>• MaTable.Pro se réserve le droit de refuser ou annuler une récompense en cas d'abus avéré.</p>

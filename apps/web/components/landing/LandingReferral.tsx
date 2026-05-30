@@ -31,7 +31,14 @@ export default function LandingReferral() {
           <p className="text-lg text-white/55 leading-relaxed">
             Chaque mois, un <strong className="text-white">nouveau code parrainage</strong> apparaît dans votre dashboard.
             Un confrère s'inscrit avec, paie sa première facture, et on vous offre
-            <strong className="text-emerald-400"> 30 jours d'abonnement</strong>. C'est presque embarrassant.
+            <strong className="text-emerald-400"> 30 jours à votre niveau d'abonnement</strong>. Pas un mois
+            générique calculé sur le forfait du bas — un mois équivalent de ce que vous payez aujourd'hui.
+          </p>
+          <p className="text-lg text-white/55 leading-relaxed">
+            Et si vous êtes en <strong className="text-white">Starter</strong> : bonus.
+            Vous débloquez <strong className="text-purple-300">30 jours d'accès Nova IA</strong> à votre
+            1<sup>re</sup> conversion. Comme ça vous goûtez à la Business sans payer le prix.
+            Si après ça vous restez en Starter, c'est votre droit.
           </p>
           <p className="text-lg text-white/55 leading-relaxed">
             Faites le calcul : <strong className="text-white">12 codes par an, 12 confrères convertis</strong> =
@@ -65,7 +72,8 @@ export default function LandingReferral() {
             {[
               ["📅", "1 code par mois", "Un nouveau code apparaît chaque mois dans votre dashboard. Pas utilisé = perdu. Désolé, c'est volontaire."],
               ["🎯", "1 filleul par code", "Un seul nouveau restaurateur peut utiliser un code donné. Pas de chaîne pyramidale."],
-              ["💰", "Récompense à la 1ère facture", "On vous offre 30 jours uniquement quand votre filleul paie pour de vrai. Pas avant. Sinon on ferait faillite."],
+              ["💰", "Récompense à votre niveau", "30 jours équivalents à votre forfait actuel — pas un mois \"générique\". Versés uniquement quand le filleul paie pour de vrai. Sinon on ferait faillite."],
+              ["🧪", "Bonus Starter", "Si vous êtes en Starter, vous débloquez en plus 30 jours d'accès Nova IA à votre 1re conversion. Une mise en bouche, pas un piège."],
               ["🛡️", "Anti-abus assumé", "On ne se fait pas avoir par un cousin qui s'inscrit puis disparaît. C'est marqué dans les CGV. Lisez-les, c'est court."],
             ].map(([icon, title, desc]) => (
               <li key={title} className="flex items-start gap-3 rounded-xl border border-white/8 bg-white/[0.03] p-3">
