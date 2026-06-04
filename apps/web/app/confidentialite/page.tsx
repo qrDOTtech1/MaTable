@@ -10,11 +10,11 @@ export default function ConfidentialitePage() {
           <section>
             <h2 className="text-xl font-bold text-white">1. Responsable du traitement</h2>
             <p>Le responsable du traitement des donnees personnelles est :</p>
-            <p><strong className="text-white">[NOM DE LA SOCIETE]</strong>, SAS au capital de [MONTANT] euros<br/>
-            Siege social : [ADRESSE DU SIEGE]<br/>
-            RCS [VILLE] — SIRET : [NUMERO SIRET]<br/>
+            <p><strong className="text-white">MaTablePro</strong>, societe creee de fait entre personnes physiques<br/>
+            Siege social : 40 Rue du Bois des Joncs Marins, 94170 Le Perreux-sur-Marne, France<br/>
+            SIREN : 105 111 157 — SIRET : 10511115700019<br/>
             Co-fondateurs : Steven Franco, Hugo Bourgain<br/>
-            Contact DPO : <a href="mailto:contact@novavivo.online" className="text-orange-400 hover:underline">contact@novavivo.online</a></p>
+            Contact DPO : <a href="mailto:contact@matable.pro" className="text-orange-400 hover:underline">contact@matable.pro</a></p>
           </section>
 
           <section>
@@ -125,7 +125,7 @@ export default function ConfidentialitePage() {
               <li><strong className="text-white">Droit d'opposition</strong> : vous opposer au traitement de vos donnees pour des motifs legitimes</li>
               <li><strong className="text-white">Droit a la limitation</strong> : demander la suspension du traitement dans certains cas</li>
             </ul>
-            <p className="mt-3">Pour exercer vos droits, contactez-nous a : <a href="mailto:contact@novavivo.online" className="text-orange-400 hover:underline">contact@novavivo.online</a></p>
+            <p className="mt-3">Pour exercer vos droits, contactez-nous a : <a href="mailto:contact@matable.pro" className="text-orange-400 hover:underline">contact@matable.pro</a></p>
             <p>Vous disposez egalement du droit d'introduire une reclamation aupres de la CNIL (Commission Nationale de l'Informatique et des Libertes) — <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:underline">www.cnil.fr</a>.</p>
           </section>
 

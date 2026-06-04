@@ -10,12 +10,11 @@ export default function MentionsLegalesPage() {
           <section>
             <h2 className="text-xl font-bold text-white">1. Editeur du site</h2>
             <p>
-              <strong className="text-white">[NOM DE LA SOCIETE]</strong><br/>
-              Forme juridique : SAS (Societe par Actions Simplifiee)<br/>
-              Capital social : [MONTANT] euros<br/>
-              Siege social : [ADRESSE DU SIEGE]<br/>
-              RCS : [VILLE] — N° SIRET : [NUMERO SIRET]<br/>
-              N° TVA intracommunautaire : [NUMERO TVA]<br/>
+              <strong className="text-white">MaTablePro</strong><br/>
+              Forme juridique : Societe creee de fait entre personnes physiques<br/>
+              Siege social : 40 Rue du Bois des Joncs Marins, 94170 Le Perreux-sur-Marne, France<br/>
+              N° SIREN : 105 111 157 — N° SIRET : 10511115700019<br/>
+              TVA non applicable, article 293 B du Code general des impots<br/>
             </p>
             <p>
               <strong className="text-white">Co-fondateurs et dirigeants :</strong><br/>
@@ -24,14 +23,14 @@ export default function MentionsLegalesPage() {
             </p>
             <p>
               <strong className="text-white">Contact :</strong><br/>
-              Email : <a href="mailto:contact@novavivo.online" className="text-orange-400 hover:underline">contact@novavivo.online</a><br/>
+              Email : <a href="mailto:contact@matable.pro" className="text-orange-400 hover:underline">contact@matable.pro</a><br/>
               Site web : <a href="https://matable.pro" className="text-orange-400 hover:underline">matable.pro</a>
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-bold text-white">2. Directeur de la publication</h2>
-            <p>Steven Franco, en qualite de co-fondateur de [NOM DE LA SOCIETE].</p>
+            <p>Steven Franco, en qualite de co-fondateur de MaTablePro.</p>
           </section>
 
           <section>
@@ -52,15 +51,15 @@ export default function MentionsLegalesPage() {
 
           <section>
             <h2 className="text-xl font-bold text-white">4. Propriete intellectuelle</h2>
-            <p>L'ensemble du contenu du site matable.pro (textes, graphismes, logos, icones, images, logiciels, bases de donnees, algorithmes IA) est la propriete exclusive de [NOM DE LA SOCIETE] ou fait l'objet d'une autorisation d'utilisation.</p>
-            <p>Les marques MaTable, MaTable Pro, Nova Stock IA, Nova Finance IA, Nova Contab IA et les logos associes sont des marques de [NOM DE LA SOCIETE]. Toute reproduction, representation, modification ou exploitation non autorisee est interdite et constitue une contrefacon sanctionnee par les articles L.335-2 et suivants du Code de la propriete intellectuelle.</p>
+            <p>L'ensemble du contenu du site matable.pro (textes, graphismes, logos, icones, images, logiciels, bases de donnees, algorithmes IA) est la propriete exclusive de MaTablePro ou fait l'objet d'une autorisation d'utilisation.</p>
+            <p>Les marques MaTable, MaTable Pro, Nova Stock IA, Nova Finance IA, Nova Contab IA et les logos associes sont des marques de MaTablePro. Toute reproduction, representation, modification ou exploitation non autorisee est interdite et constitue une contrefacon sanctionnee par les articles L.335-2 et suivants du Code de la propriete intellectuelle.</p>
           </section>
 
           <section>
             <h2 className="text-xl font-bold text-white">5. Donnees personnelles</h2>
             <p>Le traitement de vos donnees personnelles est decrit dans notre <a href="/confidentialite" className="text-orange-400 hover:underline">Politique de Confidentialite</a>.</p>
             <p>Conformement au RGPD (Reglement UE 2016/679) et a la loi Informatique et Libertes du 6 janvier 1978 modifiee, vous disposez d'un droit d'acces, de rectification, de suppression, de portabilite et d'opposition sur vos donnees personnelles.</p>
-            <p>Pour exercer ces droits : <a href="mailto:contact@novavivo.online" className="text-orange-400 hover:underline">contact@novavivo.online</a></p>
+            <p>Pour exercer ces droits : <a href="mailto:contact@matable.pro" className="text-orange-400 hover:underline">contact@matable.pro</a></p>
           </section>
 
           <section>
@@ -70,13 +69,13 @@ export default function MentionsLegalesPage() {
 
           <section>
             <h2 className="text-xl font-bold text-white">7. Limitation de responsabilite</h2>
-            <p>[NOM DE LA SOCIETE] s'efforce de fournir des informations aussi precises que possible sur le site matable.pro. Toutefois, elle ne pourra etre tenue responsable des omissions, inexactitudes ou defauts de mise a jour.</p>
-            <p>Les liens hypertextes vers d'autres sites ne sauraient engager la responsabilite de [NOM DE LA SOCIETE] quant au contenu de ces sites.</p>
+            <p>MaTablePro s'efforce de fournir des informations aussi precises que possible sur le site matable.pro. Toutefois, elle ne pourra etre tenue responsable des omissions, inexactitudes ou defauts de mise a jour.</p>
+            <p>Les liens hypertextes vers d'autres sites ne sauraient engager la responsabilite de MaTablePro quant au contenu de ces sites.</p>
           </section>
 
           <section>
             <h2 className="text-xl font-bold text-white">8. Droit applicable</h2>
-            <p>Les presentes mentions legales sont soumises au droit francais. Tout litige sera porte devant les juridictions competentes du ressort du siege social de [NOM DE LA SOCIETE].</p>
+            <p>Les presentes mentions legales sont soumises au droit francais. Tout litige sera porte devant les juridictions competentes du ressort du siege social de MaTablePro.</p>
           </section>
 
         </div>

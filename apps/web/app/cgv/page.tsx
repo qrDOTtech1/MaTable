@@ -11,7 +11,7 @@ export default function CGVPage() {
             <h2 className="text-xl font-bold text-white">Article 1 — Objet</h2>
             <p>Les presentes Conditions Generales de Vente (ci-apres « CGV ») regissent les relations contractuelles entre :</p>
             <ul className="list-disc pl-5 space-y-1">
-              <li><strong className="text-white">[NOM DE LA SOCIETE]</strong>, SAS au capital de [MONTANT] euros, immatriculee au RCS de [VILLE] sous le numero [SIRET], dont le siege social est situe au [ADRESSE DU SIEGE], representee par ses co-fondateurs Steven Franco et Hugo Bourgain (ci-apres « le Prestataire »),</li>
+              <li><strong className="text-white">MaTablePro</strong>, societe creee de fait entre personnes physiques, identifiee sous le SIREN 105 111 157 (SIRET 10511115700019), dont le siege social est situe au 40 Rue du Bois des Joncs Marins, 94170 Le Perreux-sur-Marne, France, representee par ses co-fondateurs Steven Franco et Hugo Bourgain (ci-apres « le Prestataire »),</li>
               <li>et toute personne physique ou morale souscrivant a un abonnement aux services MaTable Pro (ci-apres « le Client »).</li>
             </ul>
             <p>Les CGV s'appliquent a l'ensemble des services proposes sur la plateforme matable.pro, incluant les solutions logicielles de gestion de restaurant commercialisees sous les marques MaTable, MaTable Pro, Nova Stock IA, Nova Finance IA, Nova Contab IA et toute autre solution editee par le Prestataire.</p>
@@ -74,7 +74,7 @@ export default function CGVPage() {
 
           <section>
             <h2 className="text-xl font-bold text-white">Article 8 — Propriete intellectuelle</h2>
-            <p>L'ensemble des logiciels, interfaces, contenus, algorithmes, modeles IA et marques (MaTable, MaTable Pro, Nova, etc.) sont la propriete exclusive de [NOM DE LA SOCIETE]. L'abonnement confere uniquement un droit d'utilisation non exclusif, non cessible et non transferable pour la duree du contrat.</p>
+            <p>L'ensemble des logiciels, interfaces, contenus, algorithmes, modeles IA et marques (MaTable, MaTable Pro, Nova, etc.) sont la propriete exclusive de MaTablePro. L'abonnement confere uniquement un droit d'utilisation non exclusif, non cessible et non transferable pour la duree du contrat.</p>
             <p>Le Client conserve la pleine propriete de ses donnees (menus, avis, donnees clients, photos, etc.).</p>
           </section>
 
