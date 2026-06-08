@@ -89,8 +89,19 @@ export default function LandingPage() {
             </motion.p>
 
             <motion.div
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45, duration: 0.8 }}
+              className="mb-6"
+            >
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-white/70">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-400" aria-hidden />
+                Digitalisation d'établissement depuis 2017
+                <span className="text-orange-400">*</span>
+              </span>
+            </motion.div>
+
+            <motion.div
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.8 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20"
+              className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6"
             >
               <Link href="/register" className="px-8 py-4 bg-orange-500 hover:bg-orange-400 text-white rounded-xl font-bold text-lg transition-all hover:scale-105 shadow-xl shadow-orange-500/25">
                 Demarrer l'essai gratuit →
@@ -99,6 +110,13 @@ export default function LandingPage() {
                 Voir la demo interactive
               </a>
             </motion.div>
+
+            <motion.p
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7, duration: 1 }}
+              className="text-[11px] text-white/35 max-w-xl mx-auto mb-14 leading-relaxed"
+            >
+              <span className="text-orange-400">*</span> Avant la création de MaTable.Pro, ses deux co-fondateurs collaboraient déjà à la digitalisation d'établissements de restauration.
+            </motion.p>
           </div>
         </motion.section>
 
