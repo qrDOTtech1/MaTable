@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { clearProToken, api, API_URL, getProToken } from "@/lib/api";
+import { clearProToken, setProToken, api, API_URL, getProToken } from "@/lib/api";
 import { MobileBottomNav, type BottomNavItem } from "@/components/dashboard/MobileBottomNav";
 import { CommandPalette, type PaletteDestination } from "@/components/dashboard/CommandPalette";
 import { OnboardingDrawer } from "@/components/dashboard/OnboardingDrawer";
@@ -64,6 +64,22 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
     setToasts((t) => [...t, { id, text }]);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 5000);
   };
+
+  // Promotion du token "pending" après retour de Stripe Checkout
+  useEffect(() => {
+    const pending = sessionStorage.getItem("pending_pro_token");
+    if (pending) {
+      setProToken(pending);
+      sessionStorage.removeItem("pending_pro_token");
+    }
+  }, []);
+
+  // Redirection vers login si aucun token
+  useEffect(() => {
+    if (!getProToken()) {
+      window.location.href = "/login";
+    }
+  }, []);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as "dark" | "light" | null;

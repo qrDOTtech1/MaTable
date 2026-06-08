@@ -77,8 +77,10 @@ export default function SouscrireClient() {
         throw new Error(j.error ?? "Impossible de lancer le paiement.");
       }
 
-      // 3. On stocke le token pour qu'au retour de Stripe l'utilisateur soit déjà connecté
-      setProToken(reg.token);
+      // 3. On stocke le token en sessionStorage (temporaire) — il ne sera promu
+      //    dans localStorage qu'après confirmation du paiement (page success).
+      //    Ainsi, si l'utilisateur fait "retour" depuis Stripe, il n'a PAS accès au dashboard.
+      sessionStorage.setItem("pending_pro_token", reg.token);
 
       // 4. Redirection vers Stripe Checkout
       window.location.href = j.url;
