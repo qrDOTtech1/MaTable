@@ -57,14 +57,25 @@ export default function SouscrireClient() {
       });
       if (!reg.token) throw new Error("Token manquant — impossible de continuer.");
 
-      // 2. Création de la session Stripe Checkout avec le token fraichement émis
-      const checkout = await fetch(`${API_URL}/api/platform-billing/checkout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${reg.token}` },
-        body: JSON.stringify({ plan: planId, interval: billing }),
-      });
-      const j = await checkout.json();
-      if (!checkout.ok) throw new Error(j.error ?? "Impossible de lancer le paiement.");
+      // 2. Petit délai pour laisser la base propager la création du restaurant
+      await new Promise(r => setTimeout(r, 500));
+
+      // 3. Création de la session Stripe Checkout avec le token fraichement émis
+      let j: any;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const checkout = await fetch(`${API_URL}/api/platform-billing/checkout`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${reg.token}` },
+          body: JSON.stringify({ plan: planId, interval: billing }),
+        });
+        j = await checkout.json();
+        if (checkout.ok) break;
+        if (j.error === "restaurant_not_found" && attempt < 2) {
+          await new Promise(r => setTimeout(r, 1000));
+          continue;
+        }
+        throw new Error(j.error ?? "Impossible de lancer le paiement.");
+      }
 
       // 3. On stocke le token pour qu'au retour de Stripe l'utilisateur soit déjà connecté
       setProToken(reg.token);
@@ -133,10 +144,18 @@ export default function SouscrireClient() {
               {busy ? "Préparation du paiement…" : `Signer et payer ${monthlyPrice}€${billing === "yearly" ? " × 12 (annuel)" : "/mois"} →`}
             </button>
 
-            <p className="text-[11px] text-white/40 text-center leading-relaxed">
-              Vous renoncez à l'essai gratuit de 14 jours en souscrivant directement.
-              Paiement sécurisé Stripe. <Link href="/register" className="text-orange-400 hover:underline">Préférer l'essai gratuit →</Link>
-            </p>
+            <div className="rounded-xl border border-orange-500/20 bg-orange-500/[0.05] px-4 py-3 text-center space-y-1.5">
+              <p className="text-sm text-white/70">
+                🎉 Vous pouvez toujours <strong className="text-orange-400">essayer gratuitement pendant 14 jours</strong> si vous ne l'avez pas encore fait&nbsp;!
+              </p>
+              <Link
+                href="/register"
+                className="inline-block text-sm font-bold text-orange-400 hover:text-orange-300 underline underline-offset-2 transition-colors"
+              >
+                Commencer mon essai gratuit →
+              </Link>
+              <p className="text-[11px] text-white/35">Aucune carte bancaire requise · Sans engagement</p>
+            </div>
           </form>
 
           {/* Récap forfait + signature */}
