@@ -149,25 +149,36 @@ export default function PricingBuilder() {
         </a>
       </p>
 
-      {/* CTA row */}
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="px-8 py-4 bg-orange-500 hover:bg-orange-400 text-white rounded-xl font-bold text-base transition-all shadow-xl shadow-orange-500/20 hover:-translate-y-1"
-        >
-          📩 Recevoir mon contrat — Forfait {selectedPlan.name}
-        </button>
-        <Link
-          href="/register"
-          className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-bold text-base transition-all hover:-translate-y-1"
-        >
-          Essai gratuit 14 jours
-        </Link>
+      {/* CTA row — souscription directe en primary */}
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row items-stretch justify-center gap-3">
+          <Link
+            href={`/souscrire?plan=${selectedPlan.id}&billing=${billing === "annual" ? "yearly" : "monthly"}`}
+            className="flex-1 max-w-md mx-auto sm:mx-0 px-8 py-4 bg-orange-500 hover:bg-orange-400 text-white rounded-xl font-black text-base text-center transition-all shadow-xl shadow-orange-500/30 hover:-translate-y-1"
+          >
+            💳 Souscrire & payer — Forfait {selectedPlan.name}
+          </Link>
+        </div>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-bold text-sm transition-all"
+          >
+            📩 Recevoir mon contrat
+          </button>
+          <Link
+            href="/register"
+            className="px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-bold text-sm transition-all"
+          >
+            Essai gratuit 14 jours
+          </Link>
+        </div>
       </div>
       <p className="text-center text-xs text-white/40">
-        <b className="text-white/60">Recevoir mon contrat</b> : Steven vous rappelle sous 24h ·{" "}
-        <b className="text-white/60">Essai gratuit</b> : compte instantané sans carte bancaire.
+        <b className="text-white/60">Souscrire & payer</b> : compte activé immédiatement, contrat signé en ligne ·{" "}
+        <b className="text-white/60">Essai gratuit</b> : sans carte bancaire ·{" "}
+        <b className="text-white/60">Recevoir le contrat</b> : Steven vous rappelle sous 24 h.
       </p>
 
       <PricingRequestModal

@@ -77,12 +77,24 @@ export function OnboardingDrawer({
       key: "welcome",
       render: () => (
         <div className="text-center px-2">
-          <div className="text-5xl mb-4">👋</div>
+          <div className="text-5xl mb-4">{isTrial ? "👋" : "🎉"}</div>
           <h2 className="text-2xl font-black mb-1">
-            Bienvenue chez <span className="whitespace-nowrap">Ma<span className="text-orange-500">Table</span>.Pro</span> !
+            {isTrial ? (
+              <>Bienvenue chez <span className="whitespace-nowrap">Ma<span className="text-orange-500">Table</span>.Pro</span> !</>
+            ) : (
+              <>Merci pour votre confiance !</>
+            )}
           </h2>
           {restaurantName && (
-            <p className="text-sm text-white/40 mb-2">Votre espace : <span className="text-white/70 font-semibold">{restaurantName}</span></p>
+            <p className="text-sm text-white/40 mb-2">
+              {isTrial ? "Votre espace : " : "Compte activé : "}
+              <span className="text-white/70 font-semibold">{restaurantName}</span>
+            </p>
+          )}
+          {!isTrial && (
+            <div className="inline-flex items-center gap-2 mb-3 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 text-xs font-bold">
+              ✓ Paiement confirmé · Contrat signé en ligne
+            </div>
           )}
           {isTrial && (
             <div className="inline-flex items-center gap-2 mb-3 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 text-xs font-bold">
@@ -93,9 +105,15 @@ export function OnboardingDrawer({
             </div>
           )}
           <p className="text-sm text-white/50 leading-relaxed max-w-sm mx-auto">
-            On vous accompagne en 1 minute pour découvrir votre tableau de bord
-            <span className="text-white"> Ma<span className="text-orange-500">Table</span></span>.
-            {isTrial && " Vous avez accès à toutes les fonctions Pro, sans engagement ni paiement."}
+            {isTrial ? (
+              <>On vous accompagne en 1 minute pour découvrir votre tableau de bord
+              <span className="text-white"> Ma<span className="text-orange-500">Table</span></span>.
+              Vous avez accès à toutes les fonctions Pro, sans engagement ni paiement.</>
+            ) : (
+              <>Votre abonnement est <strong className="text-white">actif</strong> et votre contrat signé en ligne est disponible
+              dans <strong className="text-white">Mon abonnement</strong>. On vous fait visiter en 1 minute votre nouveau
+              tableau de bord <span className="text-white">Ma<span className="text-orange-500">Table</span></span>.</>
+            )}
           </p>
         </div>
       ),

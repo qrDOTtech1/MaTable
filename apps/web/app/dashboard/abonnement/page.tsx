@@ -12,6 +12,13 @@ type Status = {
   daysRemaining?: number | null;
 };
 
+type ContractInfo = {
+  restaurantName: string | null;
+  cgvAcceptedAt: string | null;
+  cgvSignatureName: string | null;
+  cgvContractData: { plan?: string; billing?: string; signedAt?: string } | null;
+};
+
 const PLANS = [
   { key: "starter",  label: "Starter",  monthly: 59,  features: ["Avis Google", "Réservations", "Commande & Paiement QR"] },
   { key: "pro",      label: "Pro",      monthly: 119, features: ["Tout Starter", "Portails Serveur / Cuisine / Caisse"] },
@@ -47,6 +54,7 @@ export default function AbonnementPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [ref, setRef] = useState<ReferralData | null>(null);
   const [copied, setCopied] = useState(false);
+  const [contract, setContract] = useState<ContractInfo | null>(null);
 
   useEffect(() => {
     api<Status>("/api/platform-billing/status")
@@ -56,7 +64,111 @@ export default function AbonnementPage() {
     api<ReferralData>("/api/pro/referrals/me")
       .then(setRef)
       .catch(() => {});
+    api<{ restaurant: ContractInfo }>("/api/pro/me")
+      .then((r) => setContract({
+        restaurantName: r.restaurant.restaurantName ?? (r.restaurant as any).name ?? null,
+        cgvAcceptedAt: r.restaurant.cgvAcceptedAt,
+        cgvSignatureName: r.restaurant.cgvSignatureName,
+        cgvContractData: r.restaurant.cgvContractData,
+      }))
+      .catch(() => {});
   }, []);
+
+  // Génère le contrat d'abonnement signé en HTML pour impression PDF
+  function downloadContract() {
+    if (!contract?.cgvAcceptedAt) return;
+    const planLabel = ({ starter: "Starter", pro: "Pro", business: "Business" } as Record<string, string>)[contract.cgvContractData?.plan ?? ""] ?? "Pro";
+    const billingLabel = contract.cgvContractData?.billing === "yearly" ? "Annuel (−12 %)" : "Mensuel sans engagement";
+    const signedAt = new Date(contract.cgvContractData?.signedAt ?? contract.cgvAcceptedAt).toLocaleString("fr-FR");
+    const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Contrat d'abonnement signé — ${contract.restaurantName ?? "MaTable.Pro"}</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #111; font-size: 12px; line-height: 1.45; margin: 0; padding: 0; }
+  .header { border-bottom: 3px solid #ea580c; padding-bottom: 14px; margin-bottom: 22px; display: flex; justify-content: space-between; align-items: flex-start; }
+  .logo { font-size: 22px; font-weight: 900; }
+  .logo .o { color: #ea580c; }
+  .tag { font-size: 9px; color: #666; margin-top: 4px; letter-spacing: 1.5px; }
+  .ref { text-align: right; font-size: 11px; color: #666; }
+  .ref b { color: #ea580c; font-size: 14px; display: block; }
+  h1 { font-size: 16px; text-transform: uppercase; letter-spacing: 2px; text-align: center; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin: 0 0 22px; }
+  h2 { font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: #ea580c; margin: 18px 0 8px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+  td { padding: 7px 9px; vertical-align: top; }
+  .row { border-bottom: 1px solid #f0f0f0; }
+  .row td:first-child { color: #666; width: 38%; }
+  .row td:last-child { font-weight: 600; }
+  .sign-box { border: 2px solid #ea580c; border-radius: 8px; padding: 14px 16px; background: #fff7ed; margin: 18px 0; }
+  .sign-box .label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #ea580c; font-weight: 900; }
+  .sign-box .name { font-size: 22px; font-family: 'Lucida Handwriting', cursive; color: #1a1a1a; margin: 6px 0 4px; }
+  .sign-box .meta { font-size: 10px; color: #666; line-height: 1.5; }
+  .footer { font-size: 9px; color: #888; text-align: center; border-top: 1px solid #eee; padding-top: 10px; margin-top: 22px; }
+  .footer .italic { font-style: italic; color: #aaa; }
+</style></head><body>
+  <div class="header">
+    <div>
+      <div class="logo">MaTable<span class="o">.Pro</span></div>
+      <div class="tag">DIGITALISATION D'ÉTABLISSEMENT DEPUIS 2017*</div>
+    </div>
+    <div class="ref">
+      <span style="text-transform:uppercase;">Contrat d'abonnement</span>
+      <b>${(contract.restaurantName || "MaTable").slice(0, 24).toUpperCase()}</b>
+      <span>Signé le ${signedAt}</span>
+    </div>
+  </div>
+
+  <h1>Contrat d'abonnement — Plateforme MaTable.Pro</h1>
+
+  <h2>1. Parties</h2>
+  <table>
+    <tr class="row"><td>Le Prestataire</td><td>MaTable.Pro — Plateforme logicielle pour la restauration. matable.pro</td></tr>
+    <tr class="row"><td>Le Client (souscripteur)</td><td>${contract.restaurantName ?? "Établissement"}</td></tr>
+  </table>
+
+  <h2>2. Objet</h2>
+  <p>Le Prestataire concède au Client un droit d'usage personnel et non exclusif sur la plateforme MaTable.Pro,
+  incluant l'ensemble des modules listés ci-dessous pour le forfait choisi. Le détail des fonctionnalités est consultable
+  sur matable.pro/tarifs et fait partie intégrante du présent contrat.</p>
+
+  <h2>3. Forfait souscrit</h2>
+  <table>
+    <tr class="row"><td>Forfait</td><td><strong style="color:#ea580c">${planLabel}</strong></td></tr>
+    <tr class="row"><td>Mode de facturation</td><td>${billingLabel}</td></tr>
+    <tr class="row"><td>Date d'activation</td><td>${signedAt}</td></tr>
+    <tr class="row"><td>Engagement</td><td>Aucun — résiliation possible à tout moment via le portail Stripe</td></tr>
+  </table>
+
+  <h2>4. Conditions générales</h2>
+  <p>Le Client reconnaît avoir lu et accepté sans réserve les Conditions Générales de Vente publiées sur matable.pro/cgv et la
+  Politique de confidentialité publiée sur matable.pro/confidentialite, qui font partie intégrante du présent contrat.
+  Le présent contrat est soumis au droit français. Tout litige sera porté devant les tribunaux du ressort de la cour d'appel
+  du siège du Prestataire.</p>
+
+  <h2>5. Programme parrainage</h2>
+  <p>Le Client bénéficie, dès activation, du programme parrainage MaTable.Pro : 12 codes par an (1/mois calendaire).
+  Chaque filleul restaurateur qui souscrit avec un code et règle sa 1<sup>re</sup> facture ouvre droit à 30 jours d'abonnement
+  offerts au Client, au niveau de son forfait en cours. Les conditions détaillées sont accessibles depuis le tableau de bord du Client.</p>
+
+  <div class="sign-box">
+    <div class="label">Signature électronique du Client (eIDAS)</div>
+    <div class="name">${contract.cgvSignatureName ?? "—"}</div>
+    <div class="meta">
+      <strong>Signé le ${signedAt}</strong><br/>
+      Par acceptation explicite des CGV via la case à cocher en ligne sur matable.pro/souscrire.<br/>
+      Cette signature électronique, son horodatage et l'adresse IP de connexion conservés par le Prestataire constituent
+      la preuve d'acceptation du présent contrat conformément au Règlement (UE) n° 910/2014 (eIDAS).
+    </div>
+  </div>
+
+  <div class="footer">
+    Document à conserver — MaTable.Pro · matable.pro<br/>
+    <span class="italic">*Avant la création de MaTable.Pro, ses deux co-fondateurs collaboraient déjà à la digitalisation d'établissements.</span>
+  </div>
+</body></html>`;
+    const win = window.open("", "_blank", "width=900,height=1200");
+    if (!win) { alert("Pop-up bloquée. Autorisez les pop-ups pour télécharger votre contrat."); return; }
+    win.document.open(); win.document.write(html); win.document.close();
+    setTimeout(() => { win.focus(); win.print(); }, 300);
+  }
 
   const shareLink = ref?.currentCode ? `${typeof window !== "undefined" ? window.location.origin : "https://matable.pro"}/register?ref=${ref.currentCode}` : "";
   async function copyLink() {
@@ -156,6 +268,29 @@ export default function AbonnementPage() {
           </button>
         )}
       </div>
+
+      {/* Contrat d'abonnement signé électroniquement */}
+      {contract?.cgvAcceptedAt && (
+        <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.04] p-5 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-start gap-3 min-w-0">
+            <span className="text-2xl">📄</span>
+            <div className="min-w-0">
+              <p className="font-black text-white">Contrat d'abonnement signé</p>
+              <p className="text-sm text-white/55 mt-0.5">
+                Signé électroniquement par <strong className="text-white/80">{contract.cgvSignatureName}</strong>
+                {" "}le {new Date(contract.cgvAcceptedAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}.
+                Valeur légale eIDAS.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={downloadContract}
+            className="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-white text-sm font-bold transition-colors shrink-0"
+          >
+            📥 Télécharger
+          </button>
+        </div>
+      )}
 
       {!status?.billingEnabled ? (
         <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] p-5 text-sm text-amber-200/80">
