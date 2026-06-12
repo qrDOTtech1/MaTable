@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { io, Socket } from "socket.io-client";
 import { api, API_URL, redirectOn401 } from "@/lib/api";
 import { useRouter } from "next/navigation";
@@ -85,10 +85,20 @@ export default function DashboardPage() {
   }, [loadOrders, loadMenu, router]);
 
   // ── Tab title + pending count ──────────────────────────────────────────────
-  const pendingOrders = orders.filter((o) => o.status === "PENDING");
-  const cookingOrders = orders.filter((o) => o.status === "COOKING");
-  const readyOrders   = orders.filter((o) => o.status === "READY");
-  const servedOrders  = orders.filter((o) => o.status === "SERVED");
+  // Bucketed in a single pass and memoized so dependent effects don't fire on every render.
+  const { pendingOrders, cookingOrders, readyOrders, servedOrders } = useMemo(() => {
+    const pending: typeof orders = [];
+    const cooking: typeof orders = [];
+    const ready: typeof orders = [];
+    const served: typeof orders = [];
+    for (const o of orders) {
+      if (o.status === "PENDING") pending.push(o);
+      else if (o.status === "COOKING") cooking.push(o);
+      else if (o.status === "READY") ready.push(o);
+      else if (o.status === "SERVED") served.push(o);
+    }
+    return { pendingOrders: pending, cookingOrders: cooking, readyOrders: ready, servedOrders: served };
+  }, [orders]);
 
   useEffect(() => {
     const n = pendingOrders.length;
