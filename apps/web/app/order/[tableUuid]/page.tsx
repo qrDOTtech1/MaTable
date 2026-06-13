@@ -264,6 +264,30 @@ export default function OrderPage() {
     return () => void socket.disconnect();
   }, [sessionId, tableUuid]);
 
+  // O(1) menu-by-id lookups; reused by cart math, upsell suggestions, and category grouping.
+  const menuById = useMemo(() => {
+    if (!info) return new Map<string, MenuItem>();
+    return new Map(info.menu.map(m => [m.id, m]));
+  }, [info]);
+
+  // Group menu items by category + sort by service phase. Was rebuilt + re-sorted every render
+  // (n menu items × m phases substring scan). Now memoized on the menu array only.
+  const { byCat, sortedCats } = useMemo(() => {
+    if (!info) return { byCat: {} as Record<string, MenuItem[]>, sortedCats: [] as string[] };
+    const PHASE_ORDER = ["Apéritifs", "Cocktails", "Boissons", "Entrées", "Plats", "Desserts", "Cafés", "Digestifs"];
+    const grouped = info.menu.reduce<Record<string, MenuItem[]>>((acc, m) => {
+      const k = m.category || "Menu";
+      (acc[k] ||= []).push(m);
+      return acc;
+    }, {});
+    const sorted = Object.keys(grouped).sort((a, b) => {
+      const ia = PHASE_ORDER.findIndex(p => a.toLowerCase().includes(p.toLowerCase()));
+      const ib = PHASE_ORDER.findIndex(p => b.toLowerCase().includes(p.toLowerCase()));
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    });
+    return { byCat: grouped, sortedCats: sorted };
+  }, [info]);
+
   const cartTotal = useMemo(() => {
     if (!info) return 0;
     return info.menu.reduce((s, m) => {
@@ -304,10 +328,10 @@ export default function OrderPage() {
       localStorage.setItem(cartKey(tableUuid), JSON.stringify(next));
 
       if (delta > 0 && info) {
-        const addedItem = info.menu.find(m => m.id === id);
+        const addedItem = menuById.get(id);
         if (addedItem && addedItem.upsellItems && addedItem.upsellItems.length > 0) {
           const suggestions = addedItem.upsellItems
-            .map(uid => info.menu.find(m => m.id === uid))
+            .map(uid => menuById.get(uid))
             .filter((m): m is MenuItem => m !== undefined && !(next[m.id] > 0));
           if (suggestions.length > 0) {
             setUpsellItem(addedItem);
@@ -449,20 +473,6 @@ export default function OrderPage() {
       <div className="w-8 h-8 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
     </main>
   );
-
-  const byCat = info.menu.reduce<Record<string, MenuItem[]>>((acc, m) => {
-    const k = m.category || "Menu";
-    (acc[k] ||= []).push(m);
-    return acc;
-  }, {});
-
-  const PHASE_ORDER = ["Apéritifs", "Cocktails", "Boissons", "Entrées", "Plats", "Desserts", "Cafés", "Digestifs"];
-  const catKeys = Object.keys(byCat);
-  const sortedCats = catKeys.sort((a, b) => {
-    const ia = PHASE_ORDER.findIndex(p => a.toLowerCase().includes(p.toLowerCase()));
-    const ib = PHASE_ORDER.findIndex(p => b.toLowerCase().includes(p.toLowerCase()));
-    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-  });
 
   const safeIdx = Math.min(Math.max(0, currentCatIdx), Math.max(0, sortedCats.length - 1));
   const currentCat = sortedCats[safeIdx] || "Menu";
