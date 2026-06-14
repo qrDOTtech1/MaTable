@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { API_URL } from "@/lib/api";
 import { io, Socket } from "socket.io-client";
@@ -552,12 +552,28 @@ export default function ServeurDashPage() {
     );
   }
 
-  const pendingOrders = sessions.flatMap((s) => s.orders.filter((o) => o.status === "PENDING"));
-  const servedOrders = sessions.flatMap((s) => s.orders.filter((o) => o.status === "SERVED"));
-  const readySessions = sessions
-    .map((s) => ({ session: s, ready: s.orders.filter((o) => o.status === "READY") }))
-    .filter((x) => x.ready.length > 0);
-  const readyCount = readySessions.reduce((n, x) => n + x.ready.length, 0);
+  // Walk every session's orders once and bucket by status — memoized so the
+  // various 401/poll-driven re-renders don't redo this O(sessions*orders) work
+  // (was 3 separate passes + a reduce).
+  const { pendingOrders, servedOrders, readySessions, readyCount } = useMemo(() => {
+    const pending: Order[] = [];
+    const served: Order[] = [];
+    const ready: { session: TableSession; ready: Order[] }[] = [];
+    let count = 0;
+    for (const s of sessions) {
+      const r: Order[] = [];
+      for (const o of s.orders) {
+        if (o.status === "PENDING") pending.push(o);
+        else if (o.status === "SERVED") served.push(o);
+        else if (o.status === "READY") r.push(o);
+      }
+      if (r.length > 0) {
+        ready.push({ session: s, ready: r });
+        count += r.length;
+      }
+    }
+    return { pendingOrders: pending, servedOrders: served, readySessions: ready, readyCount: count };
+  }, [sessions]);
   const myTables = sessions.length + myEmptyTables.length;
   const todayDow = new Date().getDay();
   const todaySchedule = schedules.filter((s) => s.dayOfWeek === todayDow);
