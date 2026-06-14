@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { API_URL } from "@/lib/api";
 
@@ -172,8 +172,17 @@ export default function CuisineDashPage() {
     } finally { setTogglingId(null); }
   };
 
-  const pending = orders.filter((o) => o.status === "PENDING");
-  const cooking = orders.filter((o) => o.status === "COOKING");
+  // Bucketed in a single pass and memoized so the 15s nowTick re-render (and
+  // the 8s polling loop) don't re-walk and re-allocate orders unnecessarily.
+  const { pending, cooking } = useMemo(() => {
+    const p: Order[] = [];
+    const c: Order[] = [];
+    for (const o of orders) {
+      if (o.status === "PENDING") p.push(o);
+      else if (o.status === "COOKING") c.push(o);
+    }
+    return { pending: p, cooking: c };
+  }, [orders]);
 
   const elapsed = (iso: string) => {
     const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
