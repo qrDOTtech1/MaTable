@@ -99,6 +99,12 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
     if (pathname === "/dashboard/reservations") setResvNotifCount(0);
   }, [pathname]);
 
+  // Keep pathname accessible inside the long-lived SSE handler without
+  // re-subscribing on every route change. Without this ref the handler would
+  // read a stale pathname captured at mount.
+  const pathnameRef = useRef(pathname);
+  useEffect(() => { pathnameRef.current = pathname; }, [pathname]);
+
   // SSE — écouter les nouvelles réservations
   useEffect(() => {
     const token = getProToken();
@@ -111,11 +117,21 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
           const name = data.customerName ?? "Client";
           const covers = data.partySize ?? "";
           pushToast(`🔔 Nouvelle réservation — ${name}${covers ? ` · ${covers} cvt` : ""}`);
-          if (pathname !== "/dashboard/reservations") {
+          if (pathnameRef.current !== "/dashboard/reservations") {
             setResvNotifCount((n) => n + 1);
           }
         }
       } catch { /* ignore */ }
+    };
+    // Stop the browser's automatic reconnect loop if the stream is rejected
+    // (e.g. token expired). Otherwise EventSource retries forever in the
+    // background, burning battery on mobile.
+    let errorCount = 0;
+    es.onerror = () => {
+      errorCount += 1;
+      if (errorCount >= 3 || es.readyState === EventSource.CLOSED) {
+        es.close();
+      }
     };
     return () => es.close();
   }, []);
