@@ -26,7 +26,7 @@ export default function ServiceCallsPage() {
 
   const resolve = async (id: string) => {
     await api(`/api/pro/service-calls/${id}/resolve`, { method: "POST" });
-    setCalls(calls.filter((c) => c.id !== id));
+    setCalls((prev) => prev.filter((c) => c.id !== id));
   };
 
   return (
