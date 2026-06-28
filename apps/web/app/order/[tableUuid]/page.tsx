@@ -92,6 +92,10 @@ const tokenKey     = (id: string) => `atable_session_${id}`;
 const sessionIdKey = (id: string) => `atable_session_id_${id}`;
 const cartKey      = (id: string) => `atable_cart_${id}`;
 
+// Tri stable des catégories — hoisté hors du composant pour éviter une réallocation
+// à chaque render (sortedCats est dans le hot path : recalculé sur chaque cart change)
+const PHASE_ORDER = ["Apéritifs", "Cocktails", "Boissons", "Entrées", "Plats", "Desserts", "Cafés", "Digestifs"];
+
 /** Countdown timer — shows remaining time or overdue message */
 function CountdownTimer({ targetIso, orderId, onOverdue }: {
   targetIso: string;
@@ -297,6 +301,32 @@ export default function OrderPage() {
     return info.menu.filter(m => ids.has(m.id));
   }, [myOrders, info]);
 
+  // Index O(1) du menu — évite des .find() linéaires sur upsell, cart, etc.
+  const menuById = useMemo(() => {
+    const m = new Map<string, MenuItem>();
+    if (info) for (const it of info.menu) m.set(it.id, it);
+    return m;
+  }, [info]);
+
+  // Catégories regroupées + triées — recalculées uniquement quand le menu change,
+  // pas à chaque interaction panier ou évent socket (et la page re-rend souvent).
+  const byCat = useMemo(() => {
+    const acc: Record<string, MenuItem[]> = {};
+    if (info) for (const it of info.menu) {
+      const k = it.category || "Menu";
+      (acc[k] ||= []).push(it);
+    }
+    return acc;
+  }, [info]);
+
+  const sortedCats = useMemo(() => {
+    return Object.keys(byCat).sort((a, b) => {
+      const ia = PHASE_ORDER.findIndex(p => a.toLowerCase().includes(p.toLowerCase()));
+      const ib = PHASE_ORDER.findIndex(p => b.toLowerCase().includes(p.toLowerCase()));
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    });
+  }, [byCat]);
+
   function inc(id: string, delta: number) {
     setCart(c => {
       const next = { ...c, [id]: Math.max(0, (c[id] || 0) + delta) };
@@ -304,10 +334,10 @@ export default function OrderPage() {
       localStorage.setItem(cartKey(tableUuid), JSON.stringify(next));
 
       if (delta > 0 && info) {
-        const addedItem = info.menu.find(m => m.id === id);
+        const addedItem = menuById.get(id);
         if (addedItem && addedItem.upsellItems && addedItem.upsellItems.length > 0) {
           const suggestions = addedItem.upsellItems
-            .map(uid => info.menu.find(m => m.id === uid))
+            .map(uid => menuById.get(uid))
             .filter((m): m is MenuItem => m !== undefined && !(next[m.id] > 0));
           if (suggestions.length > 0) {
             setUpsellItem(addedItem);
@@ -450,19 +480,8 @@ export default function OrderPage() {
     </main>
   );
 
-  const byCat = info.menu.reduce<Record<string, MenuItem[]>>((acc, m) => {
-    const k = m.category || "Menu";
-    (acc[k] ||= []).push(m);
-    return acc;
-  }, {});
-
-  const PHASE_ORDER = ["Apéritifs", "Cocktails", "Boissons", "Entrées", "Plats", "Desserts", "Cafés", "Digestifs"];
-  const catKeys = Object.keys(byCat);
-  const sortedCats = catKeys.sort((a, b) => {
-    const ia = PHASE_ORDER.findIndex(p => a.toLowerCase().includes(p.toLowerCase()));
-    const ib = PHASE_ORDER.findIndex(p => b.toLowerCase().includes(p.toLowerCase()));
-    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-  });
+  // byCat / sortedCats sont mémoïsés plus haut (avant l'early return) pour ne pas
+  // recalculer à chaque cart change / event socket.
 
   const safeIdx = Math.min(Math.max(0, currentCatIdx), Math.max(0, sortedCats.length - 1));
   const currentCat = sortedCats[safeIdx] || "Menu";
