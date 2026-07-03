@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { API_URL } from "@/lib/api";
 
@@ -172,8 +172,17 @@ export default function CuisineDashPage() {
     } finally { setTogglingId(null); }
   };
 
-  const pending = orders.filter((o) => o.status === "PENDING");
-  const cooking = orders.filter((o) => o.status === "COOKING");
+  // Bucket in a single pass and memoize — this page re-renders every 15 s (nowTick)
+  // plus every 8 s poll, and the previous double `.filter` re-scanned orders each time.
+  const { pending, cooking } = useMemo(() => {
+    const p: Order[] = [];
+    const c: Order[] = [];
+    for (const o of orders) {
+      if (o.status === "PENDING") p.push(o);
+      else if (o.status === "COOKING") c.push(o);
+    }
+    return { pending: p, cooking: c };
+  }, [orders]);
 
   const elapsed = (iso: string) => {
     const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -192,17 +201,21 @@ export default function CuisineDashPage() {
     return { mins, label, tone };
   };
 
-  // Filter menu items for rupture panel
-  const ruptureItems = menuItems.filter(m => {
-    if (!ruptureSearch.trim()) return true;
-    return m.name.toLowerCase().includes(ruptureSearch.toLowerCase());
-  });
-  const ruptureByCategory = ruptureItems.reduce<Record<string, MenuItem[]>>((acc, m) => {
-    const cat = m.category || "Autres";
-    (acc[cat] ||= []).push(m);
-    return acc;
-  }, {});
-  const ruptureCount = menuItems.filter(m => !m.available).length;
+  // Filter + group + count in a single pass, memoized.
+  const { ruptureItems, ruptureByCategory, ruptureCount } = useMemo(() => {
+    const q = ruptureSearch.trim().toLowerCase();
+    const items: MenuItem[] = [];
+    const byCat: Record<string, MenuItem[]> = {};
+    let unavailable = 0;
+    for (const m of menuItems) {
+      if (!m.available) unavailable += 1;
+      if (q && !m.name.toLowerCase().includes(q)) continue;
+      items.push(m);
+      const cat = m.category || "Autres";
+      (byCat[cat] ||= []).push(m);
+    }
+    return { ruptureItems: items, ruptureByCategory: byCat, ruptureCount: unavailable };
+  }, [menuItems, ruptureSearch]);
 
   if (loading) {
     return (
