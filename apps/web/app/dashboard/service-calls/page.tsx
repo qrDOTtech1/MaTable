@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { useCallback, useEffect, useState } from "react";
+import { io, Socket } from "socket.io-client";
+import { api, API_URL, redirectOn401 } from "@/lib/api";
 
 type ServiceCall = {
   id: string;
@@ -11,18 +12,30 @@ type ServiceCall = {
 
 export default function ServiceCallsPage() {
   const [calls, setCalls] = useState<ServiceCall[]>([]);
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
+
+  const loadCalls = useCallback(async () => {
+    try {
+      const r = await api<{ calls: ServiceCall[] }>("/api/pro/service-calls");
+      setCalls(r.calls);
+    } catch {}
+  }, []);
 
   useEffect(() => {
-    const loadCalls = async () => {
-      try {
-        const r = await api<{ calls: ServiceCall[] }>("/api/pro/service-calls");
-        setCalls(r.calls);
-      } catch {}
-    };
+    api<{ restaurant: { id: string } }>("/api/pro/me")
+      .then((r) => setRestaurantId(r.restaurant.id))
+      .catch(redirectOn401);
     loadCalls();
-    const interval = setInterval(loadCalls, 3000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [loadCalls]);
+
+  // Replaced 3 s polling with the existing `service:called` socket event; the
+  // API already emits on both create and resolve for the same restaurant.
+  useEffect(() => {
+    if (!restaurantId) return;
+    const socket: Socket = io(API_URL, { auth: { restaurantId } });
+    socket.on("service:called", () => loadCalls());
+    return () => void socket.disconnect();
+  }, [restaurantId, loadCalls]);
 
   const resolve = async (id: string) => {
     await api(`/api/pro/service-calls/${id}/resolve`, { method: "POST" });

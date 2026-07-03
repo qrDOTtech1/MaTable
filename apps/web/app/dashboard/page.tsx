@@ -33,6 +33,83 @@ function playPing() {
 
 const fmt = (c: number) => (c / 100).toFixed(2) + "€";
 
+// Card color palette hoisted to module scope so we don't rebuild it every render.
+type CardColor = "yellow" | "orange" | "sky" | "emerald";
+const CARD_CLASSES: Record<CardColor, { border: string; bg: string; hover: string; name: string; btn: string }> = {
+  yellow:  { border: "border-yellow-500/20",  bg: "bg-yellow-500/5",  hover: "hover:bg-yellow-500/10",  name: "text-yellow-400",  btn: "bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300" },
+  orange:  { border: "border-orange-500/20",  bg: "bg-orange-500/5",  hover: "hover:bg-orange-500/10",  name: "text-orange-400",  btn: "bg-orange-500/20 hover:bg-orange-500/30 text-orange-300" },
+  sky:     { border: "border-sky-500/20",     bg: "bg-sky-500/5",     hover: "hover:bg-sky-500/10",     name: "text-sky-400",     btn: "bg-sky-500/20 hover:bg-sky-500/30 text-sky-300" },
+  emerald: { border: "border-emerald-500/20", bg: "bg-emerald-500/5", hover: "hover:bg-emerald-500/10", name: "text-emerald-400", btn: "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300" },
+};
+
+// Hoisted to module scope: when OrderCard was declared inside DashboardPage every
+// re-render produced a fresh component type, which forced every card to remount.
+function OrderCard({
+  order,
+  color,
+  onAdd,
+  onAdvance,
+}: {
+  order: Order;
+  color: CardColor;
+  onAdd: (o: Order) => void;
+  onAdvance: (o: Order) => void;
+}) {
+  const btnLabel =
+    order.status === "PENDING" ? "👨‍🍳 Cuire" :
+    order.status === "COOKING" ? "🛎️ Prêt"   :
+    order.status === "READY"   ? "✅ Servir"  : "💳 Encaisser";
+  const editable = order.status === "PENDING" || order.status === "COOKING";
+  const cls = CARD_CLASSES[color];
+
+  return (
+    <div className={`rounded-xl border ${cls.border} ${cls.bg} ${cls.hover} transition-all`}>
+      <div className="p-4">
+        <div className="flex items-start justify-between mb-2">
+          <div>
+            <p className={`font-bold text-lg ${cls.name}`}>Table {order.table.number}</p>
+            <p className="text-white/30 text-xs">{new Date(order.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</p>
+          </div>
+          {color === "yellow" && <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 font-bold animate-pulse">NOUVEAU</span>}
+        </div>
+
+        <div className="mb-3 space-y-0.5">
+          {order.items.map((item, i) => (
+            <p key={i} className="text-white/70 text-sm">{item.quantity}× {item.name}</p>
+          ))}
+        </div>
+
+        {order.notes && (
+          <p className="text-xs text-amber-400/80 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-1.5 mb-3">
+            📝 {order.notes}
+          </p>
+        )}
+
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <span className="text-sm font-bold text-white/70">{fmt(order.totalCents)}</span>
+          <div className="flex items-center gap-1.5">
+            {editable && (
+              <button
+                onClick={() => onAdd(order)}
+                className="px-2.5 py-1.5 rounded-lg bg-white/[0.06] border border-white/10 text-white/40 hover:text-white/70 text-xs font-semibold transition-all"
+                title="Ajouter des articles"
+              >
+                ➕ Ajouter
+              </button>
+            )}
+            <button
+              onClick={() => onAdvance(order)}
+              className={`px-3 py-1.5 rounded-lg ${cls.btn} text-xs font-semibold transition-all`}
+            >
+              {btnLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -189,88 +266,49 @@ export default function DashboardPage() {
   }
 
   // ─── Computed ─────────────────────────────────────────────────────────────
-  const outOfStock = menuItems.filter((m) => !m.available);
-  const availableItems = menuItems.filter((m) => m.available);
-  const menuCats = Array.from(new Set(menuItems.map((m) => m.category ?? "Autre"))).sort();
+  // Every socket event fires setOrders → re-render; without memo these
+  // recomputed on every tick even when their inputs didn't change.
+  const { outOfStock, availableItems, menuCats, menuById } = useMemo(() => {
+    const out: MenuItem[] = [];
+    const avail: MenuItem[] = [];
+    const cats = new Set<string>();
+    const byId = new Map<string, MenuItem>();
+    for (const m of menuItems) {
+      if (m.available) avail.push(m); else out.push(m);
+      cats.add(m.category ?? "Autre");
+      byId.set(m.id, m);
+    }
+    return {
+      outOfStock: out,
+      availableItems: avail,
+      menuCats: Array.from(cats).sort(),
+      menuById: byId,
+    };
+  }, [menuItems]);
 
-  const ruptureFiltered = menuItems.filter((m) => {
-    if (ruptureSearch && !m.name.toLowerCase().includes(ruptureSearch.toLowerCase())) return false;
-    return true;
-  });
+  const ruptureFiltered = useMemo(() => {
+    const q = ruptureSearch.trim().toLowerCase();
+    if (!q) return menuItems;
+    return menuItems.filter((m) => m.name.toLowerCase().includes(q));
+  }, [menuItems, ruptureSearch]);
 
-  const addMenuFiltered = availableItems.filter((m) => {
-    if (addMenuCat !== "all" && m.category !== addMenuCat) return false;
-    if (addMenuSearch && !m.name.toLowerCase().includes(addMenuSearch.toLowerCase())) return false;
-    return true;
-  });
-  const addCartTotal = Object.entries(addCart).reduce((s, [id, q]) => {
-    const m = menuItems.find((mi) => mi.id === id);
-    return s + (m?.priceCents ?? 0) * q;
-  }, 0);
-  const addCartCount = Object.values(addCart).reduce((s, q) => s + q, 0);
+  const addMenuFiltered = useMemo(() => {
+    const q = addMenuSearch.trim().toLowerCase();
+    return availableItems.filter((m) => {
+      if (addMenuCat !== "all" && m.category !== addMenuCat) return false;
+      if (q && !m.name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [availableItems, addMenuCat, addMenuSearch]);
 
-  // ─── Order card shared ────────────────────────────────────────────────────
-  function OrderCard({ order, color }: { order: Order; color: "yellow" | "orange" | "sky" | "emerald" }) {
-    const btnLabel =
-      order.status === "PENDING" ? "👨‍🍳 Cuire" :
-      order.status === "COOKING" ? "🛎️ Prêt"   :
-      order.status === "READY"   ? "✅ Servir"  : "💳 Encaisser";
-    const editable = order.status === "PENDING" || order.status === "COOKING";
-
-    const cls = {
-      yellow:  { border: "border-yellow-500/20",  bg: "bg-yellow-500/5",  hover: "hover:bg-yellow-500/10",  name: "text-yellow-400",  btn: "bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300" },
-      orange:  { border: "border-orange-500/20",  bg: "bg-orange-500/5",  hover: "hover:bg-orange-500/10",  name: "text-orange-400",  btn: "bg-orange-500/20 hover:bg-orange-500/30 text-orange-300" },
-      sky:     { border: "border-sky-500/20",     bg: "bg-sky-500/5",     hover: "hover:bg-sky-500/10",     name: "text-sky-400",     btn: "bg-sky-500/20 hover:bg-sky-500/30 text-sky-300" },
-      emerald: { border: "border-emerald-500/20", bg: "bg-emerald-500/5", hover: "hover:bg-emerald-500/10", name: "text-emerald-400", btn: "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300" },
-    }[color];
-
-    return (
-      <div className={`rounded-xl border ${cls.border} ${cls.bg} ${cls.hover} transition-all`}>
-        <div className="p-4">
-          <div className="flex items-start justify-between mb-2">
-            <div>
-              <p className={`font-bold text-lg ${cls.name}`}>Table {order.table.number}</p>
-              <p className="text-white/30 text-xs">{new Date(order.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</p>
-            </div>
-            {color === "yellow" && <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 font-bold animate-pulse">NOUVEAU</span>}
-          </div>
-
-          <div className="mb-3 space-y-0.5">
-            {order.items.map((item, i) => (
-              <p key={i} className="text-white/70 text-sm">{item.quantity}× {item.name}</p>
-            ))}
-          </div>
-
-          {order.notes && (
-            <p className="text-xs text-amber-400/80 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-1.5 mb-3">
-              📝 {order.notes}
-            </p>
-          )}
-
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <span className="text-sm font-bold text-white/70">{fmt(order.totalCents)}</span>
-            <div className="flex items-center gap-1.5">
-              {editable && (
-                <button
-                  onClick={() => openAddModal(order)}
-                  className="px-2.5 py-1.5 rounded-lg bg-white/[0.06] border border-white/10 text-white/40 hover:text-white/70 text-xs font-semibold transition-all"
-                  title="Ajouter des articles"
-                >
-                  ➕ Ajouter
-                </button>
-              )}
-              <button
-                onClick={() => advance(order)}
-                className={`px-3 py-1.5 rounded-lg ${cls.btn} text-xs font-semibold transition-all`}
-              >
-                {btnLabel}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const addCartTotal = useMemo(
+    () => Object.entries(addCart).reduce((s, [id, q]) => s + (menuById.get(id)?.priceCents ?? 0) * q, 0),
+    [addCart, menuById],
+  );
+  const addCartCount = useMemo(
+    () => Object.values(addCart).reduce((s, q) => s + q, 0),
+    [addCart],
+  );
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
@@ -333,7 +371,7 @@ export default function DashboardPage() {
             <div className="rounded-xl border border-white/[0.05] bg-white/[0.01] p-8 text-center text-white/20 text-sm">Aucune commande</div>
           ) : (
             <div className="space-y-3">
-              {pendingOrders.map((o) => <OrderCard key={o.id} order={o} color="yellow" />)}
+              {pendingOrders.map((o) => <OrderCard key={o.id} order={o} color="yellow" onAdd={openAddModal} onAdvance={advance} />)}
             </div>
           )}
         </div>
@@ -351,7 +389,7 @@ export default function DashboardPage() {
             <div className="rounded-xl border border-white/[0.05] bg-white/[0.01] p-8 text-center text-white/20 text-sm">Aucune commande</div>
           ) : (
             <div className="space-y-3">
-              {cookingOrders.map((o) => <OrderCard key={o.id} order={o} color="orange" />)}
+              {cookingOrders.map((o) => <OrderCard key={o.id} order={o} color="orange" onAdd={openAddModal} onAdvance={advance} />)}
             </div>
           )}
         </div>
@@ -369,7 +407,7 @@ export default function DashboardPage() {
             <div className="rounded-xl border border-white/[0.05] bg-white/[0.01] p-8 text-center text-white/20 text-sm">Aucune commande</div>
           ) : (
             <div className="space-y-3">
-              {readyOrders.map((o) => <OrderCard key={o.id} order={o} color="sky" />)}
+              {readyOrders.map((o) => <OrderCard key={o.id} order={o} color="sky" onAdd={openAddModal} onAdvance={advance} />)}
             </div>
           )}
         </div>
@@ -387,7 +425,7 @@ export default function DashboardPage() {
             <div className="rounded-xl border border-white/[0.05] bg-white/[0.01] p-8 text-center text-white/20 text-sm">Aucune commande</div>
           ) : (
             <div className="space-y-3">
-              {servedOrders.map((o) => <OrderCard key={o.id} order={o} color="emerald" />)}
+              {servedOrders.map((o) => <OrderCard key={o.id} order={o} color="emerald" onAdd={openAddModal} onAdvance={advance} />)}
             </div>
           )}
         </div>
