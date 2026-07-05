@@ -14,6 +14,9 @@ export default function ServiceCallsPage() {
 
   useEffect(() => {
     const loadCalls = async () => {
+      // Skip the poll while the tab is hidden — nobody's watching, and the
+      // panel refreshes on focus below.
+      if (typeof document !== "undefined" && document.hidden) return;
       try {
         const r = await api<{ calls: ServiceCall[] }>("/api/pro/service-calls");
         setCalls(r.calls);
@@ -21,7 +24,12 @@ export default function ServiceCallsPage() {
     };
     loadCalls();
     const interval = setInterval(loadCalls, 3000);
-    return () => clearInterval(interval);
+    const onVis = () => { if (!document.hidden) loadCalls(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, []);
 
   const resolve = async (id: string) => {

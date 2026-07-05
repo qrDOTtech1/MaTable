@@ -103,8 +103,11 @@ export default function DashboardPage() {
   useEffect(() => {
     const n = pendingOrders.length;
     document.title = n > 0 ? `(${n}) 🔴 Cuisine — ${restaurantName}` : `Cuisine — ${restaurantName}`;
-    return () => { document.title = "MaTable Pro"; };
   }, [pendingOrders.length, restaurantName]);
+
+  useEffect(() => {
+    return () => { document.title = "MaTable Pro"; };
+  }, []);
 
   // ── Sound + notification on new order ─────────────────────────────────────
   useEffect(() => {
