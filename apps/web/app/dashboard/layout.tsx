@@ -58,12 +58,26 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   const [resvNotifCount, setResvNotifCount] = useState(0);
   const [toasts, setToasts] = useState<Array<{ id: number; text: string }>>([]);
   const toastId = useRef(0);
+  const toastTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
 
   const pushToast = (text: string) => {
     const id = ++toastId.current;
     setToasts((t) => [...t, { id, text }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 5000);
+    const timer = setTimeout(() => {
+      setToasts((t) => t.filter((x) => x.id !== id));
+      toastTimers.current.delete(id);
+    }, 5000);
+    toastTimers.current.set(id, timer);
   };
+
+  useEffect(() => {
+    return () => {
+      toastTimers.current.forEach((t) => clearTimeout(t));
+      toastTimers.current.clear();
+    };
+  }, []);
 
   // Promotion du token "pending" après retour de Stripe Checkout
   useEffect(() => {
@@ -111,7 +125,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
           const name = data.customerName ?? "Client";
           const covers = data.partySize ?? "";
           pushToast(`🔔 Nouvelle réservation — ${name}${covers ? ` · ${covers} cvt` : ""}`);
-          if (pathname !== "/dashboard/reservations") {
+          if (pathnameRef.current !== "/dashboard/reservations") {
             setResvNotifCount((n) => n + 1);
           }
         }
