@@ -107,19 +107,30 @@ export default function ServersPage() {
     }
   };
 
-  // Generate NFC QR codes for all servers once slug + servers are available
+  // Generate NFC QR codes for all servers once slug + servers are available.
+  // Batched: one setState after Promise.all, otherwise each of N servers causes
+  // a re-render of the full page (server cards + selects + tables).
   useEffect(() => {
     if (!slug || servers.length === 0) return;
-    servers.forEach(async (s) => {
-      if (nfcQrCodes[s.id]) return; // already generated
-      const url = `https://matable.pro/r/${slug}/review?server=${s.id}`;
-      const dataUrl = await QRCode.toDataURL(url, {
-        width: 300,
-        margin: 1,
-        color: { dark: "#ffffff", light: "#0a0a0a" },
-      });
-      setNfcQrCodes((prev) => ({ ...prev, [s.id]: dataUrl }));
-    });
+    const missing = servers.filter((s) => !nfcQrCodes[s.id]);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const generated = await Promise.all(
+        missing.map(async (s) => {
+          const url = `https://matable.pro/r/${slug}/review?server=${s.id}`;
+          const dataUrl = await QRCode.toDataURL(url, {
+            width: 300,
+            margin: 1,
+            color: { dark: "#ffffff", light: "#0a0a0a" },
+          });
+          return [s.id, dataUrl] as const;
+        })
+      );
+      if (cancelled) return;
+      setNfcQrCodes((prev) => ({ ...prev, ...Object.fromEntries(generated) }));
+    })();
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servers, slug]);
 
