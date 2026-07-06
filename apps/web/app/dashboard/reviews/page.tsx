@@ -336,29 +336,30 @@ export default function ReviewsPage() {
   };
 
   useEffect(() => {
-    api<ReviewStats>("/api/pro/reviews/stats")
-      .then((r) => setStats(r))
-      .catch(() => {});
-    api<{ reviews: DishReview[] }>("/api/pro/reviews/dishes")
-      .then((r) => setDishReviews(r.reviews))
-      .catch(() => {});
-    api<{ reviews: ServerReview[] }>("/api/pro/reviews/servers")
-      .then((r) => setServerReviews(r.reviews))
-      .catch(() => {});
-    api<{ reviews: CustomerReview[], tips: ServerTip[] }>("/api/pro/reviews/customers")
-      .then((r) => {
-        setCustomerReviews(r.reviews);
-        setServerTips(r.tips);
-      })
-      .catch(() => {});
-    api<{ servers: ServerData[] }>("/api/pro/servers")
-      .then((r) => setServersList(r.servers))
-      .catch(() => {});
-    api<ReviewInsights>("/api/pro/reviews/insights")
-      .then((r) => setInsights(r))
-      .catch(() => {});
-    api<{ restaurant: RestaurantConfig }>("/api/pro/me")
-      .then((r) => {
+    // Fire all seven independent GETs concurrently and batch state updates —
+    // resolving them serially caused up to seven React commits per mount, each
+    // reconciling the full ~1200-line review tree.
+    (async () => {
+      const [statsR, dishesR, serversRevR, customersR, serversR, insightsR, meR] = await Promise.allSettled([
+        api<ReviewStats>("/api/pro/reviews/stats"),
+        api<{ reviews: DishReview[] }>("/api/pro/reviews/dishes"),
+        api<{ reviews: ServerReview[] }>("/api/pro/reviews/servers"),
+        api<{ reviews: CustomerReview[], tips: ServerTip[] }>("/api/pro/reviews/customers"),
+        api<{ servers: ServerData[] }>("/api/pro/servers"),
+        api<ReviewInsights>("/api/pro/reviews/insights"),
+        api<{ restaurant: RestaurantConfig }>("/api/pro/me"),
+      ]);
+      if (statsR.status === "fulfilled") setStats(statsR.value);
+      if (dishesR.status === "fulfilled") setDishReviews(dishesR.value.reviews);
+      if (serversRevR.status === "fulfilled") setServerReviews(serversRevR.value.reviews);
+      if (customersR.status === "fulfilled") {
+        setCustomerReviews(customersR.value.reviews);
+        setServerTips(customersR.value.tips);
+      }
+      if (serversR.status === "fulfilled") setServersList(serversR.value.servers);
+      if (insightsR.status === "fulfilled") setInsights(insightsR.value);
+      if (meR.status === "fulfilled") {
+        const r = meR.value;
         setRestaurant(r.restaurant);
         setGoogleLink(r.restaurant.googleReviewLink || "");
         setTipsEnabled(r.restaurant.tipsEnabled ?? true);
@@ -383,8 +384,8 @@ export default function ReviewsPage() {
           QRCode.toDataURL(`https://matable.pro/r/${r.restaurant.slug}/review`, { width: 400, margin: 2 })
             .then(setQrUrl).catch(() => {});
         }
-      })
-      .catch(() => {});
+      }
+    })();
   }, []);
 
   // ── Live updates via WebSocket ─────────────────────────────────────────────

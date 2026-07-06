@@ -260,7 +260,11 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
     // dédoublonnage par href (Fidélité/Menu apparaissent dans plusieurs sections)
     const seen = new Set<string>();
     return out.filter((d) => (seen.has(d.href) ? false : (seen.add(d.href), true)));
-  }, [enabledApps, resvNotifCount]);
+    // resvNotifCount is not read here — the badge is applied downstream in
+    // bottomNavItems/quickActions — so it must not appear in the deps or every
+    // incoming reservation notification pointlessly rebuilds this list (and
+    // invalidates destByHref → CommandPalette memoization).
+  }, [enabledApps]);
 
   const destByHref = useMemo(
     () => new Map(allDestinations.map((d) => [d.href, d])),
