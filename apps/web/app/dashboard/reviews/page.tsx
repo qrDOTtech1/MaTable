@@ -1223,7 +1223,12 @@ export default function ReviewsPage() {
 
           {!insights ? (
             <p className="text-sm text-white/50 text-center py-8">Chargement...</p>
-          ) : (
+          ) : (() => {
+            // Chaque .filter est O(n) et etait rappele 3x pour les plats et
+            // 3x pour les serveurs a chaque render. On calcule une seule fois.
+            const activeDishFlags = insights.dishFlags.filter(f => !f.resolved);
+            const activeServerFlags = insights.serverFlags.filter(f => !f.resolved);
+            return (
             <>
               {/* Top reasons */}
               {insights.counts.length > 0 && (
@@ -1243,10 +1248,10 @@ export default function ReviewsPage() {
               )}
 
               {/* Active dish flags */}
-              {insights.dishFlags.filter(f => !f.resolved).length > 0 && (
+              {activeDishFlags.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="font-bold text-white flex items-center gap-2">🍽️ Alertes plats</h3>
-                  {insights.dishFlags.filter(f => !f.resolved).map((f) => (
+                  {activeDishFlags.map((f) => (
                     <FlagCard
                       key={f.id}
                       label={f.menuItemName ?? "Plat"}
@@ -1267,10 +1272,10 @@ export default function ReviewsPage() {
               )}
 
               {/* Active server flags */}
-              {insights.serverFlags.filter(f => !f.resolved).length > 0 && (
+              {activeServerFlags.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="font-bold text-white flex items-center gap-2">👤 Alertes serveurs</h3>
-                  {insights.serverFlags.filter(f => !f.resolved).map((f) => (
+                  {activeServerFlags.map((f) => (
                     <FlagCard
                       key={f.id}
                       label={f.serverName ?? "Serveur"}
@@ -1306,8 +1311,8 @@ export default function ReviewsPage() {
                 </div>
               )}
 
-              {insights.dishFlags.filter(f => !f.resolved).length === 0
-                && insights.serverFlags.filter(f => !f.resolved).length === 0
+              {activeDishFlags.length === 0
+                && activeServerFlags.length === 0
                 && insights.customerFlags.length === 0 && (
                 <div className="text-center py-12 space-y-3">
                   <div className="text-5xl">✅</div>
@@ -1315,7 +1320,8 @@ export default function ReviewsPage() {
                 </div>
               )}
             </>
-          )}
+          );
+          })()}
         </div>
       )}
 
