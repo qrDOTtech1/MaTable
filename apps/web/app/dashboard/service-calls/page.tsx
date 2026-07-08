@@ -14,6 +14,7 @@ export default function ServiceCallsPage() {
 
   useEffect(() => {
     const loadCalls = async () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       try {
         const r = await api<{ calls: ServiceCall[] }>("/api/pro/service-calls");
         setCalls(r.calls);
@@ -21,7 +22,12 @@ export default function ServiceCallsPage() {
     };
     loadCalls();
     const interval = setInterval(loadCalls, 3000);
-    return () => clearInterval(interval);
+    const onVisible = () => { if (document.visibilityState === "visible") loadCalls(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   const resolve = async (id: string) => {
