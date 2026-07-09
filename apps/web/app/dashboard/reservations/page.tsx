@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/ui";
 
@@ -118,32 +118,41 @@ export default function ReservationsPage() {
     }
   };
 
-  const now = new Date();
-  const todayStr = now.toDateString();
+  const { filtered, grouped, calendarCounts, counts } = useMemo(() => {
+    const now = new Date();
+    const todayStr = now.toDateString();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const filtered = reservations.filter((r) => {
-    const d = new Date(r.startsAt);
-    if (selectedDay) return isoDay(d) === selectedDay;
-    if (filter === "today") return d.toDateString() === todayStr;
-    if (filter === "upcoming") return d >= new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    return true;
-  });
+    let upcomingCount = 0;
+    let todayCount = 0;
+    const calendarCounts: Record<string, { count: number; covers: number }> = {};
+    const filtered: Reservation[] = [];
+    for (const r of reservations) {
+      const d = new Date(r.startsAt);
+      const key = isoDay(d);
+      const inUpcoming = d >= startOfToday;
+      const inToday = d.toDateString() === todayStr;
+      if (inUpcoming) upcomingCount++;
+      if (inToday) todayCount++;
+      (calendarCounts[key] ??= { count: 0, covers: 0 }).count += 1;
+      calendarCounts[key].covers += r.partySize;
+      const keep =
+        selectedDay ? key === selectedDay :
+        filter === "today" ? inToday :
+        filter === "upcoming" ? inUpcoming :
+        true;
+      if (keep) filtered.push(r);
+    }
 
-  const grouped = groupByDate(filtered);
-  const calendarDays = buildCalendarDays(calendarMonth);
-  const calendarCounts = reservations.reduce<Record<string, { count: number; covers: number }>>((acc, r) => {
-    const key = isoDay(new Date(r.startsAt));
-    acc[key] ??= { count: 0, covers: 0 };
-    acc[key].count += 1;
-    acc[key].covers += r.partySize;
-    return acc;
-  }, {});
+    return {
+      filtered,
+      grouped: groupByDate(filtered),
+      calendarCounts,
+      counts: { upcoming: upcomingCount, today: todayCount, all: reservations.length },
+    };
+  }, [reservations, filter, selectedDay]);
 
-  const counts = {
-    upcoming: reservations.filter((r) => new Date(r.startsAt) >= new Date(now.getFullYear(), now.getMonth(), now.getDate())).length,
-    today: reservations.filter((r) => new Date(r.startsAt).toDateString() === todayStr).length,
-    all: reservations.length,
-  };
+  const calendarDays = useMemo(() => buildCalendarDays(calendarMonth), [calendarMonth]);
   const selectedLabel = selectedDay
     ? new Date(`${selectedDay}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })
     : null;
