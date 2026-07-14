@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/ui";
 
@@ -118,32 +118,48 @@ export default function ReservationsPage() {
     }
   };
 
-  const now = new Date();
-  const todayStr = now.toDateString();
-
-  const filtered = reservations.filter((r) => {
-    const d = new Date(r.startsAt);
-    if (selectedDay) return isoDay(d) === selectedDay;
-    if (filter === "today") return d.toDateString() === todayStr;
-    if (filter === "upcoming") return d >= new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    return true;
-  });
-
-  const grouped = groupByDate(filtered);
   const calendarDays = buildCalendarDays(calendarMonth);
-  const calendarCounts = reservations.reduce<Record<string, { count: number; covers: number }>>((acc, r) => {
-    const key = isoDay(new Date(r.startsAt));
-    acc[key] ??= { count: 0, covers: 0 };
-    acc[key].count += 1;
-    acc[key].covers += r.partySize;
-    return acc;
-  }, {});
 
-  const counts = {
-    upcoming: reservations.filter((r) => new Date(r.startsAt) >= new Date(now.getFullYear(), now.getMonth(), now.getDate())).length,
-    today: reservations.filter((r) => new Date(r.startsAt).toDateString() === todayStr).length,
-    all: reservations.length,
-  };
+  // Single-pass bucketing: filter/group/calendar-count and header counts in one loop
+  // instead of 5 separate passes on every render. Memoized so unrelated state
+  // changes (e.g. `updating`) don't retrigger it.
+  const { filtered, grouped, calendarCounts, counts } = useMemo(() => {
+    const now = new Date();
+    const todayStr = now.toDateString();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const filtered: Reservation[] = [];
+    const calendarCounts: Record<string, { count: number; covers: number }> = {};
+    let upcoming = 0;
+    let today = 0;
+
+    for (const r of reservations) {
+      const d = new Date(r.startsAt);
+      const key = isoDay(d);
+      const bucket = (calendarCounts[key] ??= { count: 0, covers: 0 });
+      bucket.count += 1;
+      bucket.covers += r.partySize;
+
+      const isToday = d.toDateString() === todayStr;
+      const isUpcoming = d >= startOfToday;
+      if (isToday) today += 1;
+      if (isUpcoming) upcoming += 1;
+
+      let include: boolean;
+      if (selectedDay) include = key === selectedDay;
+      else if (filter === "today") include = isToday;
+      else if (filter === "upcoming") include = isUpcoming;
+      else include = true;
+      if (include) filtered.push(r);
+    }
+
+    return {
+      filtered,
+      grouped: groupByDate(filtered),
+      calendarCounts,
+      counts: { upcoming, today, all: reservations.length },
+    };
+  }, [reservations, selectedDay, filter]);
   const selectedLabel = selectedDay
     ? new Date(`${selectedDay}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })
     : null;
