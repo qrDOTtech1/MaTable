@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { API_URL, api, getProToken, redirectOn401 } from "@/lib/api";
 import { chatWithNova } from "@/lib/ai";
 import PhotoUploader from "@/components/PhotoUploader";
@@ -225,24 +225,25 @@ export default function MenuPage() {
     reload();
   };
 
-  // All unique categories
-  const allCategories = [...new Set(items.map(it => it.category || "Sans catégorie"))].sort();
-
-  // Filter items by search + category
-  const filteredItems = items.filter(it => {
-    if (catFilter !== "all" && (it.category || "Sans catégorie") !== catFilter) return false;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      return it.name.toLowerCase().includes(q) || (it.description || "").toLowerCase().includes(q) || (it.category || "").toLowerCase().includes(q);
+  const { allCategories, byCat } = useMemo(() => {
+    const cats = new Set<string>();
+    const grouped: Record<string, Item[]> = {};
+    const q = search.trim().toLowerCase();
+    for (const it of items) {
+      const k = it.category || "Sans catégorie";
+      cats.add(k);
+      if (catFilter !== "all" && k !== catFilter) continue;
+      if (q) {
+        const hit =
+          it.name.toLowerCase().includes(q) ||
+          (it.description || "").toLowerCase().includes(q) ||
+          (it.category || "").toLowerCase().includes(q);
+        if (!hit) continue;
+      }
+      (grouped[k] ||= []).push(it);
     }
-    return true;
-  });
-
-  const byCat = filteredItems.reduce<Record<string, Item[]>>((acc, it) => {
-    const k = it.category || "Sans catégorie";
-    (acc[k] ||= []).push(it);
-    return acc;
-  }, {});
+    return { allCategories: [...cats].sort(), byCat: grouped };
+  }, [items, search, catFilter]);
 
   return (
     <div className="p-8">
