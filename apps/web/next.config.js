@@ -3,7 +3,12 @@ const nextConfig = {
   reactStrictMode: true,
   images: {
     formats: ['image/avif', 'image/webp'],
-    domains: ['matable.pro', 'cdn.matable.pro', 'images.unsplash.com'],
+    remotePatterns: [
+      { protocol: 'https', hostname: 'matable.pro' },
+      { protocol: 'https', hostname: 'cdn.matable.pro' },
+      { protocol: 'https', hostname: '**.matable.pro' },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+    ],
     minimumCacheTTL: 31536000,
   },
   compress: true,
