@@ -189,25 +189,50 @@ export default function DashboardPage() {
   }
 
   // ─── Computed ─────────────────────────────────────────────────────────────
-  const outOfStock = menuItems.filter((m) => !m.available);
-  const availableItems = menuItems.filter((m) => m.available);
-  const menuCats = Array.from(new Set(menuItems.map((m) => m.category ?? "Autre"))).sort();
+  // Bucket menu items + build a fast priceById lookup in a single pass, then
+  // memoize so search-only re-renders don't re-traverse the full menu.
+  const { outOfStock, availableItems, menuCats, priceById } = useMemo(() => {
+    const out: typeof menuItems = [];
+    const avail: typeof menuItems = [];
+    const cats = new Set<string>();
+    const prices = new Map<string, number>();
+    for (const m of menuItems) {
+      if (m.available) avail.push(m); else out.push(m);
+      cats.add(m.category ?? "Autre");
+      prices.set(m.id, m.priceCents);
+    }
+    return {
+      outOfStock: out,
+      availableItems: avail,
+      menuCats: Array.from(cats).sort(),
+      priceById: prices,
+    };
+  }, [menuItems]);
 
-  const ruptureFiltered = menuItems.filter((m) => {
-    if (ruptureSearch && !m.name.toLowerCase().includes(ruptureSearch.toLowerCase())) return false;
-    return true;
-  });
+  const ruptureFiltered = useMemo(() => {
+    const needle = ruptureSearch.toLowerCase();
+    if (!needle) return menuItems;
+    return menuItems.filter((m) => m.name.toLowerCase().includes(needle));
+  }, [menuItems, ruptureSearch]);
 
-  const addMenuFiltered = availableItems.filter((m) => {
-    if (addMenuCat !== "all" && m.category !== addMenuCat) return false;
-    if (addMenuSearch && !m.name.toLowerCase().includes(addMenuSearch.toLowerCase())) return false;
-    return true;
-  });
-  const addCartTotal = Object.entries(addCart).reduce((s, [id, q]) => {
-    const m = menuItems.find((mi) => mi.id === id);
-    return s + (m?.priceCents ?? 0) * q;
-  }, 0);
-  const addCartCount = Object.values(addCart).reduce((s, q) => s + q, 0);
+  const addMenuFiltered = useMemo(() => {
+    const needle = addMenuSearch.toLowerCase();
+    return availableItems.filter((m) => {
+      if (addMenuCat !== "all" && m.category !== addMenuCat) return false;
+      if (needle && !m.name.toLowerCase().includes(needle)) return false;
+      return true;
+    });
+  }, [availableItems, addMenuCat, addMenuSearch]);
+
+  // O(N+M) via priceById Map instead of O(N*M) via Array.find per cart line.
+  const { addCartTotal, addCartCount } = useMemo(() => {
+    let total = 0, count = 0;
+    for (const [id, q] of Object.entries(addCart)) {
+      total += (priceById.get(id) ?? 0) * q;
+      count += q;
+    }
+    return { addCartTotal: total, addCartCount: count };
+  }, [addCart, priceById]);
 
   // ─── Order card shared ────────────────────────────────────────────────────
   function OrderCard({ order, color }: { order: Order; color: "yellow" | "orange" | "sky" | "emerald" }) {
