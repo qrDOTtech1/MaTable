@@ -31,10 +31,20 @@ export default function CuisineDashPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [nowTick, setNowTick] = useState(() => Date.now());
 
-  // Tic d'horloge pour rafraîchir les compte-à-rebours (toutes les 15s)
+  // Tic d'horloge pour rafraîchir les compte-à-rebours (toutes les 15s).
+  // Pas de tic quand l'onglet est masqué — les countdown n'ont personne pour les lire.
   useEffect(() => {
-    const iv = setInterval(() => setNowTick(Date.now()), 15000);
-    return () => clearInterval(iv);
+    if (typeof document === "undefined") return;
+    let iv: ReturnType<typeof setInterval> | null = null;
+    const start = () => { if (!iv) iv = setInterval(() => setNowTick(Date.now()), 15000); };
+    const stop = () => { if (iv) { clearInterval(iv); iv = null; } };
+    if (!document.hidden) start();
+    const onVis = () => {
+      if (document.hidden) { stop(); }
+      else { setNowTick(Date.now()); start(); }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { stop(); document.removeEventListener("visibilitychange", onVis); };
   }, []);
 
   const cuisineFetch = useCallback(async <T,>(path: string, opts?: RequestInit): Promise<T> => {
@@ -109,8 +119,20 @@ export default function CuisineDashPage() {
     if (!token) { router.push(`/${slug}/cuisine`); return; }
     loadData();
     loadMenu();
-    const interval = setInterval(loadData, 8000);
-    return () => clearInterval(interval);
+
+    // Poll toutes les 8 s uniquement quand l'onglet est visible : sans ça,
+    // un onglet oublié en arrière-plan continue de frapper l'API toute la nuit.
+    if (typeof document === "undefined") return;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const start = () => { if (!interval) interval = setInterval(loadData, 8000); };
+    const stop = () => { if (interval) { clearInterval(interval); interval = null; } };
+    if (!document.hidden) start();
+    const onVis = () => {
+      if (document.hidden) { stop(); }
+      else { loadData(); start(); }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { stop(); document.removeEventListener("visibilitychange", onVis); };
   }, [loadData, loadMenu, router, slug]);
 
   const markCooking = async (orderId: string) => {
