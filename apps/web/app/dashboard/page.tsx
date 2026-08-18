@@ -188,26 +188,45 @@ export default function DashboardPage() {
     setNotifEnabled(perm === "granted");
   }
 
-  // ─── Computed ─────────────────────────────────────────────────────────────
-  const outOfStock = menuItems.filter((m) => !m.available);
-  const availableItems = menuItems.filter((m) => m.available);
-  const menuCats = Array.from(new Set(menuItems.map((m) => m.category ?? "Autre"))).sort();
+  // ─── Computed (memoized: dashboard re-renders on every socket tick) ───────
+  const { outOfStock, availableItems, menuCats, menuById } = useMemo(() => {
+    const out: MenuItem[] = [];
+    const avail: MenuItem[] = [];
+    const cats = new Set<string>();
+    const byId = new Map<string, MenuItem>();
+    for (const m of menuItems) {
+      byId.set(m.id, m);
+      cats.add(m.category ?? "Autre");
+      if (m.available) avail.push(m); else out.push(m);
+    }
+    return { outOfStock: out, availableItems: avail, menuCats: [...cats].sort(), menuById: byId };
+  }, [menuItems]);
 
-  const ruptureFiltered = menuItems.filter((m) => {
-    if (ruptureSearch && !m.name.toLowerCase().includes(ruptureSearch.toLowerCase())) return false;
-    return true;
-  });
+  const ruptureFiltered = useMemo(() => {
+    const q = ruptureSearch.trim().toLowerCase();
+    if (!q) return menuItems;
+    return menuItems.filter((m) => m.name.toLowerCase().includes(q));
+  }, [menuItems, ruptureSearch]);
 
-  const addMenuFiltered = availableItems.filter((m) => {
-    if (addMenuCat !== "all" && m.category !== addMenuCat) return false;
-    if (addMenuSearch && !m.name.toLowerCase().includes(addMenuSearch.toLowerCase())) return false;
-    return true;
-  });
-  const addCartTotal = Object.entries(addCart).reduce((s, [id, q]) => {
-    const m = menuItems.find((mi) => mi.id === id);
-    return s + (m?.priceCents ?? 0) * q;
-  }, 0);
-  const addCartCount = Object.values(addCart).reduce((s, q) => s + q, 0);
+  const addMenuFiltered = useMemo(() => {
+    const q = addMenuSearch.trim().toLowerCase();
+    return availableItems.filter((m) => {
+      if (addMenuCat !== "all" && m.category !== addMenuCat) return false;
+      if (q && !m.name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [availableItems, addMenuCat, addMenuSearch]);
+
+  const { addCartTotal, addCartCount } = useMemo(() => {
+    let total = 0;
+    let count = 0;
+    for (const [id, q] of Object.entries(addCart)) {
+      if (q <= 0) continue;
+      count += q;
+      total += (menuById.get(id)?.priceCents ?? 0) * q;
+    }
+    return { addCartTotal: total, addCartCount: count };
+  }, [addCart, menuById]);
 
   // ─── Order card shared ────────────────────────────────────────────────────
   function OrderCard({ order, color }: { order: Order; color: "yellow" | "orange" | "sky" | "emerald" }) {
@@ -549,7 +568,7 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   <div className="text-xs text-white/40 space-y-0.5 max-h-20 overflow-y-auto">
                     {Object.entries(addCart).filter(([, q]) => q > 0).map(([id, q]) => {
-                      const m = menuItems.find((mi) => mi.id === id);
+                      const m = menuById.get(id);
                       if (!m) return null;
                       return <div key={id} className="flex justify-between"><span>{q}× {m.name}</span><span className="font-mono">{fmt(m.priceCents * q)}</span></div>;
                     })}
