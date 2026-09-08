@@ -227,11 +227,19 @@ export default function ServeurDashPage() {
     }
 
     const refreshData = () => {
-      serverFetch<{ sessions: TableSession[]; allTables: TableMap[]; myEmptyTables?: EmptyTable[] }>("/api/server/tables")
-        .then((r) => { setSessions(r.sessions); setAllTables(r.allTables); setMyEmptyTables(r.myEmptyTables ?? []); });
-      serverFetch<Stats>("/api/server/stats").then(setStats);
-      serverFetch<{ calls: ServiceCall[] }>("/api/server/service-calls")
-        .then((r) => setServiceCalls(r.calls ?? []));
+      // Fan-out the three independent reads in parallel so socket bursts
+      // don't stack three round-trips + three renders back-to-back.
+      Promise.all([
+        serverFetch<{ sessions: TableSession[]; allTables: TableMap[]; myEmptyTables?: EmptyTable[] }>("/api/server/tables"),
+        serverFetch<Stats>("/api/server/stats"),
+        serverFetch<{ calls: ServiceCall[] }>("/api/server/service-calls"),
+      ]).then(([tables, s, calls]) => {
+        setSessions(tables.sessions);
+        setAllTables(tables.allTables);
+        setMyEmptyTables(tables.myEmptyTables ?? []);
+        setStats(s);
+        setServiceCalls(calls.calls ?? []);
+      });
     };
 
     socket.on("order:new", (data: any) => {
